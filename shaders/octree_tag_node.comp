@@ -1,0 +1,30 @@
+#version 450 core
+layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+uniform int uVoxelFragmentNum, uVoxelResolution, uLevel;
+
+layout(std430, binding = 2) readonly buffer uuFragmentList { uvec2 uFragmentList[]; };
+layout(std430, binding = 3) buffer uuOctree { uint uOctree[]; };
+
+void main()
+{
+	if(gl_GlobalInvocationID.x >= uVoxelFragmentNum) return;
+	uint upos = uFragmentList[gl_GlobalInvocationID.x].x;
+
+	uint level_dim = uVoxelResolution;
+	uvec3 level_pos = uvec3(upos & 0x3ffu, (upos >> 10u) & 0x3ffu, (upos >> 20u) & 0x3ffu);
+	bvec3 level_cmp;
+
+	uint idx = 0, cur = 0;
+	for(int i = 0; i < uLevel; ++i)
+	{
+		level_dim >>= 1;
+
+		level_cmp = greaterThanEqual(level_pos, uvec3(level_dim));
+		idx = cur + (uint(level_cmp.x) | (uint(level_cmp.y) << 1u) | (uint(level_cmp.z) << 2u));
+		cur = uOctree[idx] & 0x7fffffffu;
+		level_pos -= uvec3(level_cmp) * level_dim;
+	}
+
+	uOctree[idx] |= 0x80000000u;
+	if((1u << uLevel) == uVoxelResolution) uOctree[idx] |= 0x40000000u; //termination tag
+}
