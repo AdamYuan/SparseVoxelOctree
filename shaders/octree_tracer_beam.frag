@@ -111,12 +111,12 @@ bool RayMarchCoarse(vec3 o, vec3 d, float coarse_scale, out float t)
 		if( (idx & step_mask) != 0 )
 		{
 			// POP
-            // Find the highest differing bit between the two positions.
+			// Find the highest differing bit between the two positions.
 			uint differing_bits = 0;
 			if ((step_mask & 1u) != 0) differing_bits |= floatBitsToUint(pos.x) ^ floatBitsToUint(pos.x + scale_exp2);
 			if ((step_mask & 2u) != 0) differing_bits |= floatBitsToUint(pos.y) ^ floatBitsToUint(pos.y + scale_exp2);
 			if ((step_mask & 4u) != 0) differing_bits |= floatBitsToUint(pos.z) ^ floatBitsToUint(pos.z + scale_exp2);
-            scale = findMSB(differing_bits);
+			scale = findMSB(differing_bits);
 			scale_exp2 = uintBitsToFloat((scale - STACK_SIZE + 127u) << 23u); // exp2f(scale - s_max)
 
 			// Restore parent voxel from the stack.
