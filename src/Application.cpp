@@ -21,9 +21,9 @@ Application::Application()
 	gl3wInit();
 
 	Scene scene;
-	scene.Initialize("/home/adamyuan/Projects/Adypt/models/sibenik/sibenik.obj");
+	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/sibenik/sibenik.obj");
 	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/living_room/living_room.obj");
-	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/San_Miguel/san-miguel-low-poly.obj");
+	scene.Initialize("/home/adamyuan/Projects/Adypt/models/San_Miguel/san-miguel-low-poly.obj");
 	//scene.Initialize("models/sponza/sponza.obj");
 	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/bmw/bmw.obj");
 	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/powerplant/powerplant.obj");

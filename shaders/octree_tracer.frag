@@ -18,7 +18,7 @@ layout(binding = 4) uniform sampler2D uBeam;
 
 uint iter = 0;
 struct StackItem { uint node; float t_max; } stack[STACK_SIZE];
-bool RayMarchLeaf(vec3 o, vec3 d, out float t)
+bool RayMarchLeaf(vec3 o, vec3 d, out float t, out uint color)
 {
 	d.x = abs(d.x) > 1e-6 ? d.x : (d.x >= 0 ? 1e-6 : -1e-6);
 	d.y = abs(d.y) > 1e-6 ? d.y : (d.y >= 0 ? 1e-6 : -1e-6);
@@ -71,7 +71,10 @@ bool RayMarchLeaf(vec3 o, vec3 d, out float t)
 			if( t_min <= tv_max )
 			{
 				if( (cur & 0x40000000u) != 0 ) // leaf node
+				{
+					color = cur & 0xffffffu;
 					break;
+				}
 
 				// PUSH
 				if( tc_max < h )
@@ -130,7 +133,7 @@ bool RayMarchLeaf(vec3 o, vec3 d, out float t)
 			pos.x = uintBitsToFloat(shx << scale);
 			pos.y = uintBitsToFloat(shy << scale);
 			pos.z = uintBitsToFloat(shz << scale);
-			idx  = (shx & 1) | ((shy & 1) << 1u) | ((shz & 1) << 2u);
+			idx  = (shx & 1u) | ((shy & 1u) << 1u) | ((shz & 1u) << 2u);
 
 			// Prevent same parent from being stored again and invalidate cached child descriptor.
 			h = 0.0f;
@@ -152,9 +155,12 @@ void main()
 	vec3 o = uPosition.xyz, d = normalize(vViewDir);
 	o += d * beam;
 
-	float t;
-	if(RayMarchLeaf(o, d, t))
-		oFragColor = vec4( vec3(t + beam), 1 );
+	float t; uint uc;
+	if(RayMarchLeaf(o, d, t, uc))
+	{
+		vec3 color = vec3( uc & 0xffu, (uc >> 8u) & 0xffu, uc >> 16u ) / 255.0f;
+		oFragColor = vec4( color, 1 );
+	}
 	else
 		oFragColor = vec4(0, 0, 0, 1);
 

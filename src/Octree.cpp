@@ -27,6 +27,7 @@ void Octree::Build(const Voxelizer &voxelizer)
 {
 	//estimate octree buffer size and initialize octree buffer
 	int octree_node_num = std::max(kOctreeNodeNumMin, voxelizer.GetFragmentNum() << 2);
+	octree_node_num = std::min(octree_node_num, kOctreeNodeNumMax);
 	m_octree.Initialize();
 	m_octree.Storage(octree_node_num*sizeof(GLuint), GL_MAP_WRITE_BIT);
 	printf("[OCTREE]Info: Alloc %d nodes, %.1fMB\n",

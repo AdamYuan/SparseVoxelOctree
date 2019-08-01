@@ -130,7 +130,7 @@ bool RayMarchCoarse(vec3 o, vec3 d, float coarse_scale, out float t)
 			pos.x = uintBitsToFloat(shx << scale);
 			pos.y = uintBitsToFloat(shy << scale);
 			pos.z = uintBitsToFloat(shz << scale);
-			idx  = (shx & 1) | ((shy & 1) << 1u) | ((shz & 1) << 2u);
+			idx  = (shx & 1u) | ((shy & 1u) << 1u) | ((shz & 1u) << 2u);
 
 			// Prevent same parent from being stored again and invalidate cached child descriptor.
 			h = 0.0f;
@@ -143,6 +143,7 @@ bool RayMarchCoarse(vec3 o, vec3 d, float coarse_scale, out float t)
 
 void main()
 {
+	vec2 coord = gl_FragCoord.xy / vec2(1280.0f, 720.0f) * 8.0f;
 	vec3 o = uPosition.xyz, d = normalize(vViewDir);
 
 	float t;
