@@ -39,8 +39,6 @@ Application::Application()
 	m_camera.Initialize();
 	m_camera.m_position = glm::vec3(1.5f);
 
-	m_renderer.Initialize();
-
 	Voxelizer voxelizer;
 	voxelizer.Initialize();
 	voxelizer.Voxelize(scene);

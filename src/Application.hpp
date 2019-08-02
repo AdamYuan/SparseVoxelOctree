@@ -7,7 +7,6 @@
 
 #include <mygl3/utils/framerate.hpp>
 #include "Scene.hpp"
-#include "Renderer.hpp"
 #include "Octree.hpp"
 #include "OctreeTracer.hpp"
 #include <GLFW/glfw3.h>
@@ -19,7 +18,6 @@ private:
 	Camera m_camera;
 	Octree m_octree;
 	OctreeTracer m_octree_tracer;
-	Renderer m_renderer;
 	mygl3::Framerate m_fps;
 public:
 	Application();
