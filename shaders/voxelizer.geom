@@ -11,7 +11,6 @@ flat in vec3 vDiffColor[];
 out vec2 gTexcoords;
 out vec3 gNormal;
 out vec3 gVoxelPos;
-out vec2 gScreenPos;
 flat out int gTexture;
 flat out vec3 gDiffColor;
 
@@ -41,19 +40,16 @@ void main()
 	gTexcoords = vTexcoords[0];
 	gNormal = normalize(vNormal[0]);
 	gVoxelPos = (Unproject(pos0, axis) + 1.0f) * 0.5f * uVoxelResolution;
-	gScreenPos = pos0.xy;
 	gl_Position = vec4(pos0.xy, 1.0f, 1.0f);
 	EmitVertex();
 	gTexcoords = vTexcoords[1];
 	gNormal = normalize(vNormal[1]);
 	gVoxelPos = (Unproject(pos1, axis) + 1.0f) * 0.5f * uVoxelResolution;
-	gScreenPos = pos1.xy;
 	gl_Position = vec4(pos1.xy, 1.0f, 1.0f);
 	EmitVertex();
 	gTexcoords = vTexcoords[2];
 	gNormal = normalize(vNormal[2]);
 	gVoxelPos = (Unproject(pos2, axis) + 1.0f) * 0.5f * uVoxelResolution;
-	gScreenPos = pos2.xy;
 	gl_Position = vec4(pos2.xy, 1.0f, 1.0f);
 	EmitVertex();
 	EndPrimitive();
