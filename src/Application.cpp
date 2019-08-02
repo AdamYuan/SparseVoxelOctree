@@ -21,10 +21,11 @@ Application::Application()
 	gl3wInit();
 
 	Scene scene;
+	scene.Initialize("models/sponza/sponza.obj");
 	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/sibenik/sibenik.obj");
 	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/living_room/living_room.obj");
-	scene.Initialize("/home/adamyuan/Projects/Adypt/models/San_Miguel/san-miguel-low-poly.obj");
-	//scene.Initialize("models/sponza/sponza.obj");
+	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/San_Miguel/san-miguel-low-poly.obj");
+	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/gallery/gallery.obj");
 	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/bmw/bmw.obj");
 	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/powerplant/powerplant.obj");
 	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/vokselia_spawn/vokselia_spawn.obj");
@@ -33,6 +34,7 @@ Application::Application()
 	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/conference/conference.obj");
 	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/breakfast_room/breakfast_room.obj");
 	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/salle_de_bain/salle_de_bain.obj");
+	//scene.Initialize("/home/adamyuan/Projects/Adypt/models/rungholt/rungholt.obj");
 
 	m_camera.Initialize();
 	m_camera.m_position = glm::vec3(1.5f);

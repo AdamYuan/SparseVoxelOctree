@@ -8,14 +8,17 @@ layout(std430, binding = 2) buffer uuFragmentList { uvec2 uFragmentList[]; };
 in vec2 gTexcoords;
 in vec3 gNormal;
 in vec3 gVoxelPos;
-in vec2 gScreenPos;
+//in vec2 gScreenPos;
 flat in int gTexture;
 flat in vec3 gDiffColor;
+flat in vec4 gScreenAABB;
 
 uniform int uVoxelResolution, uCountOnly;
 
 void main()
 {
+	//if(gScreenPos.x < gScreenAABB.x || gScreenPos.y < gScreenAABB.y || 
+	//   gScreenPos.x > gScreenAABB.z || gScreenPos.y > gScreenAABB.w) discard;
 	vec4 samp = gTexture == -1 ? vec4(gDiffColor, 1.0) : texture(uTextures[gTexture], gTexcoords);
 	if(samp.w < 0.5f) discard;
 

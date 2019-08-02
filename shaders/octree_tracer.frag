@@ -163,6 +163,4 @@ void main()
 	}
 	else
 		oFragColor = vec4(0, 0, 0, 1);
-
-	//oFragColor = vec4(vec3( iter / 64.0f ), 1);
 }

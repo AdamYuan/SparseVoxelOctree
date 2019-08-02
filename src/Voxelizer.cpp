@@ -20,6 +20,7 @@ void Voxelizer::Initialize()
 	//Generate a 8x MSAA render buffer for MSAA Voxelization
 	m_rbo.Initialize();
 	glNamedRenderbufferStorageMultisample(m_rbo.Get(), 8, GL_R8, kVoxelResolution, kVoxelResolution);
+	//m_rbo.Load(GL_R8, kVoxelResolution, kVoxelResolution);
 
 	m_fbo.Initialize();
 	m_fbo.AttachRenderbuffer(m_rbo, GL_COLOR_ATTACHMENT0);
