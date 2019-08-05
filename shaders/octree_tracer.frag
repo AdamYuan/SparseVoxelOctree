@@ -4,6 +4,7 @@
 
 layout(std140, binding = 5) uniform uuCamera
 {
+	int uWidth, uHeight, uBeamSize, uA;
 	mat4 uProjection;
 	mat4 uView;
 	vec4 uPosition;
@@ -11,14 +12,12 @@ layout(std140, binding = 5) uniform uuCamera
 
 out vec4 oFragColor;
 
-in vec3 vViewDir;
-
 layout(std430, binding = 3) readonly buffer uuOctree { uint uOctree[]; };
 layout(binding = 4) uniform sampler2D uBeam;
 
 uint iter = 0;
 struct StackItem { uint node; float t_max; } stack[STACK_SIZE];
-bool RayMarchLeaf(vec3 o, vec3 d, out float t, out uint color)
+bool RayMarchLeaf(vec3 o, vec3 d, out float o_t, out vec3 o_color, out vec3 o_normal)
 {
 	d.x = abs(d.x) > 1e-6 ? d.x : (d.x >= 0 ? 1e-6 : -1e-6);
 	d.y = abs(d.y) > 1e-6 ? d.y : (d.y >= 0 ? 1e-6 : -1e-6);
@@ -71,10 +70,7 @@ bool RayMarchLeaf(vec3 o, vec3 d, out float t, out uint color)
 			if( t_min <= tv_max )
 			{
 				if( (cur & 0x40000000u) != 0 ) // leaf node
-				{
-					color = cur & 0xffffffu;
 					break;
-				}
 
 				// PUSH
 				if( tc_max < h )
@@ -140,27 +136,47 @@ bool RayMarchLeaf(vec3 o, vec3 d, out float t, out uint color)
 			cur = 0;
 		}
 	}
-	t = t_min;
+
+	vec3 norm, t_corner = t_coef * (pos + scale_exp2) - t_bias;
+	if(t_corner.x > t_corner.y && t_corner.x > t_corner.z)
+		norm = vec3(-1, 0, 0);
+	else if(t_corner.y > t_corner.z)
+		norm = vec3(0, -1, 0);
+	else
+		norm = vec3(0, 0, -1);
+	if ((oct_mask & 1u) == 0u) norm.x = -norm.x;
+	if ((oct_mask & 2u) == 0u) norm.y = -norm.y;
+	if ((oct_mask & 4u) == 0u) norm.z = -norm.z;
+
+	o_normal = norm;
+	o_color = vec3( cur & 0xffu, (cur >> 8u) & 0xffu, (cur >> 16u) & 0xffu) * 0.00392156862745098f; // (...) / 255.0f
+	o_t = t_min;
+
 	return scale < STACK_SIZE && t_min <= t_max;
+}
+
+vec3 GenRay()
+{
+	vec2 coord = ivec2(gl_FragCoord.xy) / vec2(uWidth, uHeight);
+	coord = coord * 2.0f - 1.0f;
+	return normalize(mat3(inverse(uView)) * (inverse(uProjection) * vec4(coord, 1, 1) ).xyz);
 }
 
 void main()
 {
-	ivec2 beam_coord = ivec2(gl_FragCoord.xy) / 8;
+	ivec2 beam_coord = ivec2(gl_FragCoord.xy) / uBeamSize;
 	float beam = texelFetch(uBeam, beam_coord, 0).r;
 	beam = min(beam, texelFetch(uBeam, beam_coord + ivec2(1, 0), 0).r);
 	beam = min(beam, texelFetch(uBeam, beam_coord + ivec2(0, 1), 0).r);
 	beam = min(beam, texelFetch(uBeam, beam_coord + ivec2(1, 1), 0).r);
 
-	vec3 o = uPosition.xyz, d = normalize(vViewDir);
+	vec3 o = uPosition.xyz, d = GenRay();
 	o += d * beam;
 
-	float t; uint uc;
-	if(RayMarchLeaf(o, d, t, uc))
-	{
-		vec3 color = vec3( uc & 0xffu, (uc >> 8u) & 0xffu, uc >> 16u ) / 255.0f;
-		oFragColor = vec4( color, 1 );
-	}
+	float t; vec3 color, normal;
+	if(RayMarchLeaf(o, d, t, color, normal))
+		oFragColor = vec4(color, 1);
 	else
 		oFragColor = vec4(0, 0, 0, 1);
+	//oFragColor = vec4( vec3(iter / 64.0f), 1 );
 }

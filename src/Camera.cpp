@@ -14,6 +14,10 @@ void Camera::Initialize()
 	GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
 	m_ubo.Storage(sizeof(GLCamera), flags);
 	m_ubo_ptr = (GLCamera *) glMapNamedBufferRange(m_ubo.Get(), 0, sizeof(GLCamera), flags);
+
+	m_ubo_ptr->m_width = kWidth;
+	m_ubo_ptr->m_height = kHeight;
+	m_ubo_ptr->m_beam_size = kBeamSize;
 }
 
 void Camera::Control(GLFWwindow *window, const mygl3::Framerate &fps)

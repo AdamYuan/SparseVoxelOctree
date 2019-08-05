@@ -9,15 +9,15 @@
 void OctreeTracer::Initialize()
 {
 	m_shader.Initialize();
-	m_shader.LoadFromFile("shaders/quad_dir.vert", GL_VERTEX_SHADER);
+	m_shader.LoadFromFile("shaders/quad.vert", GL_VERTEX_SHADER);
 	m_shader.LoadFromFile("shaders/octree_tracer.frag", GL_FRAGMENT_SHADER);
 
 	m_beam_shader.Initialize();
-	m_beam_shader.LoadFromFile("shaders/quad_dir.vert", GL_VERTEX_SHADER);
+	m_beam_shader.LoadFromFile("shaders/quad.vert", GL_VERTEX_SHADER);
 	m_beam_shader.LoadFromFile("shaders/octree_tracer_beam.frag", GL_FRAGMENT_SHADER);
 
 	m_beam_tex.Initialize();
-	m_beam_tex.Storage(1 + kWidth / kBeamSize, 1 + kHeight / kBeamSize, GL_R32F);
+	m_beam_tex.Storage(kBeamWidth, kBeamHeight, GL_R32F);
 	m_beam_tex.SetSizeFilter(GL_NEAREST, GL_NEAREST);
 	m_beam_tex.SetWrapFilter(GL_CLAMP_TO_EDGE);
 
@@ -45,7 +45,7 @@ void OctreeTracer::Render(const Octree &octree, const Camera &camera)
 	glDisable(GL_CULL_FACE);
 
 	//perform beam optimization
-	glViewport(0, 0, 1 + kWidth / kBeamSize, 1 + kHeight / kBeamSize);
+	glViewport(0, 0, kBeamWidth, kBeamHeight);
 	m_beam_fbo.Bind();
 	m_beam_shader.Use();
 	m_vao.Bind();

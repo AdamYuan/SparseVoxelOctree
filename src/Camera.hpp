@@ -23,6 +23,7 @@ public:
 private:
 	struct GLCamera
 	{
+		GLint m_width, m_height, m_beam_size, __a;
 		glm::mat4 m_projection;
 		glm::mat4 m_view;
 		glm::vec4 m_position;
