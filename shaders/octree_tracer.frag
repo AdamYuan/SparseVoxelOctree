@@ -178,5 +178,5 @@ void main()
 		oFragColor = vec4(color, 1);
 	else
 		oFragColor = vec4(0, 0, 0, 1);
-	//oFragColor = vec4( vec3(iter / 64.0f), 1 );
+	oFragColor = vec4( vec3(iter / 64.0f), 1 );
 }
