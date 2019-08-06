@@ -5,8 +5,10 @@
 #include "Config.hpp"
 #include <GLFW/glfw3.h>
 #include <iostream>
-
 #include <glm/gtc/matrix_transform.hpp>
+
+#include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 
 void Camera::Initialize()
 {
@@ -24,34 +26,38 @@ void Camera::Control(GLFWwindow *window, const mygl3::Framerate &fps)
 {
 	static glm::dvec2 last_mouse_pos;
 
-	float speed = fps.GetDelta() * m_speed;
-	if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		move_forward(speed, 0.0f);
-	if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		move_forward(speed, PIF * 0.5f);
-	if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		move_forward(speed, -PIF * 0.5f);
-	if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		move_forward(speed, PIF);
-	if(glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-		m_position.y += speed;
-	if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-		m_position.y -= speed;
-
-
 	glm::dvec2 cur_pos;
 	glfwGetCursorPos(window, &cur_pos.x, &cur_pos.y);
 
-	if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT))
+	if(!ImGui::GetCurrentContext()->NavWindow
+	   || (ImGui::GetCurrentContext()->NavWindow->Flags & ImGuiWindowFlags_NoBringToFrontOnFocus))
 	{
-		glfwGetCursorPos(window, &cur_pos.x, &cur_pos.y);
-		float offset_x = (cur_pos.x - last_mouse_pos.x) * m_sensitive;
-		float offset_y = (cur_pos.y - last_mouse_pos.y) * m_sensitive;
+		float speed = fps.GetDelta() * m_speed;
+		if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+			move_forward(speed, 0.0f);
+		if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+			move_forward(speed, PIF * 0.5f);
+		if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+			move_forward(speed, -PIF * 0.5f);
+		if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+			move_forward(speed, PIF);
+		if(glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+			m_position.y += speed;
+		if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+			m_position.y -= speed;
 
-		m_yaw -= offset_x;
-		m_pitch -= offset_y;
-		m_pitch = glm::clamp(m_pitch, -PIF * 0.5f, PIF * 0.5f);
-		m_yaw = glm::mod(m_yaw, PIF * 2);
+
+		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT))
+		{
+			glfwGetCursorPos(window, &cur_pos.x, &cur_pos.y);
+			float offset_x = (cur_pos.x - last_mouse_pos.x) * m_sensitive;
+			float offset_y = (cur_pos.y - last_mouse_pos.y) * m_sensitive;
+
+			m_yaw -= offset_x;
+			m_pitch -= offset_y;
+			m_pitch = glm::clamp(m_pitch, -PIF * 0.5f, PIF * 0.5f);
+			m_yaw = glm::mod(m_yaw, PIF * 2);
+		}
 	}
 
 	last_mouse_pos = cur_pos;

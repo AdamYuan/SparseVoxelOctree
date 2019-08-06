@@ -16,12 +16,14 @@ private:
 	GLint m_unif_voxel_fragment_num, m_unif_voxel_resolution, m_unif_level, m_unif_alloc_begin, m_unif_alloc_num;
 	mygl3::AtomicCounter m_counter;
 	mygl3::Buffer m_octree;
+	int m_octree_level;
 
 	inline static GLuint group_x_64(unsigned x) { return (x >> 6u) + ((x & 0x3fu) ? 1u : 0u); }
 public:
-	void Initialize();
+	void Initialize(int octree_level);
 	void Build(const Voxelizer &voxelizer);
 	const mygl3::Buffer &GetOctreeBuffer() const { return m_octree; }
+	int GetLevel() const { return m_octree_level; }
 };
 
 

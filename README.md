@@ -13,6 +13,8 @@ make
 * [GLM](https://glm.g-truc.net/) - Maths calculations
 * [stb_image](https://github.com/nothings/stb/blob/master/stb_image.h) - Image loading
 * [TinyOBJLoader](https://github.com/syoyo/tinyobjloader) - Obj loading
+* [ImGui](https://github.com/ocornut/imgui) - UI rendering
+* [portable-file-dialogs](https://github.com/samhocevar/portable-file-dialogs) - Call native file dialog (require Zenity on linux)
 
 ## Reference
 * https://www.seas.upenn.edu/~pcozzi/OpenGLInsights/OpenGLInsights-SparseVoxelization.pdf - Voxelization and SVO building

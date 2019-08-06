@@ -20,10 +20,10 @@ private:
 	mygl3::FrameBuffer m_fbo;
 	mygl3::RenderBuffer m_rbo;
 	GLint m_unif_voxel_resolution, m_unif_count_only;
-	int m_fragment_num;
+	int m_fragment_num, m_resolution;
 
 public:
-	void Initialize();
+	void Initialize(int octree_level);
 	void Voxelize(const Scene &scene);
 	const mygl3::Buffer &GetFragmentList() const { return m_fragment_list; }
 	int GetFragmentNum() const { return m_fragment_num; }

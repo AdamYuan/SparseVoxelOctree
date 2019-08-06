@@ -6,8 +6,10 @@
 #include "Config.hpp"
 #include "OglBindings.hpp"
 
-void Voxelizer::Initialize()
+void Voxelizer::Initialize(int octree_level)
 {
+	m_resolution = 1 << octree_level;
+
 	m_counter.Initialize();
 	m_shader.Initialize();
 	m_shader.LoadFromFile("shaders/voxelizer.frag", GL_FRAGMENT_SHADER);
@@ -15,12 +17,12 @@ void Voxelizer::Initialize()
 	m_shader.LoadFromFile("shaders/voxelizer.geom", GL_GEOMETRY_SHADER);
 	m_unif_count_only = m_shader.GetUniform("uCountOnly");
 	m_unif_voxel_resolution = m_shader.GetUniform("uVoxelResolution");
-	m_shader.SetInt(m_unif_voxel_resolution, kVoxelResolution);
+	m_shader.SetInt(m_unif_voxel_resolution, m_resolution);
 
 	//Generate a 8x MSAA render buffer for MSAA Voxelization
 	m_rbo.Initialize();
-	glNamedRenderbufferStorageMultisample(m_rbo.Get(), 8, GL_R8, kVoxelResolution, kVoxelResolution);
-	//m_rbo.Load(GL_R8, kVoxelResolution, kVoxelResolution);
+	glNamedRenderbufferStorageMultisample(m_rbo.Get(), 8, GL_R8, m_resolution, m_resolution);
+	//m_rbo.Load(GL_R8, m_resolution, m_resolution);
 
 	m_fbo.Initialize();
 	m_fbo.AttachRenderbuffer(m_rbo, GL_COLOR_ATTACHMENT0);
@@ -29,7 +31,7 @@ void Voxelizer::Initialize()
 void Voxelizer::Voxelize(const Scene &scene)
 {
 	m_fbo.Bind();
-	glViewport(0, 0, kVoxelResolution, kVoxelResolution);
+	glViewport(0, 0, m_resolution, m_resolution);
 
 	m_counter.BindAtomicCounter(kAtomicCounterBinding);
 	glDisable(GL_CULL_FACE);

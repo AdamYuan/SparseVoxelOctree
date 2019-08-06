@@ -6,14 +6,16 @@
 #include "Config.hpp"
 #include "OglBindings.hpp"
 
-void Octree::Initialize()
+void Octree::Initialize(int octree_level)
 {
+	m_octree_level = octree_level;
+
 	m_tag_node_shader.Initialize();
 	m_tag_node_shader.LoadFromFile("shaders/octree_tag_node.comp", GL_COMPUTE_SHADER);
 	m_unif_voxel_resolution = m_tag_node_shader.GetUniform("uVoxelResolution");
 	m_unif_level = m_tag_node_shader.GetUniform("uLevel");
 	m_unif_voxel_fragment_num = m_tag_node_shader.GetUniform("uVoxelFragmentNum");
-	m_tag_node_shader.SetInt(m_unif_voxel_resolution, kVoxelResolution);
+	m_tag_node_shader.SetInt(m_unif_voxel_resolution, 1 << m_octree_level);
 
 	m_alloc_node_shader.Initialize();
 	m_alloc_node_shader.LoadFromFile("shaders/octree_alloc_node.comp", GL_COMPUTE_SHADER);
@@ -25,6 +27,7 @@ void Octree::Initialize()
 
 void Octree::Build(const Voxelizer &voxelizer)
 {
+
 	//estimate octree buffer size and initialize octree buffer
 	int octree_node_num = std::max(kOctreeNodeNumMin, voxelizer.GetFragmentNum() << 2);
 	octree_node_num = std::min(octree_node_num, kOctreeNodeNumMax);
@@ -54,14 +57,14 @@ void Octree::Build(const Voxelizer &voxelizer)
 	GLuint frag_list_group_x = group_x_64(voxelizer.GetFragmentNum());
 
 	GLuint last_count = 0, alloc_num = 8, alloc_begin = 0;
-	for(int level = 1; level <= kOctreeLevel; ++level)
+	for(int cur = 1; cur <= m_octree_level; ++cur)
 	{
 		m_tag_node_shader.Use();
-		m_tag_node_shader.SetInt(m_unif_level, level);
+		m_tag_node_shader.SetInt(m_unif_level, cur);
 		glDispatchCompute(frag_list_group_x, 1, 1);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-		if(level != kOctreeLevel) //the last octree level doesn't has leaves
+		if(cur != m_octree_level) //the last octree level doesn't has leaves
 		{
 			m_alloc_node_shader.Use();
 			m_alloc_node_shader.SetInt(m_unif_alloc_begin, alloc_begin);
@@ -75,7 +78,7 @@ void Octree::Build(const Voxelizer &voxelizer)
 			last_count = m_counter.GetValue();
 		}
 
-		printf("[OCTREE]Info: Level %d built\n", level);
+		printf("[OCTREE]Info: Level %d built\n", cur);
 	}
 
 	printf("[OCTREE]Info: Building complete, used %d nodes\n", alloc_begin + alloc_num);

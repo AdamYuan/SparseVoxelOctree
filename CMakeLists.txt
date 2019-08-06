@@ -11,6 +11,7 @@ include_directories(
 file(GLOB SOURCE_FILES
 		dep/gl3w/src/gl3w.c
 		dep/mygl3/*.hpp
+		dep/imgui/*.cpp
 		src/*.*)
 
 find_package(OpenGL REQUIRED)

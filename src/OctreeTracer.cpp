@@ -11,6 +11,7 @@ void OctreeTracer::Initialize()
 	m_shader.Initialize();
 	m_shader.LoadFromFile("shaders/quad.vert", GL_VERTEX_SHADER);
 	m_shader.LoadFromFile("shaders/octree_tracer.frag", GL_FRAGMENT_SHADER);
+	m_unif_view_type = m_shader.GetUniform("uViewType");
 
 	m_beam_shader.Initialize();
 	m_beam_shader.LoadFromFile("shaders/quad.vert", GL_VERTEX_SHADER);
@@ -56,6 +57,7 @@ void OctreeTracer::Render(const Octree &octree, const Camera &camera)
 	glViewport(0, 0, kWidth, kHeight);
 	m_beam_tex.Bind(kBeamSampler2D);
 	m_shader.Use();
+	m_shader.SetInt(m_unif_view_type, (GLint)m_view_type);
 	m_vao.Bind();
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }

@@ -15,6 +15,8 @@ out vec4 oFragColor;
 layout(std430, binding = 3) readonly buffer uuOctree { uint uOctree[]; };
 layout(binding = 4) uniform sampler2D uBeam;
 
+uniform int uViewType;
+
 uint iter = 0;
 struct StackItem { uint node; float t_max; } stack[STACK_SIZE];
 bool RayMarchLeaf(vec3 o, vec3 d, out float o_t, out vec3 o_color, out vec3 o_normal)
@@ -174,9 +176,9 @@ void main()
 	o += d * beam;
 
 	float t; vec3 color, normal;
-	if(RayMarchLeaf(o, d, t, color, normal))
-		oFragColor = vec4(color, 1);
+	bool hit = RayMarchLeaf(o, d, t, color, normal);
+	if(uViewType == 2)
+		oFragColor = vec4( vec3(iter / 64.0f), 1 );
 	else
-		oFragColor = vec4(0, 0, 0, 1);
-	oFragColor = vec4( vec3(iter / 64.0f), 1 );
+		oFragColor = vec4( hit ? ( uViewType == 0 ? color : normal * 0.5f + 0.5f ) : vec3(0), 1 );
 }

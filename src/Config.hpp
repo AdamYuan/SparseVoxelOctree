@@ -9,8 +9,8 @@ constexpr int kWidth = 1280, kHeight = 720;
 constexpr float kCamNear = 1.0f / 512.0f, kCamFar = 4.0f;
 constexpr float kCamAspectRatio = kWidth / (float)kHeight;
 
-constexpr int kOctreeLevel = 11; //kOctreeLevel <= 12
-constexpr int kVoxelResolution = 1 << kOctreeLevel;
+constexpr int kOctreeLevelMin = 1;
+constexpr int kOctreeLevelMax = 12;
 constexpr int kOctreeNodeNumMin = 1000000;
 constexpr int kOctreeNodeNumMax = 500000000;
 constexpr int kBeamSize = 8; //for beam optimization

@@ -26,6 +26,6 @@ void main()
 	}
 
 	uOctree[idx] |= 0x80000000u;
-	if((1u << uLevel) == uVoxelResolution) 
-		uOctree[idx] = 0xC0000000u | (ufragment.y & 0xffffffu); //termination tag
+	if(uLevel == findMSB(uVoxelResolution)) 
+		uOctree[idx] = 0xC0000000u | (ufragment.y & 0xffffffu); //termination tag and color data
 }
