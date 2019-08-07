@@ -19,7 +19,7 @@ public:
 
 private:
 	mygl3::Shader m_shader, m_beam_shader;
-	GLint m_unif_view_type;
+	GLint m_unif_view_type, m_beam_unif_dir_size;
 	mygl3::Buffer m_vbo; mygl3::VertexArray m_vao;
 	mygl3::Texture2D m_beam_tex;
 	mygl3::FrameBuffer m_beam_fbo;

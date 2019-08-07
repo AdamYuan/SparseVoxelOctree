@@ -9,13 +9,12 @@ layout(std140, binding = 5) uniform uuCamera
 	mat4 uView;
 	vec4 uPosition;
 };
+uniform int uViewType;
 
 out vec4 oFragColor;
 
 layout(std430, binding = 3) readonly buffer uuOctree { uint uOctree[]; };
 layout(binding = 4) uniform sampler2D uBeam;
-
-uniform int uViewType;
 
 uint iter = 0;
 struct StackItem { uint node; float t_max; } stack[STACK_SIZE];
@@ -166,13 +165,13 @@ vec3 GenRay()
 
 void main()
 {
+	vec3 o = uPosition.xyz, d = GenRay();
+
 	ivec2 beam_coord = ivec2(gl_FragCoord.xy) / uBeamSize;
 	float beam = texelFetch(uBeam, beam_coord, 0).r;
 	beam = min(beam, texelFetch(uBeam, beam_coord + ivec2(1, 0), 0).r);
 	beam = min(beam, texelFetch(uBeam, beam_coord + ivec2(0, 1), 0).r);
 	beam = min(beam, texelFetch(uBeam, beam_coord + ivec2(1, 1), 0).r);
-
-	vec3 o = uPosition.xyz, d = GenRay();
 	o += d * beam;
 
 	float t; vec3 color, normal;

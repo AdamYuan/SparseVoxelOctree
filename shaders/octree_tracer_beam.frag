@@ -10,14 +10,13 @@ layout(std140, binding = 5) uniform uuCamera
 	mat4 uView;
 	vec4 uPosition;
 };
+uniform float uDirSize;
 
 out float oFragT;
-
 layout(std430, binding = 3) readonly buffer uuOctree { uint uOctree[]; };
 
 struct StackItem { uint node; float t_max; } stack[STACK_SIZE];
-
-bool RayMarchCoarse(vec3 o, vec3 d, float coarse_scale, out float t)
+bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t)
 {
 	d.x = abs(d.x) > 1e-6 ? d.x : (d.x >= 0 ? 1e-6 : -1e-6);
 	d.y = abs(d.y) > 1e-6 ? d.y : (d.y >= 0 ? 1e-6 : -1e-6);
@@ -61,7 +60,7 @@ bool RayMarchCoarse(vec3 o, vec3 d, float coarse_scale, out float t)
 
 		if( (cur & 0x80000000u) != 0 && t_min <= t_max )
 		{
-			if(tc_max * coarse_scale >= scale_exp2)
+			if(orig_sz + tc_max * dir_sz >= scale_exp2)
 				break;
 
 			// INTERSECT
@@ -153,7 +152,7 @@ void main()
 	vec3 o = uPosition.xyz, d = GenCoarseRay();
 
 	float t;
-	if(RayMarchCoarse(o, d, 0.0625, t))
+	if(RayMarchCoarse(o, d, 0.004, uDirSize, t))
 		oFragT = t;
 	else
 		oFragT = 1e10;

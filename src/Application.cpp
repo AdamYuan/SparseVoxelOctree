@@ -52,6 +52,7 @@ Application::Application()
 void Application::LoadScene(const char *filename, int octree_level)
 {
 	if(octree_level < kOctreeLevelMin || octree_level > kOctreeLevelMax) return;
+
 	Scene scene;
 	if( scene.Initialize(filename) )
 	{
@@ -148,6 +149,13 @@ void Application::ui_main_menubar()
 		if(ImGui::MenuItem("Iteration", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kIteration))
 			m_octree_tracer.m_view_type = OctreeTracer::kIteration;
 
+		ImGui::EndMenu();
+	}
+
+	if(ImGui::BeginMenu("Camera"))
+	{
+		ImGui::SliderAngle("FOV", &m_camera.m_fov, 10, 180);
+		ImGui::DragFloat("Speed", &m_camera.m_speed, 0.005f, 0.005f, 0.2f);
 		ImGui::EndMenu();
 	}
 
