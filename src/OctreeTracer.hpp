@@ -16,10 +16,12 @@ class OctreeTracer
 {
 public:
 	enum ViewTypeEnum { kDiffuse = 0, kNormal, kIteration } m_view_type = kDiffuse;
+	bool m_beam_enable{true};
+	float m_beam_dir_size{0.01f}, m_beam_origin_size{0.002f};
 
 private:
 	mygl3::Shader m_shader, m_beam_shader;
-	GLint m_unif_view_type, m_beam_unif_dir_size;
+	GLint m_unif_view_type, m_unif_beam_enable, m_beam_unif_dir_size, m_beam_unif_origin_size;
 	mygl3::Buffer m_vbo; mygl3::VertexArray m_vao;
 	mygl3::Texture2D m_beam_tex;
 	mygl3::FrameBuffer m_beam_fbo;

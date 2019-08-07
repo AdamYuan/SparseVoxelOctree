@@ -140,22 +140,30 @@ void Application::ui_main_menubar()
 	if(ImGui::MenuItem("Load Scene"))
 		open_load_scene_popup = true;
 
-	if(ImGui::BeginMenu("View"))
+	if(ImGui::BeginMenu("Camera"))
+	{
+		ImGui::SliderAngle("FOV", &m_camera.m_fov, 10, 180);
+		ImGui::DragFloat("Speed", &m_camera.m_speed, 0.005f, 0.005f, 0.2f);
+		ImGui::EndMenu();
+	}
+
+	if(ImGui::BeginMenu("Primary View"))
 	{
 		if(ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kDiffuse))
 			m_octree_tracer.m_view_type = OctreeTracer::kDiffuse;
 		if(ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kNormal))
 			m_octree_tracer.m_view_type = OctreeTracer::kNormal;
-		if(ImGui::MenuItem("Iteration", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kIteration))
+		if(ImGui::MenuItem("Iterations", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kIteration))
 			m_octree_tracer.m_view_type = OctreeTracer::kIteration;
-
 		ImGui::EndMenu();
 	}
 
-	if(ImGui::BeginMenu("Camera"))
+	if(ImGui::BeginMenu("Beam Optimization"))
 	{
-		ImGui::SliderAngle("FOV", &m_camera.m_fov, 10, 180);
-		ImGui::DragFloat("Speed", &m_camera.m_speed, 0.005f, 0.005f, 0.2f);
+		if(ImGui::MenuItem("Enable", nullptr, m_octree_tracer.m_beam_enable))
+			m_octree_tracer.m_beam_enable ^= 1;
+		ImGui::DragFloat("Ray Direction Size", &m_octree_tracer.m_beam_dir_size, 0.001f, 0.0f, 0.1f);
+		ImGui::DragFloat("Ray Origin Size", &m_octree_tracer.m_beam_origin_size, 0.001f, 0.0f, 0.1f);
 		ImGui::EndMenu();
 	}
 

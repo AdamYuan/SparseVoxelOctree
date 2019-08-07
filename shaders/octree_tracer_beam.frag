@@ -10,7 +10,7 @@ layout(std140, binding = 5) uniform uuCamera
 	mat4 uView;
 	vec4 uPosition;
 };
-uniform float uDirSize;
+uniform float uOriginSize, uDirSize;
 
 out float oFragT;
 layout(std430, binding = 3) readonly buffer uuOctree { uint uOctree[]; };
@@ -152,7 +152,7 @@ void main()
 	vec3 o = uPosition.xyz, d = GenCoarseRay();
 
 	float t;
-	if(RayMarchCoarse(o, d, 0.004, uDirSize, t))
+	if(RayMarchCoarse(o, d, uOriginSize, uDirSize, t))
 		oFragT = t;
 	else
 		oFragT = 1e10;

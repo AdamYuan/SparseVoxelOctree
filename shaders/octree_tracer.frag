@@ -9,7 +9,7 @@ layout(std140, binding = 5) uniform uuCamera
 	mat4 uView;
 	vec4 uPosition;
 };
-uniform int uViewType;
+uniform int uViewType, uBeamEnable;
 
 out vec4 oFragColor;
 
@@ -167,12 +167,15 @@ void main()
 {
 	vec3 o = uPosition.xyz, d = GenRay();
 
-	ivec2 beam_coord = ivec2(gl_FragCoord.xy) / uBeamSize;
-	float beam = texelFetch(uBeam, beam_coord, 0).r;
-	beam = min(beam, texelFetch(uBeam, beam_coord + ivec2(1, 0), 0).r);
-	beam = min(beam, texelFetch(uBeam, beam_coord + ivec2(0, 1), 0).r);
-	beam = min(beam, texelFetch(uBeam, beam_coord + ivec2(1, 1), 0).r);
-	o += d * beam;
+	if(uBeamEnable == 1)
+	{
+		ivec2 beam_coord = ivec2(gl_FragCoord.xy) / uBeamSize;
+		float beam = texelFetch(uBeam, beam_coord, 0).r;
+		beam = min(beam, texelFetch(uBeam, beam_coord + ivec2(1, 0), 0).r);
+		beam = min(beam, texelFetch(uBeam, beam_coord + ivec2(0, 1), 0).r);
+		beam = min(beam, texelFetch(uBeam, beam_coord + ivec2(1, 1), 0).r);
+		o += d * beam;
+	}
 
 	float t; vec3 color, normal;
 	bool hit = RayMarchLeaf(o, d, t, color, normal);
