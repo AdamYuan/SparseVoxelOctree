@@ -1,5 +1,5 @@
 # Sparse Voxel Octree
-A GPU SVO Builder using rasterization pipeline and a efficient SVO ray marcher
+A GPU SVO Builder using rasterization pipeline, a efficient SVO ray marcher and a simple SVO path tracer.
 
 ## Compilation
 ```bash
@@ -24,3 +24,4 @@ make
 ![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/0.png)
 ![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/1.png)
 ![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/2.png)
+![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/3.png)
