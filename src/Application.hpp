@@ -10,6 +10,9 @@
 #include "Scene.hpp"
 #include "Octree.hpp"
 #include "OctreeTracer.hpp"
+#include "ScreenQuad.hpp"
+#include "PathTracer.hpp"
+
 #include <GLFW/glfw3.h>
 
 class Application
@@ -17,12 +20,18 @@ class Application
 private:
 	GLFWwindow *m_window;
 	Camera m_camera;
+	ScreenQuad m_quad;
 	OctreeTracer m_octree_tracer;
+	PathTracer m_pathtracer;
 	mygl3::Framerate m_fps;
 
 	std::unique_ptr<Octree> m_octree;
 
+	bool m_pathtracing_flag{false};
+
 	void ui_main();
+	void ui_push_disable();
+	void ui_pop_disable();
 	void ui_main_menubar();
 	void ui_info_overlay();
 	void ui_load_scene_modal();

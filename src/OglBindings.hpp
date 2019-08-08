@@ -15,4 +15,9 @@ constexpr GLuint kVoxelFragmentListSSBO = 2;
 constexpr GLuint kOctreeSSBO = 3;
 constexpr GLuint kBeamSampler2D = 4;
 
+constexpr GLuint kSobolSSBO = 6;
+constexpr GLuint kNoiseSampler2D = 7;
+constexpr GLuint kResultImage2D = 0;
+
+
 #endif //SPARSEVOXELOCTREE_OGLBINDINGS_HPP

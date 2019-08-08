@@ -27,26 +27,12 @@ void OctreeTracer::Initialize()
 
 	m_beam_fbo.Initialize();
 	m_beam_fbo.AttachTexture2D(m_beam_tex, GL_COLOR_ATTACHMENT0);
-
-	constexpr GLfloat quad_vertices[] { -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f,
-										1.0f, 1.0f, -1.0f, 1.0f, -1.0f, -1.0f };
-	m_vbo.Initialize();
-	m_vbo.Storage(quad_vertices, quad_vertices + 12, 0);
-
-	m_vao.Initialize();
-	glEnableVertexArrayAttrib(m_vao.Get(), 0);
-	glVertexArrayAttribFormat(m_vao.Get(), 0, 2, GL_FLOAT, GL_FALSE, 0);
-	glVertexArrayAttribBinding(m_vao.Get(), 0, 0);
-	glVertexArrayVertexBuffer(m_vao.Get(), 0, m_vbo.Get(), 0, 2 * sizeof(GLfloat));
 }
 
-void OctreeTracer::Render(const Octree &octree, const Camera &camera)
+void OctreeTracer::Render(const ScreenQuad &quad, const Octree &octree, const Camera &camera)
 {
 	camera.GetBuffer().BindBase(GL_UNIFORM_BUFFER, kCameraUBO);
 	octree.GetOctreeBuffer().BindBase(GL_SHADER_STORAGE_BUFFER, kOctreeSSBO);
-
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);
 
 	if(m_beam_enable)
 	{
@@ -56,8 +42,7 @@ void OctreeTracer::Render(const Octree &octree, const Camera &camera)
 		m_beam_shader.Use();
 		m_beam_shader.SetFloat(m_beam_unif_dir_size, m_beam_dir_size);
 		m_beam_shader.SetFloat(m_beam_unif_origin_size, m_beam_origin_size);
-		m_vao.Bind();
-		glDrawArrays(GL_TRIANGLES, 0, 6);
+		quad.Render();
 		mygl3::FrameBuffer::Unbind();
 	}
 
@@ -67,6 +52,5 @@ void OctreeTracer::Render(const Octree &octree, const Camera &camera)
 	m_shader.Use();
 	m_shader.SetInt(m_unif_view_type, (GLint)m_view_type);
 	m_shader.SetInt(m_unif_beam_enable, (GLint)m_beam_enable);
-	m_vao.Bind();
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+	quad.Render();
 }

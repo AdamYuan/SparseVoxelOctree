@@ -3,6 +3,7 @@
 //
 #include "Camera.hpp"
 #include "Config.hpp"
+#include "OglBindings.hpp"
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>

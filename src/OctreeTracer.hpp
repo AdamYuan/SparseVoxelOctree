@@ -11,24 +11,26 @@
 #include <mygl3/vertexarray.hpp>
 #include "Camera.hpp"
 #include "Octree.hpp"
+#include "ScreenQuad.hpp"
 
 class OctreeTracer
 {
 public:
 	enum ViewTypeEnum { kDiffuse = 0, kNormal, kIteration } m_view_type = kDiffuse;
 	bool m_beam_enable{true};
-	float m_beam_dir_size{0.01f}, m_beam_origin_size{0.002f};
+	float m_beam_dir_size{0.0f}, m_beam_origin_size{0.008f};
 
 private:
 	mygl3::Shader m_shader, m_beam_shader;
 	GLint m_unif_view_type, m_unif_beam_enable, m_beam_unif_dir_size, m_beam_unif_origin_size;
-	mygl3::Buffer m_vbo; mygl3::VertexArray m_vao;
 	mygl3::Texture2D m_beam_tex;
 	mygl3::FrameBuffer m_beam_fbo;
 
 public:
 	void Initialize();
-	void Render(const Octree &octree, const Camera &camera);
+	void Render(const ScreenQuad &quad, const Octree &octree, const Camera &camera);
+
+	friend class PathTracer;
 };
 
 

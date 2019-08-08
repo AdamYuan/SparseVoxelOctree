@@ -17,4 +17,6 @@ constexpr int kBeamSize = 8; //for beam optimization
 constexpr int kBeamWidth = (kWidth + (kBeamSize - 1)) / kBeamSize + 1;
 constexpr int kBeamHeight = (kHeight + (kBeamSize - 1)) / kBeamSize + 1;
 
+constexpr int kMaxBounce = 16;
+
 #endif //SPARSEVOXELOCTREE_CONFIG_HPP

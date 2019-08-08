@@ -7,6 +7,7 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_opengl3.h>
 #include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_internal.h>
 #include "Voxelizer.hpp"
 #include "Application.hpp"
 #include "Config.hpp"
@@ -24,9 +25,11 @@ Application::Application()
 
 	gl3wInit();
 
+	m_quad.Initialize();
 	m_camera.Initialize();
 	m_camera.m_position = glm::vec3(1.5f);
 	m_octree_tracer.Initialize();
+	m_pathtracer.Initialize();
 
 	//Initialize ImGui
 	IMGUI_CHECKVERSION();
@@ -87,10 +90,15 @@ void Application::Run()
 
 		if(m_octree)
 		{
-			m_camera.Control(m_window, m_fps);
-			m_camera.Update();
+			if(m_pathtracing_flag)
+				m_pathtracer.Render(m_quad);
+			else
+			{
+				m_camera.Control(m_window, m_fps);
+				m_camera.Update();
 
-			m_octree_tracer.Render(*m_octree, m_camera);
+				m_octree_tracer.Render(m_quad, *m_octree, m_camera);
+			}
 		}
 
 		ImGui::Render();
@@ -105,6 +113,18 @@ void Application::ui_main()
 {
 	ui_main_menubar();
 	ui_info_overlay();
+}
+
+void Application::ui_push_disable()
+{
+	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+	ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+}
+
+void Application::ui_pop_disable()
+{
+	ImGui::PopItemFlag();
+	ImGui::PopStyleVar();
 }
 
 void Application::ui_info_overlay()
@@ -137,7 +157,8 @@ void Application::ui_main_menubar()
 
 	ImGui::BeginMainMenuBar();
 
-	if(ImGui::MenuItem("Load Scene"))
+	if(m_pathtracing_flag) ui_push_disable();
+	if(ImGui::Button("Load Scene"))
 		open_load_scene_popup = true;
 
 	if(ImGui::BeginMenu("Camera"))
@@ -166,6 +187,22 @@ void Application::ui_main_menubar()
 		ImGui::DragFloat("Ray Origin Size", &m_octree_tracer.m_beam_origin_size, 0.001f, 0.0f, 0.1f);
 		ImGui::EndMenu();
 	}
+
+	if(ImGui::BeginMenu("Path Tracer"))
+	{
+		ImGui::DragInt("Bounce", &m_pathtracer.m_bounce, 1, 2, kMaxBounce);
+		ImGui::DragFloat3("Sun Radiance", m_pathtracer.m_sun_radiance.data.data, 0.1f, 0.0f, 20.0f);
+		ImGui::EndMenu();
+	}
+	if(m_pathtracing_flag) ui_pop_disable();
+
+	if(!m_octree) ui_push_disable();
+	if(ImGui::Checkbox("Start PT", &m_pathtracing_flag))
+	{
+		if(m_pathtracing_flag)
+			m_pathtracer.Prepare(m_camera, *m_octree, m_octree_tracer);
+	}
+	if(!m_octree) ui_pop_disable();
 
 	ImGui::EndMainMenuBar();
 

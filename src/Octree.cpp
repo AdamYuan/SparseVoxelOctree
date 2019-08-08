@@ -71,7 +71,7 @@ void Octree::Build(const Voxelizer &voxelizer)
 			m_alloc_node_shader.SetInt(m_unif_alloc_num, alloc_num);
 			glDispatchCompute(group_x_64(alloc_num), 1, 1);
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-			m_counter.Sync();
+			mygl3::SyncGPU();
 
 			alloc_begin += alloc_num;
 			alloc_num = (m_counter.GetValue() - last_count) << 3u;
