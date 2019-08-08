@@ -39,7 +39,7 @@ void PathTracer::Initialize()
 void PathTracer::Prepare(const Camera &camera, const Octree &octree, const OctreeTracer &tracer)
 {
 	//sobol initializationn
-	m_sobol.Reset((m_bounce) * 2);
+	m_sobol.Reset(m_bounce * 2);
 
 	//bindings
 	m_noise_tex.Bind(kNoiseSampler2D);
