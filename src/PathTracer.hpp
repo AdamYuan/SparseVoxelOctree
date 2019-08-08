@@ -32,6 +32,7 @@ public:
 	void Initialize();
 	void Prepare(const Camera &camera, const Octree &octree, const OctreeTracer &tracer);
 	void Render(const ScreenQuad &quad);
+	int GetSPP() const { return m_spp; }
 };
 
 

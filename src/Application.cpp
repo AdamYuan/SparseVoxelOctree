@@ -22,6 +22,7 @@ Application::Application()
 	m_window = glfwCreateWindow(kWidth, kHeight, "SparseVoxelOctree", nullptr, nullptr);
 	glfwMakeContextCurrent(m_window);
 	glfwSetWindowUserPointer(m_window, (void*)this);
+	glfwSetKeyCallback(m_window, glfw_key_callback);
 
 	gl3wInit();
 
@@ -86,7 +87,7 @@ void Application::Run()
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		ui_main();
+		if(m_ui_display_flag) ui_main();
 
 		if(m_octree)
 		{
@@ -137,14 +138,16 @@ void Application::ui_info_overlay()
 					 |ImGuiWindowFlags_AlwaysAutoResize|ImGuiWindowFlags_NoMove
 					 |ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_NoBringToFrontOnFocus))
 	{
+		ImGui::Text("Toggle UI display with [X]");
 		ImGui::Text("Renderer: %s", glGetString(GL_RENDERER));
 		ImGui::Text("OpenGL version: %s", glGetString(GL_VERSION));
 		ImGui::Text("FPS: %f", m_fps.GetFps());
 
 		if(m_octree)
-		{
 			ImGui::Text("Octree Level: %d", m_octree->GetLevel());
-		}
+
+		if(m_pathtracing_flag)
+			ImGui::Text("SPP: %d", m_pathtracer.GetSPP());
 
 		ImGui::End();
 	}
@@ -253,3 +256,12 @@ void Application::ui_load_scene_modal()
 	}
 }
 
+void Application::glfw_key_callback(GLFWwindow *window, int key, int, int action, int)
+{
+	auto *app = (Application *)glfwGetWindowUserPointer(window);
+	if(action == GLFW_PRESS)
+	{
+		if(key == GLFW_KEY_X)
+			app->m_ui_display_flag ^= 1u;
+	}
+}

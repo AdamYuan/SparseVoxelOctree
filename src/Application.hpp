@@ -27,7 +27,7 @@ private:
 
 	std::unique_ptr<Octree> m_octree;
 
-	bool m_pathtracing_flag{false};
+	bool m_pathtracing_flag{false}, m_ui_display_flag{true};
 
 	void ui_main();
 	void ui_push_disable();
@@ -37,6 +37,7 @@ private:
 	void ui_load_scene_modal();
 	bool ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
 							  const std::vector<std::string> &filters);
+	static void glfw_key_callback(GLFWwindow *window, int key, int, int action, int);
 public:
 	Application();
 	~Application();
