@@ -13,6 +13,8 @@
 #include "Application.hpp"
 #include "Config.hpp"
 
+constexpr size_t kFilenameBufSize = 512;
+
 Application::Application()
 {
 	glfwInit();
@@ -157,63 +159,73 @@ void Application::ui_info_overlay()
 
 void Application::ui_main_menubar()
 {
-	bool open_load_scene_popup = false;
+	bool open_load_scene_popup = false, open_export_exr_popup = false;
 
 	ImGui::BeginMainMenuBar();
 
-	if(m_pathtracing_flag) ui_push_disable();
-	if(ImGui::Button("Load Scene"))
-		open_load_scene_popup = true;
-
-	if(ImGui::BeginMenu("Camera"))
+	if(! m_pathtracing_flag)
 	{
-		ImGui::SliderAngle("FOV", &m_camera.m_fov, 10, 180);
-		ImGui::DragFloat("Speed", &m_camera.m_speed, 0.005f, 0.005f, 0.2f);
-		ImGui::EndMenu();
+		if(ImGui::Button("Load Scene"))
+			open_load_scene_popup = true;
+
+		if(ImGui::BeginMenu("Camera"))
+		{
+			ImGui::SliderAngle("FOV", &m_camera.m_fov, 10, 180);
+			ImGui::DragFloat("Speed", &m_camera.m_speed, 0.005f, 0.005f, 0.2f);
+			ImGui::EndMenu();
+		}
+
+		if(ImGui::BeginMenu("Primary View"))
+		{
+			if(ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kDiffuse))
+				m_octree_tracer.m_view_type = OctreeTracer::kDiffuse;
+			if(ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kNormal))
+				m_octree_tracer.m_view_type = OctreeTracer::kNormal;
+			if(ImGui::MenuItem("Iterations", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kIteration))
+				m_octree_tracer.m_view_type = OctreeTracer::kIteration;
+			ImGui::EndMenu();
+		}
+
+		if(ImGui::BeginMenu("Beam Optimization"))
+		{
+			if(ImGui::MenuItem("Enable", nullptr, m_octree_tracer.m_beam_enable))
+				m_octree_tracer.m_beam_enable ^= 1;
+			ImGui::DragFloat("Ray Direction Size", &m_octree_tracer.m_beam_dir_size, 0.001f, 0.0f, 0.1f);
+			ImGui::DragFloat("Ray Origin Size", &m_octree_tracer.m_beam_origin_size, 0.001f, 0.0f, 0.1f);
+			ImGui::EndMenu();
+		}
+
+		if(ImGui::BeginMenu("Path Tracer"))
+		{
+			ImGui::DragInt("Bounce", &m_pathtracer.m_bounce, 1, 2, kMaxBounce);
+			ImGui::DragFloat3("Sun Radiance", m_pathtracer.m_sun_radiance.data.data, 0.1f, 0.0f, 20.0f);
+			ImGui::EndMenu();
+		}
 	}
 
-	if(ImGui::BeginMenu("Primary View"))
+	if(m_octree)
 	{
-		if(ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kDiffuse))
-			m_octree_tracer.m_view_type = OctreeTracer::kDiffuse;
-		if(ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kNormal))
-			m_octree_tracer.m_view_type = OctreeTracer::kNormal;
-		if(ImGui::MenuItem("Iterations", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kIteration))
-			m_octree_tracer.m_view_type = OctreeTracer::kIteration;
-		ImGui::EndMenu();
+		if(m_pathtracing_flag && ImGui::Button("Export OpenEXR"))
+			open_export_exr_popup = true;
+		if(ImGui::Checkbox("Start PT", &m_pathtracing_flag))
+		{
+			if(m_pathtracing_flag)
+				m_pathtracer.Prepare(m_camera, *m_octree, m_octree_tracer);
+		}
 	}
-
-	if(ImGui::BeginMenu("Beam Optimization"))
-	{
-		if(ImGui::MenuItem("Enable", nullptr, m_octree_tracer.m_beam_enable))
-			m_octree_tracer.m_beam_enable ^= 1;
-		ImGui::DragFloat("Ray Direction Size", &m_octree_tracer.m_beam_dir_size, 0.001f, 0.0f, 0.1f);
-		ImGui::DragFloat("Ray Origin Size", &m_octree_tracer.m_beam_origin_size, 0.001f, 0.0f, 0.1f);
-		ImGui::EndMenu();
-	}
-
-	if(ImGui::BeginMenu("Path Tracer"))
-	{
-		ImGui::DragInt("Bounce", &m_pathtracer.m_bounce, 1, 2, kMaxBounce);
-		ImGui::DragFloat3("Sun Radiance", m_pathtracer.m_sun_radiance.data.data, 0.1f, 0.0f, 20.0f);
-		ImGui::EndMenu();
-	}
-	if(m_pathtracing_flag) ui_pop_disable();
-
-	if(!m_octree) ui_push_disable();
-	if(ImGui::Checkbox("Start PT", &m_pathtracing_flag))
-	{
-		if(m_pathtracing_flag)
-			m_pathtracer.Prepare(m_camera, *m_octree, m_octree_tracer);
-	}
-	if(!m_octree) ui_pop_disable();
 
 	ImGui::EndMainMenuBar();
 
 	if(open_load_scene_popup)
-		ImGui::OpenPopup("Load Scene##1");
+		ImGui::OpenPopup("Load Scene");
+	if(open_export_exr_popup)
+	{
+		m_pathtracer.m_pause = true;
+		ImGui::OpenPopup("Export OpenEXR");
+	}
 
 	ui_load_scene_modal();
+	ui_export_exr_modal();
 }
 bool
 Application::ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
@@ -231,11 +243,26 @@ Application::ui_file_open(const char *label, const char *btn, char *buf, size_t 
 	return ret;
 }
 
+bool
+Application::ui_file_save(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
+						  const std::vector<std::string> &filters)
+{
+	bool ret = ImGui::InputText(label, buf, buf_size);
+	ImGui::SameLine();
+
+	if(ImGui::Button(btn))
+	{
+		auto file_dialog = pfd::save_file(title, "", filters, true);
+		strcpy(buf, file_dialog.result().c_str());
+		ret = true;
+	}
+	return ret;
+}
+
 void Application::ui_load_scene_modal()
 {
-	if (ImGui::BeginPopupModal("Load Scene##1", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::BeginPopupModal("Load Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		constexpr size_t kFilenameBufSize = 512;
 		static char name_buf[kFilenameBufSize];
 		static int octree_leve = 10;
 
@@ -257,12 +284,44 @@ void Application::ui_load_scene_modal()
 	}
 }
 
+void Application::ui_export_exr_modal()
+{
+	if (ImGui::BeginPopupModal("Export OpenEXR", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		static char exr_name_buf[kFilenameBufSize]{};
+		static bool save_as_fp16{false};
+		ui_file_save("OpenEXR Filename", "...##0", exr_name_buf, kFilenameBufSize, "Export OpenEXR",
+					 {"OpenEXR File (.exr)", "*.exr", "All Files", "*"});
+
+		ImGui::Checkbox("Export As FP16", &save_as_fp16);
+
+		{
+			if (ImGui::Button("Export", ImVec2(256, 0)))
+			{
+				m_pathtracer.Save(exr_name_buf, save_as_fp16);
+				m_pathtracer.m_pause = false;
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::SetItemDefaultFocus();
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel", ImVec2(256, 0)))
+			{
+				m_pathtracer.m_pause = false;
+				ImGui::CloseCurrentPopup();
+			}
+		}
+
+		ImGui::EndPopup();
+	}
+}
+
 void Application::glfw_key_callback(GLFWwindow *window, int key, int, int action, int)
 {
 	auto *app = (Application *)glfwGetWindowUserPointer(window);
-	if(action == GLFW_PRESS)
+	if(!ImGui::GetCurrentContext()->NavWindow
+	   || (ImGui::GetCurrentContext()->NavWindow->Flags & ImGuiWindowFlags_NoBringToFrontOnFocus))
 	{
-		if(key == GLFW_KEY_X)
+		if (action == GLFW_PRESS && key == GLFW_KEY_X)
 			app->m_ui_display_flag ^= 1u;
 	}
 }

@@ -12,6 +12,9 @@
 #include "Octree.hpp"
 #include "OctreeTracer.hpp"
 
+#define TINYEXR_IMPLEMENTATION
+#include <tinyexr.h>
+
 void PathTracer::Initialize()
 {
 	m_sobol_ssbo.Initialize();
@@ -50,6 +53,7 @@ void PathTracer::Prepare(const Camera &camera, const Octree &octree, const Octre
 	if(tracer.m_beam_enable) tracer.m_beam_tex.Bind(kBeamSampler2D);
 
 	//uniforms
+	m_pause = false;
 	m_spp = 0;
 	m_shader.SetInt(m_unif_bounce, m_bounce);
 	m_shader.SetInt(m_unif_beam_enable, (GLint) tracer.m_beam_enable);
@@ -62,8 +66,29 @@ void PathTracer::Render(const ScreenQuad &quad)
 
 	glViewport(0, 0, kWidth, kHeight);
 	m_sobol.Next(m_sobol_ptr);
-	m_shader.SetInt(m_unif_spp, m_spp++);
+	m_shader.SetInt(m_unif_spp, m_pause ? -1 : (m_spp ++));
 	m_shader.Use();
 	quad.Render();
 	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+}
+
+void PathTracer::Save(const char *filename, bool fp16)
+{
+	char *err{nullptr};
+
+	constexpr int kSize = kWidth * kHeight;
+	std::vector<GLfloat> pixels((size_t)kSize * 3);
+	glGetTextureImage(m_result_tex.Get(), 0, GL_RGB, GL_FLOAT, kSize * 3 * sizeof(GLfloat), pixels.data());
+
+	//flip
+	for(int i = 0; i < kHeight / 2; ++i)
+		std::swap_ranges(pixels.data() + i*kWidth*3, pixels.data() + (i + 1)*kWidth*3,
+				pixels.data() + (kHeight - i - 1)*kWidth*3);
+
+	if(SaveEXR(pixels.data(), kWidth, kHeight, 3, fp16, filename, (const char **)&err) < 0)
+		printf("[PT]ERR: %s\n", err);
+	else
+		printf("[PT]INFO: Saved image to %s\n", filename);
+	free(err);
+
 }

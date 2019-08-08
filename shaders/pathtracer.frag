@@ -187,6 +187,13 @@ vec3 GenRay()
 }
 void main()
 {
+	if(uSPP == -1) //pause
+	{
+		vec3 result = imageLoad(uResult, ivec2(gl_FragCoord.xy)).xyz;
+		oFragColor = vec4(pow(result, vec3(1.0f / 2.2f)), 1);
+		return;
+	}
+
 	vec3 o = uPosition.xyz, d = GenRay();
 
 	if(uBeamEnable == 1)

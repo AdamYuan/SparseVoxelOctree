@@ -19,6 +19,7 @@
 class PathTracer
 {
 public:
+	bool m_pause;
 	int m_bounce{4};
 	glm::vec3 m_sun_radiance{glm::vec3(5.0f)};
 private:
@@ -32,6 +33,7 @@ public:
 	void Initialize();
 	void Prepare(const Camera &camera, const Octree &octree, const OctreeTracer &tracer);
 	void Render(const ScreenQuad &quad);
+	void Save(const char *filename, bool fp16);
 	int GetSPP() const { return m_spp; }
 };
 
