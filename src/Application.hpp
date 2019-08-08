@@ -7,10 +7,9 @@
 
 #include <mygl3/utils/framerate.hpp>
 #include <memory>
-#include "Scene.hpp"
+#include "ScreenQuad.hpp"
 #include "Octree.hpp"
 #include "OctreeTracer.hpp"
-#include "ScreenQuad.hpp"
 #include "PathTracer.hpp"
 
 #include <GLFW/glfw3.h>
