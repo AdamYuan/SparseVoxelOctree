@@ -202,7 +202,7 @@ void main()
 	vec2 noise = texelFetch(uNoise, ivec2(gl_FragCoord.xy) & 0xff, 0).xy;
 
 	vec3 acc_color = vec3(1), radiance = vec3(0);
-	for(int cur = 0; cur < uBounce; ++cur)
+	for(int cur = 1; cur <= uBounce; ++cur)
 	{
 		vec3 pos, color, normal;
 		if(RayMarchLeaf(o, d, pos, color, normal))
@@ -210,7 +210,7 @@ void main()
 			acc_color *= color;
 			d = SampleHemisphere(fract(uSobol[cur] + noise), 0.0f);
 			d = AlignDirection(d, normal);
-			o = pos + normal * EPS;
+			o = pos + d * EPS;
 		}
 		else
 		{
