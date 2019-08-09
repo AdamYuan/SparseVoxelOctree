@@ -1,6 +1,7 @@
 #version 450 core
 //RAY MARCH METHOD IS COPIED FROM https://code.google.com/archive/p/efficient-sparse-voxel-octrees/
 #define STACK_SIZE 23 //must be 23
+#define EPS 3.552713678800501e-15
 
 layout(std140, binding = 5) uniform uuCamera
 {
@@ -20,9 +21,9 @@ uint iter = 0;
 struct StackItem { uint node; float t_max; } stack[STACK_SIZE];
 bool RayMarchLeaf(vec3 o, vec3 d, out float o_t, out vec3 o_color, out vec3 o_normal)
 {
-	d.x = abs(d.x) > 1e-6 ? d.x : (d.x >= 0 ? 1e-6 : -1e-6);
-	d.y = abs(d.y) > 1e-6 ? d.y : (d.y >= 0 ? 1e-6 : -1e-6);
-	d.z = abs(d.z) > 1e-6 ? d.z : (d.z >= 0 ? 1e-6 : -1e-6);
+	d.x = abs(d.x) > EPS ? d.x : (d.x >= 0 ? EPS : -EPS);
+	d.y = abs(d.y) > EPS ? d.y : (d.y >= 0 ? EPS : -EPS);
+	d.z = abs(d.z) > EPS ? d.z : (d.z >= 0 ? EPS : -EPS);
 
 	// Precompute the coefficients of tx(x), ty(y), and tz(z).
 	// The octree is assumed to reside at coordinates [1, 2].

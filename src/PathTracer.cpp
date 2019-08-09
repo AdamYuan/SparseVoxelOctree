@@ -80,7 +80,7 @@ void PathTracer::Save(const char *filename, bool fp16)
 	std::vector<GLfloat> pixels((size_t)kSize * 3);
 	glGetTextureImage(m_result_tex.Get(), 0, GL_RGB, GL_FLOAT, kSize * 3 * sizeof(GLfloat), pixels.data());
 
-	//flip
+	//flip y axis
 	for(int i = 0; i < kHeight / 2; ++i)
 		std::swap_ranges(pixels.data() + i*kWidth*3, pixels.data() + (i + 1)*kWidth*3,
 				pixels.data() + (kHeight - i - 1)*kWidth*3);
@@ -89,6 +89,6 @@ void PathTracer::Save(const char *filename, bool fp16)
 		printf("[PT]ERR: %s\n", err);
 	else
 		printf("[PT]INFO: Saved image to %s\n", filename);
-	free(err);
 
+	free(err);
 }

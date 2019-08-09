@@ -1,7 +1,8 @@
 #version 450 core
 //RAY MARCH METHOD IS COPIED FROM https://code.google.com/archive/p/efficient-sparse-voxel-octrees/
 #define STACK_SIZE 23 //must be 23
-#define EPS 3.552713678800501e-15
+//#define EPS 3.552713678800501e-15
+#define EPS 1.1920928955078125e-07
 
 layout(std140, binding = 5) uniform uuCamera
 {
@@ -24,9 +25,9 @@ out vec4 oFragColor;
 struct StackItem { uint node; float t_max; } stack[STACK_SIZE];
 bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal)
 {
-	d.x = abs(d.x) > EPS ? d.x : (d.x >= 0 ? EPS : -EPS);
-	d.y = abs(d.y) > EPS ? d.y : (d.y >= 0 ? EPS : -EPS);
-	d.z = abs(d.z) > EPS ? d.z : (d.z >= 0 ? EPS : -EPS);
+	d.x = abs(d.x) >= EPS ? d.x : (d.x >= 0 ? EPS : -EPS);
+	d.y = abs(d.y) >= EPS ? d.y : (d.y >= 0 ? EPS : -EPS);
+	d.z = abs(d.z) >= EPS ? d.z : (d.z >= 0 ? EPS : -EPS);
 
 	// Precompute the coefficients of tx(x), ty(y), and tz(z).
 	// The octree is assumed to reside at coordinates [1, 2].
@@ -148,11 +149,21 @@ bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_n
 		norm = vec3(0, -1, 0);
 	else
 		norm = vec3(0, 0, -1);
+
 	if ((oct_mask & 1u) == 0u) norm.x = -norm.x;
 	if ((oct_mask & 2u) == 0u) norm.y = -norm.y;
 	if ((oct_mask & 4u) == 0u) norm.z = -norm.z;
 
-	o_pos = o + t_min * d;
+	// Undo mirroring of the coordinate system.
+	if ((oct_mask & 1u) != 0u) pos.x = 3.0f - scale_exp2 - pos.x;
+	if ((oct_mask & 2u) != 0u) pos.y = 3.0f - scale_exp2 - pos.y;
+	if ((oct_mask & 4u) != 0u) pos.z = 3.0f - scale_exp2 - pos.z;
+
+	// Output results.
+	o_pos = clamp(o + t_min * d, pos, pos + scale_exp2);
+	if(norm.x != 0) o_pos.x = norm.x > 0 ? pos.x + scale_exp2 + EPS*2 : pos.x - EPS;
+	if(norm.y != 0) o_pos.y = norm.y > 0 ? pos.y + scale_exp2 + EPS*2 : pos.y - EPS;
+	if(norm.z != 0) o_pos.z = norm.z > 0 ? pos.z + scale_exp2 + EPS*2 : pos.z - EPS;
 	o_normal = norm;
 	o_color = vec3( cur & 0xffu, (cur >> 8u) & 0xffu, (cur >> 16u) & 0xffu) * 0.00392156862745098f; // (...) / 255.0f
 
@@ -217,7 +228,7 @@ void main()
 			acc_color *= color;
 			d = SampleHemisphere(fract(uSobol[cur] + noise), 0.0f);
 			d = AlignDirection(d, normal);
-			o = pos + d * EPS;
+			o = pos;
 		}
 		else
 		{
