@@ -168,6 +168,12 @@ void Application::ui_main_menubar()
 		if(ImGui::Button("Load Scene"))
 			open_load_scene_popup = true;
 
+		if(m_octree && ImGui::Button("Start PT"))
+		{
+			m_pathtracing_flag = true;
+			m_pathtracer.Prepare(m_camera, *m_octree, m_octree_tracer);
+		}
+
 		if(ImGui::BeginMenu("Camera"))
 		{
 			ImGui::SliderAngle("FOV", &m_camera.m_fov, 10, 180);
@@ -202,15 +208,25 @@ void Application::ui_main_menubar()
 			ImGui::EndMenu();
 		}
 	}
-
-	if(m_octree)
+	else if(m_octree)
 	{
-		if(m_pathtracing_flag && ImGui::Button("Export OpenEXR"))
+		if(ImGui::Button("Exit PT"))
+			m_pathtracing_flag = false;
+		if(ImGui::Button("Export OpenEXR"))
 			open_export_exr_popup = true;
-		if(ImGui::Checkbox("Start PT", &m_pathtracing_flag))
+
+		ImGui::Checkbox("Pause", &m_pathtracer.m_pause);
+
+		if(ImGui::BeginMenu("View"))
 		{
-			if(m_pathtracing_flag)
-				m_pathtracer.Prepare(m_camera, *m_octree, m_octree_tracer);
+			if(ImGui::MenuItem("Color", nullptr, m_pathtracer.m_view_type == PathTracer::kColor))
+				m_pathtracer.m_view_type = PathTracer::kColor;
+			if(ImGui::MenuItem("Albedo", nullptr, m_pathtracer.m_view_type == PathTracer::kAlbedo))
+				m_pathtracer.m_view_type = PathTracer::kAlbedo;
+			if(ImGui::MenuItem("Normal", nullptr, m_pathtracer.m_view_type == PathTracer::kNormal))
+				m_pathtracer.m_view_type = PathTracer::kNormal;
+
+			ImGui::EndMenu();
 		}
 	}
 
@@ -219,10 +235,7 @@ void Application::ui_main_menubar()
 	if(open_load_scene_popup)
 		ImGui::OpenPopup("Load Scene");
 	if(open_export_exr_popup)
-	{
-		m_pathtracer.m_pause = true;
 		ImGui::OpenPopup("Export OpenEXR");
-	}
 
 	ui_load_scene_modal();
 	ui_export_exr_modal();
@@ -290,6 +303,9 @@ void Application::ui_export_exr_modal()
 	{
 		static char exr_name_buf[kFilenameBufSize]{};
 		static bool save_as_fp16{false};
+		ImGui::LabelText("", "INFO: will export %s channel",
+				m_pathtracer.m_view_type == PathTracer::kColor ? "COLOR" :
+				(m_pathtracer.m_view_type == PathTracer::kAlbedo ? "ALBEDO" : "NORMAL"));
 		ui_file_save("OpenEXR Filename", "...##0", exr_name_buf, kFilenameBufSize, "Export OpenEXR",
 					 {"OpenEXR File (.exr)", "*.exr", "All Files", "*"});
 
@@ -299,14 +315,12 @@ void Application::ui_export_exr_modal()
 			if (ImGui::Button("Export", ImVec2(256, 0)))
 			{
 				m_pathtracer.Save(exr_name_buf, save_as_fp16);
-				m_pathtracer.m_pause = false;
 				ImGui::CloseCurrentPopup();
 			}
 			ImGui::SetItemDefaultFocus();
 			ImGui::SameLine();
 			if (ImGui::Button("Cancel", ImVec2(256, 0)))
 			{
-				m_pathtracer.m_pause = false;
 				ImGui::CloseCurrentPopup();
 			}
 		}

@@ -27,5 +27,5 @@ void main()
 
 	uOctree[idx] |= 0x80000000u;
 	if(uLevel == findMSB(uVoxelResolution)) 
-		uOctree[idx] = 0xC0000000u | (ufragment.y & 0xffffffu); //termination tag and color data
+		uOctree[idx] = 0xC0000000u | (ufragment.y & 0xfffffffu); //termination tag and brdf, color data
 }

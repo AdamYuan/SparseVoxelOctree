@@ -72,12 +72,7 @@ void Camera::Update()
 
 	m_projection = glm::perspective(m_fov, kCamAspectRatio, kCamNear, kCamFar);
 
-	//sync
-	GLsync sync_fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-	GLenum wait_return = GL_UNSIGNALED;
-	while (wait_return != GL_ALREADY_SIGNALED && wait_return != GL_CONDITION_SATISFIED)
-		wait_return = glClientWaitSync(sync_fence, GL_SYNC_FLUSH_COMMANDS_BIT, 1);
-	glDeleteSync(sync_fence);
+	mygl3::SyncGPU();
 
 	//set values
 	m_ubo_ptr->m_projection = m_projection;

@@ -12,7 +12,6 @@ namespace mygl3
 	static bool IsValidOglId(GLuint id) { return id != kInvalidOglId; }
 	inline static void SyncGPU()
 	{
-		glMemoryBarrier(GL_ATOMIC_COUNTER_BARRIER_BIT);
 		GLsync sync_fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		GLenum wait_return = GL_UNSIGNALED;
 		while (wait_return != GL_ALREADY_SIGNALED && wait_return != GL_CONDITION_SATISFIED)

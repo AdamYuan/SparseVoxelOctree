@@ -17,7 +17,10 @@ constexpr GLuint kBeamSampler2D = 4;
 
 constexpr GLuint kSobolSSBO = 6;
 constexpr GLuint kNoiseSampler2D = 7;
-constexpr GLuint kResultImage2D = 0;
+
+constexpr GLuint kPTColorImage2D = 0;
+constexpr GLuint kPTAlbedoImage2D = 1;
+constexpr GLuint kPTNormalImage2D = 2;
 
 
 #endif //SPARSEVOXELOCTREE_OGLBINDINGS_HPP

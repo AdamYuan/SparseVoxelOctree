@@ -11,10 +11,13 @@ layout(std140, binding = 5) uniform uuCamera
 	mat4 uView;
 	vec4 uPosition;
 };
-uniform int uBeamEnable, uBounce, uSPP;
+uniform int uViewType, uBeamEnable, uBounce, uSPP;
 uniform vec3 uSunRadiance;
 
-layout(rgba32f, binding = 0) uniform image2D uResult;
+layout(rgba32f, binding = 0) uniform image2D uColor;
+layout(rgba8, binding = 1) uniform image2D uAlbedo;
+layout(rgba8_snorm, binding = 2) uniform image2D uNormal;
+
 layout(std430, binding = 3) readonly buffer uuOctree { uint uOctree[]; };
 layout(std430, binding = 6) readonly buffer uuSobol { vec2 uSobol[]; }; 
 layout(binding = 4) uniform sampler2D uBeam;
@@ -23,7 +26,7 @@ layout(binding = 7) uniform sampler2D uNoise;
 out vec4 oFragColor;
 
 struct StackItem { uint node; float t_max; } stack[STACK_SIZE];
-bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal)
+bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal, out uint o_brdf)
 {
 	d.x = abs(d.x) >= EPS ? d.x : (d.x >= 0 ? EPS : -EPS);
 	d.y = abs(d.y) >= EPS ? d.y : (d.y >= 0 ? EPS : -EPS);
@@ -166,6 +169,7 @@ bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_n
 	if(norm.z != 0) o_pos.z = norm.z > 0 ? pos.z + scale_exp2 + EPS*2 : pos.z - EPS;
 	o_normal = norm;
 	o_color = vec3( cur & 0xffu, (cur >> 8u) & 0xffu, (cur >> 16u) & 0xffu) * 0.00392156862745098f; // (...) / 255.0f
+	o_brdf = (cur >> 24u) & 0xfu;
 
 	return scale < STACK_SIZE && t_min <= t_max;
 }
@@ -196,12 +200,29 @@ vec3 GenRay()
 	coord = coord * 2.0f - 1.0f;
 	return normalize(mat3(inverse(uView)) * (inverse(uProjection) * vec4(coord, 1, 1) ).xyz);
 }
+
 void main()
 {
+	ivec2 kRevPixel = ivec2(gl_FragCoord.xy);
+	kRevPixel.y = uHeight - 1 - kRevPixel.y; //reversed y axis in pixel storage
+
 	if(uSPP == -1) //pause
 	{
-		vec3 result = imageLoad(uResult, ivec2(gl_FragCoord.xy)).xyz;
-		oFragColor = vec4(pow(result, vec3(1.0f / 2.2f)), 1);
+		if(uViewType == 0) //color
+		{
+			vec3 pt_color = imageLoad(uColor, kRevPixel).xyz;
+			oFragColor = vec4(pow(pt_color, vec3(1.0f / 2.2f)), 1);
+		}
+		else if(uViewType == 1) //albedo
+		{
+			vec3 pt_albedo = imageLoad(uAlbedo, kRevPixel).xyz;
+			oFragColor = vec4(pt_albedo, 1);
+		}
+		else //normal
+		{
+			vec3 pt_normal = imageLoad(uNormal, kRevPixel).xyz;
+			oFragColor = vec4(pt_normal * 0.5f + 0.5f, 1);
+		}
 		return;
 	}
 
@@ -217,29 +238,47 @@ void main()
 		o += d * beam;
 	}
 
-	vec2 noise = texelFetch(uNoise, ivec2(gl_FragCoord.xy) & 0xff, 0).xy;
-
+	vec2 noise = texelFetch(uNoise, kRevPixel & 0xff, 0).xy;
 	vec3 acc_color = vec3(1), radiance = vec3(0);
-	for(int cur = 1; cur <= uBounce; ++cur)
+
+	vec3 pos, albedo, normal, direct_albedo = vec3(0.0f), direct_normal = vec3(0.0f); uint brdf;
+
+	if(RayMarchLeaf(o, d, pos, albedo, normal, brdf))
 	{
-		vec3 pos, color, normal;
-		if(RayMarchLeaf(o, d, pos, color, normal))
+		acc_color *= albedo;
+		direct_albedo = albedo;
+		direct_normal = normal;
+
+		for(int cur = 1; cur < uBounce; ++cur)
 		{
-			acc_color *= color;
-			d = SampleHemisphere(fract(uSobol[cur] + noise), 0.0f);
-			d = AlignDirection(d, normal);
+			d = AlignDirection( SampleHemisphere(fract(uSobol[cur] + noise), 0.0f), normal );
 			o = pos;
-		}
-		else
-		{
-			radiance = acc_color * uSunRadiance;
-			break;
+
+			if(RayMarchLeaf(o, d, pos, albedo, normal, brdf))
+				acc_color *= albedo;
+			else
+			{
+				radiance = acc_color * uSunRadiance;
+				break;
+			}
 		}
 	}
+	else
+		radiance = uSunRadiance;
 
-	vec3 result = imageLoad(uResult, ivec2(gl_FragCoord.xy)).xyz;
-	result = (result*uSPP + radiance) / float(uSPP + 1);
-	imageStore(uResult, ivec2(gl_FragCoord.xy), vec4(result, 1));
+	vec3 pt_color = (imageLoad(uColor, kRevPixel).xyz * uSPP + radiance) / float(uSPP + 1);
+	imageStore(uColor, kRevPixel, vec4(pt_color, 1));
 
-	oFragColor = vec4(pow(result, vec3(1.0f / 2.2f)), 1);
+	vec3 pt_albedo = (imageLoad(uAlbedo, kRevPixel).xyz * uSPP + direct_albedo) / float(uSPP + 1);
+	imageStore(uAlbedo, kRevPixel, vec4(pt_albedo, 1));
+
+	vec3 pt_normal = (imageLoad(uNormal, kRevPixel).xyz * uSPP + direct_normal) / float(uSPP + 1);
+	imageStore(uNormal, kRevPixel, vec4(pt_normal, 1));
+
+	if(uViewType == 0) //color
+		oFragColor = vec4(pow(pt_color, vec3(1.0f / 2.2f)), 1);
+	else if(uViewType == 1) //albedo
+		oFragColor = vec4(pt_albedo, 1);
+	else //normal
+		oFragColor = vec4(pt_normal * 0.5f + 0.5f, 1);
 }

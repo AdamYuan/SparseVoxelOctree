@@ -27,12 +27,21 @@ void PathTracer::Initialize()
 	m_noise_tex.Storage(kNoiseSize, kNoiseSize, GL_RG8);
 	m_noise_tex.Data(kNoise, kNoiseSize, kNoiseSize, GL_RG, GL_UNSIGNED_BYTE);
 
-	m_result_tex.Initialize();
-	m_result_tex.Storage(kWidth, kHeight, GL_RGBA32F);
+	m_pt_color_tex.Initialize();
+	m_pt_color_tex.Storage(kWidth, kHeight, GL_RGBA32F);
+
+	m_pt_albedo_tex.Initialize();
+	m_pt_albedo_tex.Storage(kWidth, kHeight, GL_RGBA8);
+
+	m_pt_normal_tex.Initialize();
+	m_pt_normal_tex.Storage(kWidth, kHeight, GL_RGBA8_SNORM);
+	//since normal in an svo only has 6 possibilities,
+	//using RGBA8_SNORM to store its average is acceptable
 
 	m_shader.Initialize();
 	m_shader.LoadFromFile("shaders/quad.vert", GL_VERTEX_SHADER);
 	m_shader.LoadFromFile("shaders/pathtracer.frag", GL_FRAGMENT_SHADER);
+	m_unif_view_type = m_shader.GetUniform("uViewType");
 	m_unif_beam_enable = m_shader.GetUniform("uBeamEnable");
 	m_unif_bounce = m_shader.GetUniform("uBounce");
 	m_unif_spp = m_shader.GetUniform("uSPP");
@@ -49,7 +58,10 @@ void PathTracer::Prepare(const Camera &camera, const Octree &octree, const Octre
 	m_sobol_ssbo.BindBase(GL_SHADER_STORAGE_BUFFER, kSobolSSBO);
 	octree.GetOctreeBuffer().BindBase(GL_SHADER_STORAGE_BUFFER, kOctreeSSBO);
 	camera.GetBuffer().BindBase(GL_UNIFORM_BUFFER, kCameraUBO);
-	glBindImageTexture(kResultImage2D, m_result_tex.Get(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	glBindImageTexture(kPTColorImage2D, m_pt_color_tex.Get(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	glBindImageTexture(kPTAlbedoImage2D, m_pt_albedo_tex.Get(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA8);
+	glBindImageTexture(kPTNormalImage2D, m_pt_normal_tex.Get(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA8_SNORM);
+
 	if(tracer.m_beam_enable) tracer.m_beam_tex.Bind(kBeamSampler2D);
 
 	//uniforms
@@ -66,6 +78,7 @@ void PathTracer::Render(const ScreenQuad &quad)
 
 	glViewport(0, 0, kWidth, kHeight);
 	m_sobol.Next(m_sobol_ptr);
+	m_shader.SetInt(m_unif_view_type, m_view_type);
 	m_shader.SetInt(m_unif_spp, m_pause ? -1 : (m_spp ++));
 	m_shader.Use();
 	quad.Render();
@@ -78,12 +91,9 @@ void PathTracer::Save(const char *filename, bool fp16)
 
 	constexpr int kSize = kWidth * kHeight;
 	std::vector<GLfloat> pixels((size_t)kSize * 3);
-	glGetTextureImage(m_result_tex.Get(), 0, GL_RGB, GL_FLOAT, kSize * 3 * sizeof(GLfloat), pixels.data());
 
-	//flip y axis
-	for(int i = 0; i < kHeight / 2; ++i)
-		std::swap_ranges(pixels.data() + i*kWidth*3, pixels.data() + (i + 1)*kWidth*3,
-				pixels.data() + (kHeight - i - 1)*kWidth*3);
+	auto &target = (m_view_type == kColor ? m_pt_color_tex : (m_view_type == kAlbedo ? m_pt_albedo_tex : m_pt_normal_tex));
+	glGetTextureImage(target.Get(), 0, GL_RGB, GL_FLOAT, kSize * 3 * sizeof(GLfloat), pixels.data());
 
 	if(SaveEXR(pixels.data(), kWidth, kHeight, 3, fp16, filename, (const char **)&err) < 0)
 		printf("[PT]ERR: %s\n", err);
