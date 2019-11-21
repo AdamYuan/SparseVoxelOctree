@@ -5,13 +5,13 @@ layout (triangle_strip, max_vertices = 3) out;
 
 in vec3 vNormal[];
 in vec2 vTexcoords[];
-flat in uint vBrdfTexture[];
+flat in uint vTexture[];
 flat in vec3 vColor[];
 
 out vec2 gTexcoords;
 out vec3 gNormal;
 out vec3 gVoxelPos;
-flat out uint gBrdfTexture;
+flat out uint gTexture;
 flat out vec3 gColor;
 
 uniform int uVoxelResolution;
@@ -31,7 +31,7 @@ void main()
 	vec3 pos1 = gl_in[1].gl_Position.xyz;
 	vec3 pos2 = gl_in[2].gl_Position.xyz;
 
-	gBrdfTexture = vBrdfTexture[0];
+	gTexture = vTexture[0];
 	gColor = vColor[0];
 
 	gTexcoords = vTexcoords[0];

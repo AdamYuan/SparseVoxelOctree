@@ -8,15 +8,14 @@ layout(std430, binding = 2) buffer uuFragmentList { uvec2 uFragmentList[]; };
 in vec2 gTexcoords;
 in vec3 gNormal;
 in vec3 gVoxelPos;
-flat in uint gBrdfTexture;
+flat in uint gTexture;
 flat in vec3 gColor;
 
 uniform int uVoxelResolution, uCountOnly;
 
 void main()
 {
-	uint tex_idx = gBrdfTexture & 0xffffu;
-	vec4 samp = tex_idx == 0xffffu ? vec4(gColor, 1.0) : texture(uTextures[tex_idx], gTexcoords);
+	vec4 samp = gTexture != 0xffffffffu ? texture(uTextures[gTexture], gTexcoords) : vec4(gColor, 1.0);
 	if(samp.w < 0.5f) discard;
 
 	uvec3 ucolor = uvec3(round(samp.rgb * 255.0f));
@@ -26,9 +25,8 @@ void main()
 	//set fragment list
 	if(uCountOnly == 0)
 	{
-		uint brdf_flag = (gBrdfTexture >> 16u) & 0xfu; //4 bit brdf flag
 		uvec3 uvoxel_pos = clamp(uvec3(gVoxelPos), uvec3(0u), uvec3(uVoxelResolution - 1u));
 		uFragmentList[cur].x = uvoxel_pos.x | (uvoxel_pos.y << 12u) | ((uvoxel_pos.z & 0xffu) << 24u); //only have the last 8 bits of uvoxel_pos.z
-		uFragmentList[cur].y = ((uvoxel_pos.z >> 8u) << 28u) | ucolor.x | (ucolor.y << 8u) | (ucolor.z << 16u) | (brdf_flag << 24u);
+		uFragmentList[cur].y = ((uvoxel_pos.z >> 8u) << 28u) | ucolor.x | (ucolor.y << 8u) | (ucolor.z << 16u);
 	}
 }

@@ -5,6 +5,9 @@ uniform int uVoxelFragmentNum, uVoxelResolution, uLevel;
 layout(std430, binding = 2) readonly buffer uuFragmentList { uvec2 uFragmentList[]; };
 layout(std430, binding = 3) buffer uuOctree { uint uOctree[]; };
 
+vec4 LeafToVec4(uint val) { return vec4( float(val & 0xffu), float((val >> 8u) & 0xffu), float((val >> 16u) & 0xffu), float((val >> 24u) & 0x3f) ); }
+uint Vec4ToLeaf(vec4 vec) { return (min(uint(vec.w), 0x3fu) << 24u) | (min(uint(vec.x), 0xffu)) | (min(uint(vec.y), 0xffu) << 8u) | (min(uint(vec.z), 0xffu) << 16u) | 0xC0000000u; }
+
 void main()
 {
 	if(gl_GlobalInvocationID.x >= uVoxelFragmentNum) return;
@@ -26,6 +29,20 @@ void main()
 	}
 
 	uOctree[idx] |= 0x80000000u;
-	if(uLevel == findMSB(uVoxelResolution)) 
-		uOctree[idx] = 0xC0000000u | (ufragment.y & 0xfffffffu); //termination tag and brdf, color data
+	if(uLevel == findMSB(uVoxelResolution))
+	{
+		//uOctree[idx] = 0xC0000000u | (ufragment.y & 0xffffffu); //termination tag and color data
+		//atomic moving average
+		uint prev_val = 0, cur_val, new_val = 0xC1000000u | (ufragment.y & 0xffffffu);
+		vec4 rgba = LeafToVec4(new_val);
+		while( ( cur_val = atomicCompSwap(uOctree[idx], prev_val, new_val) ) != prev_val )
+		{
+			prev_val = cur_val;
+			vec4 prev_rgba = LeafToVec4(prev_val);
+			prev_rgba.xyz *= prev_rgba.w;
+			vec4 cur_rgba = prev_rgba + rgba;
+			cur_rgba.xyz /= cur_rgba.w;
+			new_val = Vec4ToLeaf(cur_rgba);
+		}
+	}
 }

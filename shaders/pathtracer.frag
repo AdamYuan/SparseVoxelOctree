@@ -26,7 +26,7 @@ layout(binding = 7) uniform sampler2D uNoise;
 out vec4 oFragColor;
 
 struct StackItem { uint node; float t_max; } stack[STACK_SIZE];
-bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal, out uint o_brdf)
+bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal)
 {
 	d.x = abs(d.x) >= EPS ? d.x : (d.x >= 0 ? EPS : -EPS);
 	d.y = abs(d.y) >= EPS ? d.y : (d.y >= 0 ? EPS : -EPS);
@@ -169,7 +169,6 @@ bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_n
 	if(norm.z != 0) o_pos.z = norm.z > 0 ? pos.z + scale_exp2 + EPS*2 : pos.z - EPS;
 	o_normal = norm;
 	o_color = vec3( cur & 0xffu, (cur >> 8u) & 0xffu, (cur >> 16u) & 0xffu) * 0.00392156862745098f; // (...) / 255.0f
-	o_brdf = (cur >> 24u) & 0xfu;
 
 	return scale < STACK_SIZE && t_min <= t_max;
 }
@@ -241,9 +240,9 @@ void main()
 	vec2 noise = texelFetch(uNoise, kRevPixel & 0xff, 0).xy;
 	vec3 acc_color = vec3(1), radiance = vec3(0);
 
-	vec3 pos, albedo, normal, direct_albedo = vec3(0.0f), direct_normal = vec3(0.0f); uint brdf;
+	vec3 pos, albedo, normal, direct_albedo = vec3(0.0f), direct_normal = vec3(0.0f);
 
-	if(RayMarchLeaf(o, d, pos, albedo, normal, brdf))
+	if(RayMarchLeaf(o, d, pos, albedo, normal))
 	{
 		acc_color *= albedo;
 		direct_albedo = albedo;
@@ -254,7 +253,7 @@ void main()
 			d = AlignDirection( SampleHemisphere(fract(uSobol[cur] + noise), 0.0f), normal );
 			o = pos;
 
-			if(RayMarchLeaf(o, d, pos, albedo, normal, brdf))
+			if(RayMarchLeaf(o, d, pos, albedo, normal))
 				acc_color *= albedo;
 			else
 			{

@@ -24,7 +24,7 @@ struct DrawArraysIndirectCommand {
 	GLuint vertex_count, instance_count, vertex_base, instance_base;
 } ;
 struct Material {
-	GLuint brdf_texture; //first 16 bits stores brdf flags, following 16 bits stores texture id
+	GLuint texture;
 	glm::vec3 color;
 };
 
@@ -178,30 +178,15 @@ bool Scene::Initialize(const char *filename)
 	for(size_t i = 0; i < m_draw_cnt; ++i)
 	{
 		Material &cur = gpu_materials[i];
-		/*if(3 <= materials[i].illum && materials[i].illum <= 5)
-			//mirror reflection brdf
-		{
-			if(materials[i].specular_texname.empty())
-				cur.brdf_texture = 0xffffu;
-			else
-				cur.brdf_texture = load_texture(&m_textures, name_set,
-														(base_dir + materials[i].specular_texname).c_str());
-			cur.color.x = materials[i].specular[0];
-			cur.color.y = materials[i].specular[1];
-			cur.color.z = materials[i].specular[2];
-			cur.brdf_texture |= 0x10000u;
-		}
-		else //diffuse brdf*/
-		{
-			if(materials[i].diffuse_texname.empty())
-				cur.brdf_texture = 0xffffu;
-			else
-				cur.brdf_texture = load_texture(&m_textures, name_set,
-														(base_dir + materials[i].diffuse_texname).c_str());
-			cur.color.x = materials[i].diffuse[0];
-			cur.color.y = materials[i].diffuse[1];
-			cur.color.z = materials[i].diffuse[2];
-		}
+
+		if(materials[i].diffuse_texname.empty())
+			cur.texture = 0xffffffffu;
+		else
+			cur.texture = load_texture(&m_textures, name_set,
+									   (base_dir + materials[i].diffuse_texname).c_str());
+		cur.color.x = materials[i].diffuse[0];
+		cur.color.y = materials[i].diffuse[1];
+		cur.color.z = materials[i].diffuse[2];
 	}
 
 	//process the indirect draw commands
@@ -252,7 +237,7 @@ bool Scene::Initialize(const char *filename)
 	//0-position, 1-normal, 2-texcoord, 3-drawid
 	m_vao.Initialize();
 	{
-		constexpr GLuint kPos = 0, kNormal = 1, kTexcoord = 2, kBrdfTexture = 3, kColor = 4;
+		constexpr GLuint kPos = 0, kNormal = 1, kTexcoord = 2, kTexture = 3, kColor = 4;
 		constexpr GLuint kVbo0 = 0, kVbo1 = 1;
 		glEnableVertexArrayAttrib(m_vao.Get(), kPos);
 		glVertexArrayAttribFormat(m_vao.Get(), kPos, 3, GL_FLOAT, GL_FALSE, 0);
@@ -268,9 +253,9 @@ bool Scene::Initialize(const char *filename)
 
 		glVertexArrayBindingDivisor(m_vao.Get(), kVbo1, 1);
 
-		glEnableVertexArrayAttrib(m_vao.Get(), kBrdfTexture);
-		glVertexArrayAttribIFormat(m_vao.Get(), kBrdfTexture, 1, GL_UNSIGNED_INT, 0);
-		glVertexArrayAttribBinding(m_vao.Get(), kBrdfTexture, kVbo1);
+		glEnableVertexArrayAttrib(m_vao.Get(), kTexture);
+		glVertexArrayAttribIFormat(m_vao.Get(), kTexture, 1, GL_UNSIGNED_INT, 0);
+		glVertexArrayAttribBinding(m_vao.Get(), kTexture, kVbo1);
 
 		glEnableVertexArrayAttrib(m_vao.Get(), kColor);
 		glVertexArrayAttribFormat(m_vao.Get(), kColor, 3, GL_FLOAT, GL_TRUE, sizeof(GLuint));
