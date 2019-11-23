@@ -178,12 +178,12 @@ bool Scene::Initialize(const char *filename)
 	for(size_t i = 0; i < m_draw_cnt; ++i)
 	{
 		Material &cur = gpu_materials[i];
-
 		if(materials[i].diffuse_texname.empty())
 			cur.texture = 0xffffffffu;
 		else
 			cur.texture = load_texture(&m_textures, name_set,
 									   (base_dir + materials[i].diffuse_texname).c_str());
+
 		cur.color.x = materials[i].diffuse[0];
 		cur.color.y = materials[i].diffuse[1];
 		cur.color.z = materials[i].diffuse[2];

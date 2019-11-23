@@ -26,7 +26,5 @@ make
 ![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/1.png)
 ![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/2.png)
 ![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/3.png)
-![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/4.png)
-![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/5.png)
 Image Denoised with OIDN
-![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/6.png)
+![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/4.png)

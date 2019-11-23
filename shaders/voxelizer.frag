@@ -19,6 +19,8 @@ void main()
 	if(samp.w < 0.5f) discard;
 
 	uvec3 ucolor = uvec3(round(samp.rgb * 255.0f));
+	if(ucolor == uvec3(0u))
+		ucolor = uvec3(16u);
 	ucolor &= 0xff;
 
 	uint cur = atomicCounterIncrement(uCounter);
