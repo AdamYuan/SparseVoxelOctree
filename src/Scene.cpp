@@ -267,7 +267,6 @@ bool Scene::Initialize(const char *filename)
 	GLsizei strides[2] = {8 * sizeof(GLfloat), sizeof(GLuint) + sizeof(GLfloat) * 3};
 	glVertexArrayVertexBuffers(m_vao.Get(), 0, 2, buffers, offsets, strides);
 
-	m_draw_indirect_buffer.Bind(GL_DRAW_INDIRECT_BUFFER);
 	m_texture_handle_buffer.BindBase(GL_UNIFORM_BUFFER, kTextureUBO);
 	return true;
 }
@@ -275,6 +274,7 @@ bool Scene::Initialize(const char *filename)
 void Scene::Draw() const
 {
 	m_vao.Bind();
+	m_draw_indirect_buffer.Bind(GL_DRAW_INDIRECT_BUFFER);
 	glMultiDrawArraysIndirect(GL_TRIANGLES, nullptr, m_draw_cnt, 0);
 }
 

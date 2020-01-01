@@ -12,6 +12,8 @@ constexpr GLuint kCameraUBO = 5;
 
 constexpr GLuint kAtomicCounterBinding = 1;
 constexpr GLuint kVoxelFragmentListSSBO = 2;
+constexpr GLuint kOctreeAllocIndirectSSBO = 8;
+constexpr GLuint kOctreeBuildInfoSSBO = 9;
 constexpr GLuint kOctreeSSBO = 3;
 constexpr GLuint kBeamSampler2D = 4;
 

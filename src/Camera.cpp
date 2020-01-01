@@ -56,6 +56,7 @@ void Camera::Control(GLFWwindow *window, const mygl3::Framerate &fps)
 
 			m_yaw -= offset_x;
 			m_pitch -= offset_y;
+
 			m_pitch = glm::clamp(m_pitch, -PIF * 0.5f, PIF * 0.5f);
 			m_yaw = glm::mod(m_yaw, PIF * 2);
 		}
@@ -79,4 +80,3 @@ void Camera::Update()
 	m_ubo_ptr->m_view = m_view;
 	m_ubo_ptr->m_position = glm::vec4(m_position, 1.0f);
 }
-

@@ -1,0 +1,16 @@
+#version 450 core
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1 ) in;
+
+layout(binding = 1, offset = 0) uniform atomic_uint uCounter;
+layout(std430, binding = 8) writeonly buffer uuIndirect { 
+	uint uNumGroupX, uNumGroupY, uNumGroupZ;
+};
+layout(std430, binding = 9) buffer uuBuildInfo { 
+	uint uFragmentNum, uVoxelResolution, uAllocBegin, uAllocNum;
+};
+uint group_x_64(uint x) { return (x >> 6u) + (((x & 0x3fu) > 0u) ? 1u : 0u); }
+void main() {
+	uAllocBegin += uAllocNum;
+	uAllocNum = ( atomicCounter(uCounter) << 3u ) - uAllocBegin + 8u;
+	uNumGroupX = group_x_64( uAllocNum );
+}

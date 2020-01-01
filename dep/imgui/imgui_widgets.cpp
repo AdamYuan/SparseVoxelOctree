@@ -2144,6 +2144,14 @@ bool ImGui::DragScalarN(const char* label, ImGuiDataType data_type, void* v, int
     return value_changed;
 }
 
+bool ImGui::DragAngle(const char* label, float* v_rad, float v_speed, float v_degrees_min, float v_degrees_max, const char* format, float power)
+{
+	float v_deg = (*v_rad) * 360.0f / (2*IM_PI);
+	bool value_changed = DragScalar(label, ImGuiDataType_Float, &v_deg, v_speed, &v_degrees_min, &v_degrees_max, format, power);
+	*v_rad = v_deg * (2*IM_PI) / 360.0f;
+	return value_changed;
+}
+
 bool ImGui::DragFloat(const char* label, float* v, float v_speed, float v_min, float v_max, const char* format, float power)
 {
     return DragScalar(label, ImGuiDataType_Float, v, v_speed, &v_min, &v_max, format, power);

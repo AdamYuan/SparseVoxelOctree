@@ -20,12 +20,12 @@
 #include "../ext/quaternion_exponential.hpp"
 #include "../gtx/norm.hpp"
 
-#ifndef GLM_ENABLE_EXPERIMENTAL
-#	error "GLM: GLM_GTX_quaternion is an experimental extension and may change in the future. Use #define GLM_ENABLE_EXPERIMENTAL before including it, if you really want to use it."
-#endif
-
 #if GLM_MESSAGES == GLM_ENABLE && !defined(GLM_EXT_INCLUDED)
-#	pragma message("GLM: GLM_GTX_quaternion extension included")
+#	ifndef GLM_ENABLE_EXPERIMENTAL
+#		pragma message("GLM: GLM_GTX_quaternion is an experimental extension and may change in the future. Use #define GLM_ENABLE_EXPERIMENTAL before including it, if you really want to use it.")
+#	else
+#		pragma message("GLM: GLM_GTX_quaternion extension included")
+#	endif
 #endif
 
 namespace glm
@@ -153,8 +153,8 @@ namespace glm
 		T const& a);
 
 	/// Compute the rotation between two vectors.
-	/// param orig vector, needs to be normalized
-	/// param dest vector, needs to be normalized
+	/// @param orig vector, needs to be normalized
+	/// @param dest vector, needs to be normalized
 	///
 	/// @see gtx_quaternion
 	template<typename T, qualifier Q>

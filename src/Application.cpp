@@ -12,6 +12,7 @@
 #include "Voxelizer.hpp"
 #include "Application.hpp"
 #include "Config.hpp"
+#include "OctreeBuilder.hpp"
 
 constexpr size_t kFilenameBufSize = 512;
 
@@ -38,16 +39,7 @@ Application::Application()
 	//Initialize ImGui
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGui::StyleColorsDark();
-	ImGuiStyle &st = ImGui::GetStyle();
-	st.WindowBorderSize = 0.0f;
-	st.Alpha = 0.7f;
-	st.WindowRounding = 0.0f;
-	st.ChildRounding = 0.0f;
-	st.FrameRounding = 0.0f;
-	st.ScrollbarRounding = 0.0f;
-	st.GrabRounding = 0.0f;
-	st.TabRounding = 0.0f;
+	ImGui::StyleColorsDarcula();
 
 	ImGui_ImplGlfw_InitForOpenGL(m_window, true);
 	ImGui_ImplOpenGL3_Init("#version 450 core");
@@ -68,8 +60,9 @@ void Application::LoadScene(const char *filename, int octree_level)
 		voxelizer.Voxelize(scene);
 
 		m_octree.reset( new Octree );
-		m_octree->Initialize(octree_level);
-		m_octree->Build(voxelizer);
+		OctreeBuilder builder;
+		builder.Initialize();
+		builder.Build(m_octree.get(), voxelizer, octree_level);
 	}
 }
 
@@ -176,8 +169,11 @@ void Application::ui_main_menubar()
 
 		if(ImGui::BeginMenu("Camera"))
 		{
-			ImGui::SliderAngle("FOV", &m_camera.m_fov, 10, 180);
+			ImGui::DragAngle("FOV", &m_camera.m_fov, 1, 10, 180);
 			ImGui::DragFloat("Speed", &m_camera.m_speed, 0.005f, 0.005f, 0.2f);
+			ImGui::InputFloat3("Position", &m_camera.m_position[0]);
+			ImGui::DragAngle("Yaw", &m_camera.m_yaw, 1, 0, 360);
+			ImGui::DragAngle("Pitch", &m_camera.m_pitch, 1, -90, 90);
 			ImGui::EndMenu();
 		}
 
@@ -204,7 +200,7 @@ void Application::ui_main_menubar()
 		if(ImGui::BeginMenu("Path Tracer"))
 		{
 			ImGui::DragInt("Bounce", &m_pathtracer.m_bounce, 1, 2, kMaxBounce);
-			ImGui::DragFloat3("Sun Radiance", m_pathtracer.m_sun_radiance.data.data, 0.1f, 0.0f, 20.0f);
+			ImGui::DragFloat3("Sun Radiance", &m_pathtracer.m_sun_radiance[0], 0.1f, 0.0f, 20.0f);
 			ImGui::EndMenu();
 		}
 	}
@@ -274,7 +270,8 @@ Application::ui_file_save(const char *label, const char *btn, char *buf, size_t 
 
 void Application::ui_load_scene_modal()
 {
-	if (ImGui::BeginPopupModal("Load Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::BeginPopupModal("Load Scene", nullptr,
+			ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove))
 	{
 		static char name_buf[kFilenameBufSize];
 		static int octree_leve = 10;
@@ -299,7 +296,8 @@ void Application::ui_load_scene_modal()
 
 void Application::ui_export_exr_modal()
 {
-	if (ImGui::BeginPopupModal("Export OpenEXR", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::BeginPopupModal("Export OpenEXR", nullptr,
+			ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove))
 	{
 		static char exr_name_buf[kFilenameBufSize]{};
 		static bool save_as_fp16{false};
