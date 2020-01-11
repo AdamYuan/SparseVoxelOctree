@@ -3,19 +3,46 @@ project(SparseVoxelOctree)
 
 set(CMAKE_CXX_STANDARD 11)
 
+file(GLOB SHADER_FILES
+	shaders/*.*
+	)
+add_executable(shaders_gen shaders_gen.cpp)
+
+add_custom_command(
+	OUTPUT  ${CMAKE_CURRENT_SOURCE_DIR}/src/ShaderSrc.hpp
+	COMMAND shaders_gen ${CMAKE_CURRENT_SOURCE_DIR}/src/ShaderSrc.hpp
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	DEPENDS shaders_gen ${SHADER_FILES}
+	)
+
+add_subdirectory(
+	dep/glfw
+	)
+
 include_directories(
-		dep/gl3w/include
-		dep
-)
+	dep/gl3w/include
+	dep/glfw/include
+	dep
+	)
 
 file(GLOB SOURCE_FILES
-		dep/gl3w/src/gl3w.c
-		dep/mygl3/*.hpp
-		dep/imgui/*.cpp
-		src/*.*)
+	dep/gl3w/src/gl3w.c
+	dep/mygl3/*.hpp
+	dep/imgui/*.cpp
+	src/*.*
+	)
 
 find_package(OpenGL REQUIRED)
-find_package(glfw3 REQUIRED)
 
-add_executable(SparseVoxelOctree ${SOURCE_FILES})
-target_link_libraries(SparseVoxelOctree ${CMAKE_DL_LIBS} ${OPENGL_opengl_LIBRARY} glfw)
+add_executable(
+	SparseVoxelOctree 
+	${SOURCE_FILES}
+	src/ShaderSrc.hpp
+	)
+target_link_libraries(
+	SparseVoxelOctree 
+	${CMAKE_DL_LIBS} 
+	${OPENGL_opengl_LIBRARY} 
+	glfw
+	${GLFW_LIBRARIES}
+	)

@@ -5,6 +5,7 @@
 #include "Voxelizer.hpp"
 #include "Config.hpp"
 #include "OglBindings.hpp"
+#include "ShaderSrc.hpp"
 
 void Voxelizer::Initialize(int octree_level)
 {
@@ -12,9 +13,9 @@ void Voxelizer::Initialize(int octree_level)
 
 	m_counter.Initialize();
 	m_shader.Initialize();
-	m_shader.LoadFromFile("shaders/voxelizer.frag", GL_FRAGMENT_SHADER);
-	m_shader.LoadFromFile("shaders/voxelizer.vert", GL_VERTEX_SHADER);
-	m_shader.LoadFromFile("shaders/voxelizer.geom", GL_GEOMETRY_SHADER);
+	m_shader.Load(kVoxelizerFragStr, GL_FRAGMENT_SHADER);
+	m_shader.Load(kVoxelizerVertStr, GL_VERTEX_SHADER);
+	m_shader.Load(kVoxelizerGeomStr, GL_GEOMETRY_SHADER);
 	m_unif_count_only = m_shader.GetUniform("uCountOnly");
 	m_unif_voxel_resolution = m_shader.GetUniform("uVoxelResolution");
 	m_shader.SetInt(m_unif_voxel_resolution, m_resolution);

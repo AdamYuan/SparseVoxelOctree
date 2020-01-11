@@ -5,18 +5,19 @@
 #include "OctreeTracer.hpp"
 #include "OglBindings.hpp"
 #include "Config.hpp"
+#include "ShaderSrc.hpp"
 
 void OctreeTracer::Initialize()
 {
 	m_shader.Initialize();
-	m_shader.LoadFromFile("shaders/quad.vert", GL_VERTEX_SHADER);
-	m_shader.LoadFromFile("shaders/octree_tracer.frag", GL_FRAGMENT_SHADER);
+	m_shader.Load(kQuadVertStr, GL_VERTEX_SHADER);
+	m_shader.Load(kOctreeTracerFragStr, GL_FRAGMENT_SHADER);
 	m_unif_view_type = m_shader.GetUniform("uViewType");
 	m_unif_beam_enable = m_shader.GetUniform("uBeamEnable");
 
 	m_beam_shader.Initialize();
-	m_beam_shader.LoadFromFile("shaders/quad.vert", GL_VERTEX_SHADER);
-	m_beam_shader.LoadFromFile("shaders/octree_tracer_beam.frag", GL_FRAGMENT_SHADER);
+	m_beam_shader.Load(kQuadVertStr, GL_VERTEX_SHADER);
+	m_beam_shader.Load(kOctreeTracerBeamFragStr, GL_FRAGMENT_SHADER);
 	m_beam_unif_dir_size = m_beam_shader.GetUniform("uDirSize");
 	m_beam_unif_origin_size = m_beam_shader.GetUniform("uOriginSize");
 

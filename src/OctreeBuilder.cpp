@@ -5,6 +5,7 @@
 #include "OctreeBuilder.hpp"
 #include "Config.hpp"
 #include "OglBindings.hpp"
+#include "ShaderSrc.hpp"
 
 struct DispatchIndirectCommand {
 	GLuint num_groups_x, num_groups_y, num_groups_z;
@@ -18,21 +19,21 @@ inline static GLuint group_x_64(unsigned x) { return (x >> 6u) + ((x & 0x3fu) ? 
 void OctreeBuilder::Initialize()
 {
 	m_tag_node_shader.Initialize();
-	m_tag_node_shader.LoadFromFile("shaders/octree_tag_node.comp", GL_COMPUTE_SHADER);
+	m_tag_node_shader.Load(kOctreeTagNodeCompStr, GL_COMPUTE_SHADER);
 
 	m_alloc_node_shader.Initialize();
-	m_alloc_node_shader.LoadFromFile("shaders/octree_alloc_node.comp", GL_COMPUTE_SHADER);
+	m_alloc_node_shader.Load(kOctreeAllocNodeCompStr, GL_COMPUTE_SHADER);
 
 	m_modify_arg_shader.Initialize();
-	m_modify_arg_shader.LoadFromFile("shaders/octree_modify_arg.comp", GL_COMPUTE_SHADER);
+	m_modify_arg_shader.Load(kOctreeModifyArgCompStr, GL_COMPUTE_SHADER);
 
 	m_counter.Initialize();
 
 	m_alloc_indirect_buffer.Initialize();
-	m_alloc_indirect_buffer.Storage(sizeof(DispatchIndirectCommand), GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
+	m_alloc_indirect_buffer.Storage(sizeof(DispatchIndirectCommand), GL_MAP_WRITE_BIT);
 
 	m_build_info_buffer.Initialize();
-	m_build_info_buffer.Storage(sizeof(BuildInfo), GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
+	m_build_info_buffer.Storage(sizeof(BuildInfo), GL_MAP_WRITE_BIT);
 }
 
 void OctreeBuilder::Build(Octree *octree, const Voxelizer &voxelizer, int octree_level)
