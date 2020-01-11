@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <string>
 
 constexpr const char *kShaderPaths[][2] = {
 	{ "shaders/octree_alloc_node.comp", "kOctreeAllocNodeCompStr" },

@@ -24,6 +24,10 @@ Application::Application()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	m_window = glfwCreateWindow(kWidth, kHeight, "SparseVoxelOctree", nullptr, nullptr);
+	if (m_window == nullptr) {
+		printf("[APPLICATION]Failed to load glfw.");
+		exit(EXIT_FAILURE);
+	}
 	glfwMakeContextCurrent(m_window);
 	glfwSetWindowUserPointer(m_window, (void*)this);
 	glfwSetKeyCallback(m_window, glfw_key_callback);

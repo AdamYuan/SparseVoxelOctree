@@ -6,6 +6,7 @@
 #include "Config.hpp"
 #include "OglBindings.hpp"
 #include "ShaderSrc.hpp"
+#include <algorithm>
 
 struct DispatchIndirectCommand {
 	GLuint num_groups_x, num_groups_y, num_groups_z;
