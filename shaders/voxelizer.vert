@@ -10,8 +10,7 @@ out vec3 vNormal;
 flat out uint vTexture;
 flat out vec3 vColor;
 
-void main()
-{
+void main() {
 	vTexcoords = aTexcoords;
 	vNormal = aNormal;
 	vTexture = aTexture;

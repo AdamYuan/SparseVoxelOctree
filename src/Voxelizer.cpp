@@ -54,13 +54,25 @@ void Voxelizer::Voxelize(const Scene &scene)
 			   m_fragment_list.GetByteCount() / 1000000.0);
 	}
 
+	GLuint time_query; glGenQueries(1, &time_query);
+	glBeginQuery(GL_TIME_ELAPSED, time_query);
+
 	m_counter.Reset();
 	m_fragment_list.BindBase(GL_SHADER_STORAGE_BUFFER, kVoxelFragmentListSSBO);
 	m_shader.SetInt(m_unif_count_only, 0);
 	scene.Draw();
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT);
 
-	printf("[VOXELIZER]Info: Fragment buffer filled\n");
+	glEndQuery(GL_TIME_ELAPSED);
+
+	GLint done = 0; while(!done)
+		glGetQueryObjectiv(time_query, GL_QUERY_RESULT_AVAILABLE, &done);
+	GLuint64 time_elapsed;
+	glGetQueryObjectui64v(time_query, GL_QUERY_RESULT, &time_elapsed);
+	glDeleteQueries(1, &time_query);
+
+	printf("[VOXELIZER]Info: Fragment buffer filled, in %f ms.\n",
+			time_elapsed / 1000000.0);
 
 	mygl3::FrameBuffer::Unbind();
 	glViewport(0, 0, kWidth, kHeight);

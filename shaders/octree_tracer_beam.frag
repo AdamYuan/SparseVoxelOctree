@@ -4,8 +4,7 @@
 #define STACK_SIZE 23 //must be 23
 #define EPS 3.552713678800501e-15
 
-layout(std140, binding = 5) uniform uuCamera
-{
+layout(std140, binding = 5) uniform uuCamera {
 	int uWidth, uHeight, uBeamSize, uA;
 	mat4 uProjection;
 	mat4 uView;
@@ -17,8 +16,7 @@ out float oFragT;
 layout(std430, binding = 3) readonly buffer uuOctree { uint uOctree[]; };
 
 struct StackItem { uint node; float t_max; } stack[STACK_SIZE];
-bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t)
-{
+bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t) {
 	d.x = abs(d.x) > EPS ? d.x : (d.x >= 0 ? EPS : -EPS);
 	d.y = abs(d.y) > EPS ? d.y : (d.y >= 0 ? EPS : -EPS);
 	d.z = abs(d.z) > EPS ? d.z : (d.z >= 0 ? EPS : -EPS);
@@ -50,8 +48,7 @@ bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t)
 	uint  scale      = STACK_SIZE - 1;
 	float scale_exp2 = 0.5f; //exp2( scale - STACK_SIZE )
 
-	while( scale < STACK_SIZE )
-	{
+	while( scale < STACK_SIZE ) {
 		if(cur == 0u) cur = uOctree[ parent + ( idx ^ oct_mask ) ];
 		// Determine maximum t-value of the cube by evaluating
 		// tx(), ty(), and tz() at its corner.
@@ -59,8 +56,7 @@ bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t)
 		vec3 t_corner = pos * t_coef - t_bias;
 		float tc_max = min(min(t_corner.x, t_corner.y), t_corner.z);
 
-		if( (cur & 0x80000000u) != 0 && t_min <= t_max )
-		{
+		if( (cur & 0x80000000u) != 0 && t_min <= t_max ) {
 			if(orig_sz + tc_max * dir_sz >= scale_exp2)
 				break;
 
@@ -69,13 +65,11 @@ bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t)
 			float half_scale_exp2 = scale_exp2 * 0.5f;
 			vec3 t_center = half_scale_exp2 * t_coef + t_corner;
 
-			if( t_min <= tv_max )
-			{
+			if( t_min <= tv_max ) {
 				if( (cur & 0x40000000u) != 0 ) // leaf node
 					break;
 				// PUSH
-				if( tc_max < h )
-				{
+				if( tc_max < h ) {
 					stack[ scale ].node = parent;
 					stack[ scale ].t_max = t_max;
 				}
@@ -108,8 +102,7 @@ bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t)
 		idx ^= step_mask;
 
 		// Proceed with pop if the bit flips disagree with the ray direction.
-		if( (idx & step_mask) != 0 )
-		{
+		if( (idx & step_mask) != 0 ) {
 			// POP
 			// Find the highest differing bit between the two positions.
 			uint differing_bits = 0;
@@ -141,15 +134,13 @@ bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t)
 	return scale < STACK_SIZE && t_min <= t_max;
 }
 
-vec3 GenCoarseRay()
-{
+vec3 GenCoarseRay() {
 	vec2 coord = ivec2(gl_FragCoord.xy) / vec2(uWidth, uHeight) * uBeamSize;
 	coord = coord * 2.0f - 1.0f;
 	return normalize(mat3(inverse(uView)) * (inverse(uProjection) * vec4(coord, 1, 1) ).xyz);
 }
 
-void main()
-{
+void main() {
 	vec3 o = uPosition.xyz, d = GenCoarseRay();
 
 	float t;
