@@ -42,6 +42,7 @@ file(GLOB DEP_FILES
 	dep/mygl3/utils/*.hpp
 	dep/mygl3/*.hpp
 	dep/imgui/*.cpp
+	dep/tinyfiledialogs/tinyfiledialogs.*
 	)
 
 find_package(OpenGL REQUIRED)

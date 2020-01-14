@@ -3,7 +3,7 @@
 
 layout(binding = 0) uniform uuTextures { sampler2D uTextures[1024]; };
 layout(binding = 1, offset = 0) uniform atomic_uint uCounter;
-layout(std430, binding = 2) buffer uuFragmentList { uvec2 uFragmentList[]; };
+layout(std430, binding = 2) writeonly buffer uuFragmentList { uvec2 uFragmentList[]; };
 
 in vec2 gTexcoords;
 in vec3 gNormal;

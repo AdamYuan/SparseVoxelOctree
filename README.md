@@ -15,7 +15,7 @@ make
 * [TinyOBJLoader](https://github.com/syoyo/tinyobjloader) - Obj loading
 * [TinyEXR](https://github.com/syoyo/tinyexr) - EXR file saving
 * [ImGui](https://github.com/ocornut/imgui) - UI rendering
-* [portable-file-dialogs](https://github.com/samhocevar/portable-file-dialogs) - Call native file dialog (require Zenity on linux)
+* [tinyfiledialogs](https://sourceforge.net/projects/tinyfiledialogs/) - Call native file dialog (require Zenity on linux)
 
 ## Reference
 * https://www.seas.upenn.edu/~pcozzi/OpenGLInsights/OpenGLInsights-SparseVoxelization.pdf - Voxelization and SVO building

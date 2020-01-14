@@ -3,7 +3,7 @@
 //
 
 #include <cstdio>
-#include <portable-file-dialogs.h>
+#include <tinyfiledialogs/tinyfiledialogs.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_opengl3.h>
 #include <imgui/imgui_impl_glfw.h>
@@ -47,9 +47,6 @@ Application::Application()
 
 	ImGui_ImplGlfw_InitForOpenGL(m_window, true);
 	ImGui_ImplOpenGL3_Init("#version 450 core");
-
-	//Initialize portable-file-dialogs
-	pfd::settings::verbose(true);
 }
 
 void Application::LoadScene(const char *filename, int octree_level)
@@ -85,7 +82,7 @@ void Application::Run()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT);
 
 		if(m_ui_display_flag) ui_main();
 
@@ -242,15 +239,16 @@ void Application::ui_main_menubar()
 }
 bool
 Application::ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
-						  const std::vector<std::string> &filters)
+						  int filter_num, const char *const *filter_patterns)
 {
 	bool ret = ImGui::InputText(label, buf, buf_size);
 	ImGui::SameLine();
 
 	if(ImGui::Button(btn))
 	{
-		auto file_dialog = pfd::open_file(title, "", filters, false);
-		if(!file_dialog.result().empty()) strcpy(buf, file_dialog.result().front().c_str());
+		const char *filename = tinyfd_openFileDialog(title, "", filter_num, filter_patterns,
+													 nullptr, false);
+		if(filename) strcpy(buf, filename);
 		ret = true;
 	}
 	return ret;
@@ -258,15 +256,16 @@ Application::ui_file_open(const char *label, const char *btn, char *buf, size_t 
 
 bool
 Application::ui_file_save(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
-						  const std::vector<std::string> &filters)
+						  int filter_num, const char *const *filter_patterns)
 {
 	bool ret = ImGui::InputText(label, buf, buf_size);
 	ImGui::SameLine();
 
 	if(ImGui::Button(btn))
 	{
-		auto file_dialog = pfd::save_file(title, "", filters, true);
-		strcpy(buf, file_dialog.result().c_str());
+		const char *filename = tinyfd_saveFileDialog(title, "", filter_num, filter_patterns,
+													 nullptr);
+		if(filename) strcpy(buf, filename);
 		ret = true;
 	}
 	return ret;
@@ -275,13 +274,15 @@ Application::ui_file_save(const char *label, const char *btn, char *buf, size_t 
 void Application::ui_load_scene_modal()
 {
 	if (ImGui::BeginPopupModal("Load Scene", nullptr,
-			ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove))
+							   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove))
 	{
 		static char name_buf[kFilenameBufSize];
 		static int octree_leve = 10;
 
+		constexpr const char *kFilter[] = {"*.obj"};
+
 		ui_file_open("OBJ Filename", "...##5", name_buf, kFilenameBufSize, "OBJ Filename",
-					 {"OBJ File (.obj)", "*.obj", "All Files", "*"});
+					 1, kFilter);
 		ImGui::DragInt("Octree Level", &octree_leve, 1, 2, 12);
 
 		if (ImGui::Button("Load", ImVec2(256, 0)))
@@ -301,15 +302,17 @@ void Application::ui_load_scene_modal()
 void Application::ui_export_exr_modal()
 {
 	if (ImGui::BeginPopupModal("Export OpenEXR", nullptr,
-			ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove))
+							   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove))
 	{
 		static char exr_name_buf[kFilenameBufSize]{};
 		static bool save_as_fp16{false};
 		ImGui::LabelText("", "INFO: will export %s channel",
-				m_pathtracer.m_view_type == PathTracer::kColor ? "COLOR" :
-				(m_pathtracer.m_view_type == PathTracer::kAlbedo ? "ALBEDO" : "NORMAL"));
+						 m_pathtracer.m_view_type == PathTracer::kColor ? "COLOR" :
+						 (m_pathtracer.m_view_type == PathTracer::kAlbedo ? "ALBEDO" : "NORMAL"));
+
+		constexpr const char *kFilter[] = {"*.exr"};
 		ui_file_save("OpenEXR Filename", "...##0", exr_name_buf, kFilenameBufSize, "Export OpenEXR",
-					 {"OpenEXR File (.exr)", "*.exr", "All Files", "*"});
+					 1, kFilter);
 
 		ImGui::Checkbox("Export As FP16", &save_as_fp16);
 

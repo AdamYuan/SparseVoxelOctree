@@ -35,10 +35,10 @@ private:
 	void ui_info_overlay();
 	void ui_load_scene_modal();
 	void ui_export_exr_modal();
-	static bool ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
-							  const std::vector<std::string> &filters);
+	static bool ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title, int filter_num,
+					  const char *const *filter_patterns);
 	static bool ui_file_save(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
-							 const std::vector<std::string> &filters);
+							 int filter_num, const char *const *filter_patterns);
 	static void glfw_key_callback(GLFWwindow *window, int key, int, int action, int);
 public:
 	Application();

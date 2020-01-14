@@ -75,8 +75,6 @@ void PathTracer::Prepare(const Camera &camera, const Octree &octree, const Octre
 
 void PathTracer::Render(const ScreenQuad &quad)
 {
-	mygl3::SyncGPU();
-
 	glViewport(0, 0, kWidth, kHeight);
 	m_sobol.Next(m_sobol_ptr);
 	m_shader.SetInt(m_unif_view_type, m_view_type);
