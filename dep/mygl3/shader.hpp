@@ -81,7 +81,7 @@ namespace mygl3
 			Load(str.c_str(), type);
 		}
 
-		void Use() const { if(!shaders.empty()) printf("ERROR\n"); glUseProgram(id_); }
+		void Use() const { glUseProgram(id_); }
 		GLint GetUniform(const char *name) const
 		{ return glGetUniformLocation(id_, name); }
 		GLuint GetProgram() const { return id_; }
