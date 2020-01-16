@@ -6,6 +6,7 @@
 #define MYGL3_SHADER_HPP
 
 #include "flags.hpp"
+#include <vector>
 #include <fstream>
 
 namespace mygl3
@@ -24,10 +25,17 @@ namespace mygl3
 			}
 			return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>{}};
 		}
+		std::vector<GLuint> shaders;
 
 	public:
 		Shader() = default;;
-		~Shader() { if(IsValidOglId(id_)) glDeleteProgram(id_); }
+		~Shader()
+		{
+			for(GLuint i : shaders)
+				glDeleteShader(i);
+			shaders.clear();
+			if(IsValidOglId(id_)) glDeleteProgram(id_);
+		}
 		Shader(const Shader&) = delete;
 		Shader& operator= (const Shader&) = delete;
 		Shader(Shader &&shader) noexcept : id_(shader.id_) { shader.id_ = 0; }
@@ -42,22 +50,29 @@ namespace mygl3
 
 		void Load(const char *src, GLenum type)
 		{
-			GLuint shader = glCreateShader(type);
-			glShaderSource(shader, 1, &src, nullptr);
-			glCompileShader(shader);
+			shaders.emplace_back(); GLuint &cur = shaders.back();
+
+			cur = glCreateShader(type);
+			glShaderSource(cur, 1, &src, nullptr);
+			glCompileShader(cur);
 
 			int success;
-			glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+			glGetShaderiv(cur, GL_COMPILE_STATUS, &success);
 			if(!success)
 			{
 				char log[16384];
-				glGetShaderInfoLog(shader, 16384, nullptr, log);
+				glGetShaderInfoLog(cur, 16384, nullptr, log);
 				printf("******SHADER COMPILE ERROR******\nsrc:\n%s\nerr:\n%s\n\n\n", src, log);
 			}
-			glAttachShader(id_, shader);
-			glLinkProgram(id_);
+			glAttachShader(id_, cur);
+		}
 
-			glDeleteShader(shader);
+		void Finalize()
+		{
+			glLinkProgram(id_);
+			for(GLuint i : shaders)
+				glDeleteShader(i);
+			shaders.clear();
 		}
 
 		void LoadFromFile(const char *filename, GLenum type)
@@ -66,7 +81,7 @@ namespace mygl3
 			Load(str.c_str(), type);
 		}
 
-		void Use() const { glUseProgram(id_); }
+		void Use() const { if(!shaders.empty()) printf("ERROR\n"); glUseProgram(id_); }
 		GLint GetUniform(const char *name) const
 		{ return glGetUniformLocation(id_, name); }
 		GLuint GetProgram() const { return id_; }

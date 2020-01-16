@@ -16,6 +16,7 @@ void Voxelizer::Initialize(int octree_level)
 	m_shader.Load(kVoxelizerFragStr, GL_FRAGMENT_SHADER);
 	m_shader.Load(kVoxelizerVertStr, GL_VERTEX_SHADER);
 	m_shader.Load(kVoxelizerGeomStr, GL_GEOMETRY_SHADER);
+	m_shader.Finalize();
 	m_unif_count_only = m_shader.GetUniform("uCountOnly");
 	m_unif_voxel_resolution = m_shader.GetUniform("uVoxelResolution");
 	m_shader.SetInt(m_unif_voxel_resolution, m_resolution);

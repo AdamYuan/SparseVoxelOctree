@@ -42,6 +42,7 @@ void PathTracer::Initialize()
 	m_shader.Initialize();
 	m_shader.Load(kQuadVertStr, GL_VERTEX_SHADER);
 	m_shader.Load(kPathTracerFragStr, GL_FRAGMENT_SHADER);
+	m_shader.Finalize();
 	m_unif_view_type = m_shader.GetUniform("uViewType");
 	m_unif_beam_enable = m_shader.GetUniform("uBeamEnable");
 	m_unif_bounce = m_shader.GetUniform("uBounce");

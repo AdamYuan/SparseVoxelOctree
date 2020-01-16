@@ -12,12 +12,14 @@ void OctreeTracer::Initialize()
 	m_shader.Initialize();
 	m_shader.Load(kQuadVertStr, GL_VERTEX_SHADER);
 	m_shader.Load(kOctreeTracerFragStr, GL_FRAGMENT_SHADER);
+	m_shader.Finalize();
 	m_unif_view_type = m_shader.GetUniform("uViewType");
 	m_unif_beam_enable = m_shader.GetUniform("uBeamEnable");
 
 	m_beam_shader.Initialize();
 	m_beam_shader.Load(kQuadVertStr, GL_VERTEX_SHADER);
 	m_beam_shader.Load(kOctreeTracerBeamFragStr, GL_FRAGMENT_SHADER);
+	m_beam_shader.Finalize();
 	m_beam_unif_dir_size = m_beam_shader.GetUniform("uDirSize");
 	m_beam_unif_origin_size = m_beam_shader.GetUniform("uOriginSize");
 

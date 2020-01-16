@@ -21,12 +21,15 @@ void OctreeBuilder::Initialize()
 {
 	m_tag_node_shader.Initialize();
 	m_tag_node_shader.Load(kOctreeTagNodeCompStr, GL_COMPUTE_SHADER);
+	m_tag_node_shader.Finalize();
 
 	m_alloc_node_shader.Initialize();
 	m_alloc_node_shader.Load(kOctreeAllocNodeCompStr, GL_COMPUTE_SHADER);
+	m_alloc_node_shader.Finalize();
 
 	m_modify_arg_shader.Initialize();
 	m_modify_arg_shader.Load(kOctreeModifyArgCompStr, GL_COMPUTE_SHADER);
+	m_modify_arg_shader.Finalize();
 
 	m_counter.Initialize();
 
