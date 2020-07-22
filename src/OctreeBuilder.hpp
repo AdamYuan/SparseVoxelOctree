@@ -21,7 +21,6 @@ private:
 	std::shared_ptr<myvk::Buffer> m_octree_buffer, m_octree_staging_buffer;
 	std::shared_ptr<myvk::Buffer> m_build_info_buffer, m_build_info_staging_buffer;
 	std::shared_ptr<myvk::Buffer> m_indirect_buffer, m_indirect_staging_buffer;
-	//BUILD INFO: { uint uAllocBegin, uAllocNum, uNumGroupX, uNumGroupY, uNumGroupZ; }
 
 	std::shared_ptr<myvk::DescriptorPool> m_descriptor_pool;
 	std::shared_ptr<myvk::DescriptorSetLayout> m_descriptor_set_layout;
@@ -36,7 +35,8 @@ private:
 	void create_pipeline(const std::shared_ptr<myvk::Device> &device);
 
 public:
-	void Initialize(const std::shared_ptr<myvk::CommandPool> &command_pool, const Voxelizer &voxelizer, uint32_t octree_level);
+	void Initialize(const Voxelizer &voxelizer, const std::shared_ptr<myvk::CommandPool> &command_pool,
+					uint32_t octree_level);
 	void CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
 	const std::shared_ptr<myvk::Buffer> &GetOctree() const { return m_octree_buffer; }
 };

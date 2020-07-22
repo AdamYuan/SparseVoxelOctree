@@ -3,15 +3,18 @@
 #include "myvk/ShaderModule.hpp"
 #include "VoxelizerSpirv.hpp"
 
-void Voxelizer::Initialize(const std::shared_ptr<myvk::Device> &device, const Scene &scene, uint32_t octree_level) {
+void Voxelizer::Initialize(const Scene &scene, const std::shared_ptr<myvk::CommandPool> &command_pool,
+						   uint32_t octree_level) {
 	m_voxel_resolution = 1u << octree_level;
 	m_scene = &scene;
 
+	std::shared_ptr<myvk::Device> device = command_pool->GetDevicePtr();
 	m_atomic_counter.Initialize(device);
 	create_descriptors(device);
 	create_render_pass(device);
 	create_pipeline(device);
 	m_framebuffer = myvk::Framebuffer::Create(m_render_pass, {}, {m_voxel_resolution, m_voxel_resolution});
+	count_and_create_fragment_list(command_pool);
 }
 
 void Voxelizer::create_descriptors(const std::shared_ptr<myvk::Device> &device) {
@@ -151,7 +154,7 @@ void Voxelizer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 	m_pipeline = myvk::GraphicsPipeline::Create(m_pipeline_layout, m_render_pass, pipeline_info);
 }
 
-void Voxelizer::CountAndCreateFragmentList(const std::shared_ptr<myvk::CommandPool> &command_pool) {
+void Voxelizer::count_and_create_fragment_list(const std::shared_ptr<myvk::CommandPool> &command_pool) {
 	{
 		m_atomic_counter.Reset(command_pool, 0);
 		std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);

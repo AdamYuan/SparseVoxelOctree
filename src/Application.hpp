@@ -31,6 +31,8 @@
 #include "myvk/Image.hpp"
 #include "myvk/Sampler.hpp"
 #include "Scene.hpp"
+#include "Octree.hpp"
+#include "OctreeTracer.hpp"
 
 class Application {
 private:
@@ -43,69 +45,58 @@ private:
 	std::shared_ptr<myvk::Queue> m_graphics_compute_queue, m_async_compute_queue;
 	std::shared_ptr<myvk::PresentQueue> m_present_queue;
 	std::shared_ptr<myvk::CommandPool> m_graphics_compute_command_pool;
-	std::shared_ptr<myvk::DescriptorPool> m_descriptor_pool;
 
 	//frame objects
 	std::shared_ptr<myvk::Swapchain> m_swapchain;
 	std::vector<std::shared_ptr<myvk::SwapchainImage>> m_swapchain_images;
 	std::vector<std::shared_ptr<myvk::ImageView>> m_swapchain_image_views;
 	std::vector<std::shared_ptr<myvk::Framebuffer>> m_framebuffers;
+	std::vector<std::shared_ptr<myvk::CommandBuffer>> m_frame_command_buffers;
 	myvk::FrameManager m_frame_manager;
 
-	struct FrameResource {
-		std::shared_ptr<myvk::CommandBuffer> m_command_buffer;
-		std::shared_ptr<myvk::Buffer> m_uniform_buffer;
-		std::shared_ptr<myvk::DescriptorSet> m_descriptor_set;
-	};
-	std::vector<FrameResource> m_frame_resources;
-
-	//pipeline
+	//render pass
 	std::shared_ptr<myvk::RenderPass> m_render_pass;
-	std::shared_ptr<myvk::DescriptorSetLayout> m_descriptor_set_layout;
-	std::shared_ptr<myvk::PipelineLayout> m_pipeline_layout;
-	std::shared_ptr<myvk::GraphicsPipeline> m_pipeline;
 
-	//depth buffer
-	std::shared_ptr<myvk::Image> m_depth_image;
-	std::shared_ptr<myvk::ImageView> m_depth_image_view;
-
+	//global data
 	Camera m_camera;
-	Scene m_scene;
 	ImGuiRenderer m_imgui_renderer;
-	std::shared_ptr<myvk::Buffer> m_octree;
+	Octree m_octree;
+	OctreeTracer m_octree_tracer;
+
+	//ui flags
+	bool m_pathtracing_flag{false}, m_ui_display_flag{true};
 
 	void create_window();
 
 	void initialize_vulkan();
 
-	void create_depth_buffer();
-
 	void create_render_pass();
-
-	void create_descriptor_set_layout();
-
-	void create_graphics_pipeline();
 
 	void create_framebuffers();
 
-	void create_descriptor_pool();
-
-	void create_frame_resources();
-
 	void draw_frame();
 
-	bool m_pathtracing_flag{false}, m_ui_display_flag{true};
 	void ui_main();
+
 	static void ui_push_disable();
+
 	static void ui_pop_disable();
+
 	void ui_main_menubar();
+
 	void ui_info_overlay();
+
 	void ui_load_scene_modal();
+
 	void ui_export_exr_modal();
-	static bool ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title, int filter_num,
-							 const char *const *filter_patterns);
+
+	static bool
+	ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title, int filter_num,
+				 const char *const *filter_patterns);
+
 	static bool ui_file_save(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
 							 int filter_num, const char *const *filter_patterns);
+
 	static void glfw_key_callback(GLFWwindow *window, int key, int, int action, int);
 
 public:

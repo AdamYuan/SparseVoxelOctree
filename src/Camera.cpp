@@ -46,11 +46,13 @@ void Camera::Control(GLFWwindow *window, float delta) {
 	m_last_mouse_pos = cur_pos;
 }
 
-void Camera::UpdateMatrices() {
+void Camera::UpdateData() {
 	m_buffer.m_view = glm::rotate(glm::identity<glm::mat4>(), -m_pitch, glm::vec3(1.0f, 0.0f, 0.0f));
 	m_buffer.m_view = glm::rotate(m_buffer.m_view, -m_yaw, glm::vec3(0.0f, 1.0f, 0.0f));
 	m_buffer.m_view = glm::translate(m_buffer.m_view, -m_position);
 
 	m_buffer.m_projection = glm::perspective(m_fov, kCamAspectRatio, kCamNear, kCamFar);
 	m_buffer.m_projection[1][1] *= -1;
+
+	m_buffer.m_position = glm::vec4(m_position, 1.0f);
 }

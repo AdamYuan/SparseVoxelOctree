@@ -32,10 +32,10 @@ private:
 	void create_descriptors(const std::shared_ptr<myvk::Device> &device);
 	void create_render_pass(const std::shared_ptr<myvk::Device> &device);
 	void create_pipeline(const std::shared_ptr<myvk::Device> &device);
+	void count_and_create_fragment_list(const std::shared_ptr<myvk::CommandPool> &command_pool);
 
 public:
-	void Initialize(const std::shared_ptr<myvk::Device> &device, const Scene &scene, uint32_t octree_level);
-	void CountAndCreateFragmentList(const std::shared_ptr<myvk::CommandPool> &command_pool);
+	void Initialize(const Scene &scene, const std::shared_ptr<myvk::CommandPool> &command_pool, uint32_t octree_level);
 	void CmdVoxelize(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
 	uint32_t GetVoxelResolution() const { return m_voxel_resolution; }
 	uint32_t GetVoxelFragmentCount() const { return m_voxel_fragment_count; }

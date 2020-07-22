@@ -6,13 +6,13 @@
 
 inline static uint32_t group_x_64(uint32_t x) { return (x >> 6u) + ((x & 0x3fu) ? 1u : 0u); }
 
-void OctreeBuilder::Initialize(const std::shared_ptr<myvk::CommandPool> &command_pool, const Voxelizer &voxelizer,
+void OctreeBuilder::Initialize(const Voxelizer &voxelizer, const std::shared_ptr<myvk::CommandPool> &command_pool,
 							   uint32_t octree_level) {
 	std::shared_ptr<myvk::Device> device = command_pool->GetDevicePtr();
 	m_octree_level = octree_level;
 	m_voxelizer = &voxelizer;
 	m_atomic_counter.Initialize(device);
-	m_atomic_counter.Reset(command_pool, 1);
+	m_atomic_counter.Reset(command_pool, 0);
 
 	create_buffers(device);
 	create_descriptors(device);
@@ -53,7 +53,7 @@ void OctreeBuilder::create_buffers(const std::shared_ptr<myvk::Device> &device) 
 		std::fill(data, data + octree_node_num, 0);
 		m_octree_staging_buffer->Unmap();
 	}
-	LOGV.printf("[OCTREE]Info: Alloc %d nodes (%.1f MB)", octree_node_num, m_octree_buffer->GetSize() / 1000000.0f);
+	LOGV.printf("Octree buffer created with %d nodes (%.1f MB)", octree_node_num, m_octree_buffer->GetSize() / 1000000.0f);
 }
 
 void OctreeBuilder::create_descriptors(const std::shared_ptr<myvk::Device> &device) {

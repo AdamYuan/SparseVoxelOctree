@@ -24,8 +24,7 @@ function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
 	)
 endfunction()
 
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/tri.vert ${CMAKE_SOURCE_DIR}/shaders/tri_vert.spv)
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/tri.frag ${CMAKE_SOURCE_DIR}/shaders/tri_frag.spv)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/quad.vert ${CMAKE_SOURCE_DIR}/shaders/quad_vert.spv)
 
 add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.vert ${CMAKE_SOURCE_DIR}/shaders/voxelizer_vert.spv)
 add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.frag ${CMAKE_SOURCE_DIR}/shaders/voxelizer_frag.spv)
@@ -35,14 +34,9 @@ add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tag_node.comp ${CMAKE_SOURCE
 add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node_comp.spv)
 add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg.comp ${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg_comp.spv)
 
-add_executable(byte_packer src/byte_packer.cpp dep/tiny_obj_loader.cpp)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer.frag ${CMAKE_SOURCE_DIR}/shaders/octree_tracer_frag.spv)
 
-add_custom_command(
-		OUTPUT ${CMAKE_SOURCE_DIR}/src/ShaderSrc.hpp
-		COMMAND byte_packer src/ShaderSrc.hpp shaders/tri_vert.spv kTriVertSpv shaders/tri_frag.spv kTriFragSpv
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-		DEPENDS byte_packer ${CMAKE_SOURCE_DIR}/shaders/tri_vert.spv ${CMAKE_SOURCE_DIR}/shaders/tri_frag.spv
-)
+add_executable(byte_packer src/byte_packer.cpp dep/tiny_obj_loader.cpp)
 
 add_custom_command(
 		OUTPUT ${CMAKE_SOURCE_DIR}/src/VoxelizerSpirv.hpp
@@ -56,6 +50,20 @@ add_custom_command(
 		COMMAND byte_packer src/OctreeBuilderSpirv.hpp shaders/octree_tag_node_comp.spv kOctreeTagNodeCompSpv shaders/octree_alloc_node_comp.spv kOctreeAllocNodeCompSpv shaders/octree_modify_arg_comp.spv kOctreeModifyArgCompSpv
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		DEPENDS byte_packer ${CMAKE_SOURCE_DIR}/shaders/octree_tag_node_comp.spv ${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node_comp.spv ${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg_comp.spv
+)
+
+add_custom_command(
+		OUTPUT ${CMAKE_SOURCE_DIR}/src/QuadSpirv.hpp
+		COMMAND byte_packer src/QuadSpirv.hpp shaders/quad_vert.spv kQuadVertSpv
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		DEPENDS byte_packer ${CMAKE_SOURCE_DIR}/shaders/quad_vert.spv
+)
+
+add_custom_command(
+		OUTPUT ${CMAKE_SOURCE_DIR}/src/OctreeTracerSpirv.hpp
+		COMMAND byte_packer src/OctreeTracerSpirv.hpp shaders/octree_tracer_frag.spv kOctreeTracerFragSpv
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		DEPENDS byte_packer ${CMAKE_SOURCE_DIR}/shaders/octree_tracer_frag.spv
 )
 
 add_executable(VulkanSVO
@@ -87,10 +95,15 @@ add_executable(VulkanSVO
 		src/OctreeBuilder.hpp
 		src/Voxelizer.cpp
 		src/Voxelizer.hpp
+		src/OctreeTracer.cpp
+		src/OctreeTracer.hpp
+		src/Octree.cpp
+		src/Octree.hpp
 
-		src/ShaderSrc.hpp
 		src/VoxelizerSpirv.hpp
 		src/OctreeBuilderSpirv.hpp
+		src/QuadSpirv.hpp
+		src/OctreeTracerSpirv.hpp
 
 		src/myvk/DeviceObjectBase.hpp
 		src/myvk/ImageBase.cpp

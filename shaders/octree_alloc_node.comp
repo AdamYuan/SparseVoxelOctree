@@ -1,4 +1,4 @@
-#version 450 core
+#version 450
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1 ) in;
 
 layout (std140, binding = 0) buffer uuCounter { uint uCounter; };
@@ -11,5 +11,5 @@ void main() {
 	if(gl_GlobalInvocationID.x >= uAllocNum) return;
 	uint idx = gl_GlobalInvocationID.x + uAllocBegin;
 	if((uOctree[idx] & 0x80000000u) > 0u)
-		uOctree[idx] = (atomicAdd(uCounter, 1u) << 3u) | 0x80000000u;
+		uOctree[idx] = ((atomicAdd(uCounter, 1u) + 1u) << 3u) | 0x80000000u;
 }
