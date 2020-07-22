@@ -78,4 +78,51 @@ namespace myvk {
 		}
 		return barriers;
 	}
+
+
+	VkBufferMemoryBarrier
+	BufferBase::GetMemoryBarrier(const BufferSubresourceRange &region, VkAccessFlags src_access_mask,
+								 VkAccessFlags dst_access_mask) {
+		VkBufferMemoryBarrier ret = {};
+		ret.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		ret.size = region.size;
+
+		ret.buffer = m_buffer;
+		ret.offset = region.offset;
+		ret.srcAccessMask = src_access_mask;
+		ret.dstAccessMask = dst_access_mask;
+		ret.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ret.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		return ret;
+	}
+
+	VkBufferMemoryBarrier BufferBase::GetSrcMemoryBarrier(const VkBufferCopy &region, VkAccessFlags src_access_mask,
+														  VkAccessFlags dst_access_mask) {
+		VkBufferMemoryBarrier ret = {};
+		ret.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		ret.size = region.size;
+
+		ret.buffer = m_buffer;
+		ret.offset = region.srcOffset;
+		ret.srcAccessMask = src_access_mask;
+		ret.dstAccessMask = dst_access_mask;
+		ret.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ret.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		return ret;
+	}
+
+	VkBufferMemoryBarrier BufferBase::GetDstMemoryBarrier(const VkBufferCopy &region, VkAccessFlags src_access_mask,
+														  VkAccessFlags dst_access_mask) {
+		VkBufferMemoryBarrier ret = {};
+		ret.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		ret.size = region.size;
+
+		ret.buffer = m_buffer;
+		ret.offset = region.dstOffset;
+		ret.srcAccessMask = src_access_mask;
+		ret.dstAccessMask = dst_access_mask;
+		ret.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ret.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		return ret;
+	}
 }

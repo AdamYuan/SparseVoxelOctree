@@ -37,6 +37,7 @@ public:
 	void Initialize(const std::shared_ptr<myvk::Device> &device, const Scene &scene, uint32_t octree_level);
 	void CountAndCreateFragmentList(const std::shared_ptr<myvk::CommandPool> &command_pool);
 	void CmdVoxelize(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
+	uint32_t GetVoxelResolution() const { return m_voxel_resolution; }
 	uint32_t GetVoxelFragmentCount() const { return m_voxel_fragment_count; }
 	const std::shared_ptr<myvk::Buffer> &GetVoxelFragmentListPtr() const { return m_voxel_fragment_list; }
 };

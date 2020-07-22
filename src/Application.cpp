@@ -4,6 +4,7 @@
 #include "Config.hpp"
 #include "ShaderSrc.hpp"
 #include "Voxelizer.hpp"
+#include "OctreeBuilder.hpp"
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
@@ -440,14 +441,32 @@ void Application::LoadScene(const char *filename, uint32_t octree_level) {
 		Voxelizer voxelizer;
 		voxelizer.Initialize(m_device, m_scene, octree_level);
 		voxelizer.CountAndCreateFragmentList(m_graphics_compute_command_pool);
+		OctreeBuilder builder;
+		builder.Initialize(m_graphics_compute_command_pool, voxelizer, octree_level);
+
 		std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(m_device);
-		std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(m_graphics_compute_command_pool);
+		std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(
+			m_graphics_compute_command_pool);
 		command_buffer->Begin();
 		voxelizer.CmdVoxelize(command_buffer);
+		command_buffer->CmdPipelineBarrier(
+			VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+			{},
+			voxelizer.GetVoxelFragmentListPtr()->GetMemoryBarriers(
+				{{0u, voxelizer.GetVoxelFragmentListPtr()->GetSize()}},
+				VK_ACCESS_SHADER_WRITE_BIT,
+				VK_ACCESS_SHADER_READ_BIT),
+			{});
+		builder.CmdBuild(command_buffer);
 		command_buffer->End();
+
+		LOGV.printf("Voxelize and Octree building BEGIN");
 		command_buffer->Submit({}, {}, fence);
 		fence->Wait();
-		LOGV.printf("Voxel fragment list filled");
+		LOGV.printf("Voxelize and Octree building END");
+		m_octree = builder.GetOctree(); //store octree
+
 		create_graphics_pipeline();
 	}
 }

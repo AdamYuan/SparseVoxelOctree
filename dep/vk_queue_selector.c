@@ -32,7 +32,7 @@ struct VqsQuery_T {
 	uint32_t leftCount, rightCount, interiorEdgeCount, nodeCount, edgeCount;
 	// RESULTS
 	uint32_t *resultQueueFamilyIndices, *resultPresentQueueFamilyIndices,
-			 *queueFamilyCounters;
+		*queueFamilyCounters;
 };
 
 uint32_t queueFlagDist(uint32_t l, uint32_t r, float f) {
@@ -44,7 +44,7 @@ uint32_t queueFlagDist(uint32_t l, uint32_t r, float f) {
 	i = (i & 0x33333333u) + ((i >> 2u) & 0x33333333u);
 	i = (((i + (i >> 4u)) & 0x0F0F0F0Fu) * 0x01010101u) >> 24u;
 	// multiplied by f
-	return i * (uint32_t)(f * 10000.0f);
+	return i * (uint32_t) (f * 10000.0f);
 }
 
 void addEdge(Edge *edge, Edge *edgeRev, Node *from, Node *to, uint32_t cap,
@@ -84,8 +84,8 @@ uint32_t queryBuildInteriorEdges(VqsQuery query, bool buildEdge) {
 				query->resultPresentQueueFamilyIndices[j] == UINT32_MAX) {
 				VkBool32 presentSupport;
 				if (query->vulkanFunctions.vkGetPhysicalDeviceSurfaceSupportKHR(
-						query->physicalDevice, i, requiredPresentQueueSurface,
-						&presentSupport) != VK_SUCCESS)
+					query->physicalDevice, i, requiredPresentQueueSurface,
+					&presentSupport) != VK_SUCCESS)
 					presentSupport = VK_FALSE;
 
 				if (presentSupport && (flags & requiredFlags) == requiredFlags) {
@@ -204,7 +204,7 @@ VkResult queryInit(VqsQuery query, const VqsQueryCreateInfo *pCreateInfo) {
 		query->physicalDevice, &query->leftCount, NULL);
 	if (query->leftCount == 0)
 		return VK_ERROR_UNKNOWN;
-	query->queueFamilyProperties = (VkQueueFamilyProperties *)malloc(
+	query->queueFamilyProperties = (VkQueueFamilyProperties *) malloc(
 		query->leftCount * sizeof(VkQueueFamilyProperties));
 	if (query->queueFamilyProperties == NULL)
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -212,7 +212,7 @@ VkResult queryInit(VqsQuery query, const VqsQueryCreateInfo *pCreateInfo) {
 		query->physicalDevice, &query->leftCount, query->queueFamilyProperties);
 
 	// COPY QUEUE REQUIREMENTS
-	query->queueRequirements = (VqsQueueRequirements *)malloc(
+	query->queueRequirements = (VqsQueueRequirements *) malloc(
 		query->rightCount * sizeof(VqsQueueRequirements));
 	if (query->queueRequirements == NULL)
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -221,9 +221,9 @@ VkResult queryInit(VqsQuery query, const VqsQueryCreateInfo *pCreateInfo) {
 
 	// ALLOC RESULT ARRAYS
 	query->resultQueueFamilyIndices =
-		(uint32_t *)malloc(query->rightCount * sizeof(uint32_t));
+		(uint32_t *) malloc(query->rightCount * sizeof(uint32_t));
 	query->resultPresentQueueFamilyIndices =
-		(uint32_t *)malloc(query->rightCount * sizeof(uint32_t));
+		(uint32_t *) malloc(query->rightCount * sizeof(uint32_t));
 	if (query->resultQueueFamilyIndices == NULL ||
 		query->resultPresentQueueFamilyIndices == NULL)
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -247,8 +247,8 @@ VkResult queryPreprocessPresentQueues(VqsQuery query) {
 				VkQueueFlags flags = query->queueFamilyProperties[i].queueFlags;
 				VkBool32 presentSupport;
 				if (query->vulkanFunctions.vkGetPhysicalDeviceSurfaceSupportKHR(
-						query->physicalDevice, i, requiredPresentQueueSurface,
-						&presentSupport) != VK_SUCCESS)
+					query->physicalDevice, i, requiredPresentQueueSurface,
+					&presentSupport) != VK_SUCCESS)
 					presentSupport = VK_FALSE;
 
 				if (presentSupport) {
@@ -274,12 +274,12 @@ VkResult queryPreprocessPresentQueues(VqsQuery query) {
 VkResult queryBuildGraph(VqsQuery query) {
 	// ALLOC GRAPH
 	query->nodeCount = query->leftCount + query->rightCount + 2u;
-	query->nodes = (Node *)malloc(query->nodeCount * sizeof(Node));
+	query->nodes = (Node *) malloc(query->nodeCount * sizeof(Node));
 
 	query->interiorEdgeCount = queryBuildInteriorEdges(query, false);
 	query->edgeCount =
 		query->interiorEdgeCount + (query->leftCount + query->rightCount) * 2u;
-	query->edges = (Edge *)malloc(query->edgeCount * sizeof(Edge));
+	query->edges = (Edge *) malloc(query->edgeCount * sizeof(Edge));
 
 	if (query->nodes == NULL || query->edges == NULL)
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -312,13 +312,13 @@ VkResult queryBuildGraph(VqsQuery query) {
 
 VkResult queryMainAlgorithm(VqsQuery query) {
 	// ALLOC SPFA QUEUE
-	query->spfaQueue = (Node **)malloc(query->nodeCount * sizeof(Node *));
+	query->spfaQueue = (Node **) malloc(query->nodeCount * sizeof(Node *));
 	if (query->spfaQueue == NULL)
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
 
 	// RUN MAIN ALGORITHM
 	uint32_t *leftFlowLimits =
-		(uint32_t *)malloc(query->leftCount * sizeof(uint32_t));
+		(uint32_t *) malloc(query->leftCount * sizeof(uint32_t));
 	if (leftFlowLimits == NULL)
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -363,7 +363,7 @@ VkResult queryFetchResults(VqsQuery query) {
 
 	// ALLOC QUEUE FAMILY COUNTERS
 	query->queueFamilyCounters =
-		(uint32_t *)malloc(query->leftCount * sizeof(uint32_t));
+		(uint32_t *) malloc(query->leftCount * sizeof(uint32_t));
 	if (query->queueFamilyCounters == NULL)
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -402,17 +402,17 @@ void queryFree(VqsQuery query) {
 
 VkResult vqsCreateQuery(const VqsQueryCreateInfo *pCreateInfo,
 						VqsQuery *pQuery) {
-	*pQuery = (VqsQuery)malloc(sizeof(struct VqsQuery_T));
+	*pQuery = (VqsQuery) malloc(sizeof(struct VqsQuery_T));
 	if (*pQuery == NULL)
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
 
 	VkResult result;
 #define TRY_STMT(stmt)                                                         \
-	result = stmt;                                                               \
-	if (result != VK_SUCCESS) {                                                  \
-		vqsDestroyQuery(*pQuery);                                                  \
-		return result;                                                             \
-	}
+    result = stmt;                                                               \
+    if (result != VK_SUCCESS) {                                                  \
+        vqsDestroyQuery(*pQuery);                                                  \
+        return result;                                                             \
+    }
 	TRY_STMT(queryInit(*pQuery, pCreateInfo));
 	TRY_STMT(queryPreprocessPresentQueues(*pQuery));
 	TRY_STMT(queryBuildGraph(*pQuery));
@@ -453,7 +453,7 @@ void vqsGetQueueSelections(VqsQuery query,
 			pQueueSelections[i].presentQueueFamilyIndex = family;
 		} else {
 			pQueueSelections[i].presentQueueIndex =
-				pQueueSelections[i].presentQueueFamilyIndex = UINT32_MAX;
+			pQueueSelections[i].presentQueueFamilyIndex = UINT32_MAX;
 		}
 	}
 }
@@ -467,7 +467,7 @@ void vqsEnumerateDeviceQueueCreateInfos(
 	float **familyPriorityOffsets;
 	if (pQueuePriorities) {
 		familyPriorityOffsets =
-			(float **)malloc(query->leftCount * sizeof(float *));
+			(float **) malloc(query->leftCount * sizeof(float *));
 		if (familyPriorityOffsets == NULL)
 			return;
 	}
@@ -505,7 +505,7 @@ void vqsEnumerateDeviceQueueCreateInfos(
 			uint32_t family, queueIndex;
 			family = query->resultQueueFamilyIndices[i];
 			queueIndex = (--query->queueFamilyCounters[family]) %
-				query->queueFamilyProperties[family].queueCount;
+						 query->queueFamilyProperties[family].queueCount;
 
 			if (query->queueRequirements[i].priority >
 				familyPriorityOffsets[family][queueIndex]) // set to max priority
@@ -515,7 +515,7 @@ void vqsEnumerateDeviceQueueCreateInfos(
 			family = query->resultPresentQueueFamilyIndices[i];
 			if (family != UINT32_MAX) {
 				queueIndex = (--query->queueFamilyCounters[family]) %
-					query->queueFamilyProperties[family].queueCount;
+							 query->queueFamilyProperties[family].queueCount;
 
 				if (query->queueRequirements[i].priority >
 					familyPriorityOffsets[family][queueIndex]) // set to max priority

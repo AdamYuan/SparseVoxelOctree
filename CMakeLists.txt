@@ -31,6 +31,10 @@ add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.vert ${CMAKE_SOURCE_DIR}/
 add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.frag ${CMAKE_SOURCE_DIR}/shaders/voxelizer_frag.spv)
 add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.geom ${CMAKE_SOURCE_DIR}/shaders/voxelizer_geom.spv)
 
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tag_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_tag_node_comp.spv)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node_comp.spv)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg.comp ${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg_comp.spv)
+
 add_executable(byte_packer src/byte_packer.cpp dep/tiny_obj_loader.cpp)
 
 add_custom_command(
@@ -45,6 +49,13 @@ add_custom_command(
 		COMMAND byte_packer src/VoxelizerSpirv.hpp shaders/voxelizer_vert.spv kVoxelizerVertSpv shaders/voxelizer_geom.spv kVoxelizerGeomSpv shaders/voxelizer_frag.spv kVoxelizerFragSpv
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		DEPENDS byte_packer ${CMAKE_SOURCE_DIR}/shaders/voxelizer_vert.spv ${CMAKE_SOURCE_DIR}/shaders/voxelizer_geom.spv ${CMAKE_SOURCE_DIR}/shaders/voxelizer_frag.spv
+)
+
+add_custom_command(
+		OUTPUT ${CMAKE_SOURCE_DIR}/src/OctreeBuilderSpirv.hpp
+		COMMAND byte_packer src/OctreeBuilderSpirv.hpp shaders/octree_tag_node_comp.spv kOctreeTagNodeCompSpv shaders/octree_alloc_node_comp.spv kOctreeAllocNodeCompSpv shaders/octree_modify_arg_comp.spv kOctreeModifyArgCompSpv
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		DEPENDS byte_packer ${CMAKE_SOURCE_DIR}/shaders/octree_tag_node_comp.spv ${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node_comp.spv ${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg_comp.spv
 )
 
 add_executable(VulkanSVO
@@ -79,6 +90,7 @@ add_executable(VulkanSVO
 
 		src/ShaderSrc.hpp
 		src/VoxelizerSpirv.hpp
+		src/OctreeBuilderSpirv.hpp
 
 		src/myvk/DeviceObjectBase.hpp
 		src/myvk/ImageBase.cpp
@@ -127,6 +139,8 @@ add_executable(VulkanSVO
 		src/myvk/ShaderModule.hpp
 		src/myvk/GraphicsPipeline.cpp
 		src/myvk/GraphicsPipeline.hpp
+		src/myvk/ComputePipeline.cpp
+		src/myvk/ComputePipeline.hpp
 		src/myvk/Framebuffer.cpp
 		src/myvk/Framebuffer.hpp
 		src/myvk/DescriptorPool.cpp
@@ -137,7 +151,9 @@ add_executable(VulkanSVO
 		src/myvk/FrameManager.hpp
 		src/myvk/Sampler.cpp
 		src/myvk/Sampler.hpp
-		src/myvk/ObjectTracker.cpp src/myvk/ObjectTracker.hpp)
+		src/myvk/ObjectTracker.cpp
+		src/myvk/ObjectTracker.hpp
+		)
 
 find_package(Threads)
 target_compile_definitions(VulkanSVO PUBLIC VK_NO_PROTOTYPES)

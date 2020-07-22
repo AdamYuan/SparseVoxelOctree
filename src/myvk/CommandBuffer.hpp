@@ -105,6 +105,10 @@ namespace myvk {
 								 VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
 								 VkImageLayout old_layout, VkImageLayout new_layout) const;
 
+		void CmdDispatch(uint32_t group_x, uint32_t group_y, uint32_t group_z) const;
+
+		void CmdDispatchIndirect(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset = 0) const;
+
 		VkCommandBuffer GetHandle() const { return m_command_buffer; }
 
 		const std::shared_ptr<CommandPool> &GetCommandPoolPtr() const { return m_command_pool_ptr; }

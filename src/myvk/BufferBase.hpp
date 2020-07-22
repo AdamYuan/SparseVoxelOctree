@@ -6,7 +6,7 @@
 
 namespace myvk {
 	struct BufferSubresourceRange {
-		VkDeviceSize size, offset;
+		VkDeviceSize offset, size;
 	};
 
 	class BufferBase : public DeviceObjectBase {
@@ -34,6 +34,15 @@ namespace myvk {
 		std::vector<VkBufferMemoryBarrier> GetSrcMemoryBarriers(const std::vector<VkBufferImageCopy> &regions,
 																VkAccessFlags src_access_mask,
 																VkAccessFlags dst_access_mask);
+
+		VkBufferMemoryBarrier GetMemoryBarrier(const BufferSubresourceRange &region, VkAccessFlags src_access_mask,
+											   VkAccessFlags dst_access_mask);
+
+		VkBufferMemoryBarrier
+		GetSrcMemoryBarrier(const VkBufferCopy &region, VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask);
+
+		VkBufferMemoryBarrier
+		GetDstMemoryBarrier(const VkBufferCopy &region, VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask);
 	};
 }
 

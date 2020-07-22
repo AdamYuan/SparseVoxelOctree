@@ -72,6 +72,7 @@ private:
 	Camera m_camera;
 	Scene m_scene;
 	ImGuiRenderer m_imgui_renderer;
+	std::shared_ptr<myvk::Buffer> m_octree;
 
 	void create_window();
 

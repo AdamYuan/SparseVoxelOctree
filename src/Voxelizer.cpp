@@ -153,7 +153,6 @@ void Voxelizer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 
 void Voxelizer::CountAndCreateFragmentList(const std::shared_ptr<myvk::CommandPool> &command_pool) {
 	{
-		uint32_t pc_count_only = 1;
 		m_atomic_counter.Reset(command_pool, 0);
 		std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
 		command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -162,11 +161,9 @@ void Voxelizer::CountAndCreateFragmentList(const std::shared_ptr<myvk::CommandPo
 			command_buffer->CmdBindPipeline(m_pipeline);
 			command_buffer->CmdBindDescriptorSets({m_descriptor_set, m_scene->GetDescriptorSetPtr()},
 												  m_pipeline, {});
-			command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t),
-											 &m_voxel_resolution);
-			command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(uint32_t),
-											 sizeof(uint32_t),
-											 &pc_count_only);
+			uint32_t push_constants[] = {m_voxel_resolution, 1};
+			command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 2 * sizeof(uint32_t),
+											 push_constants);
 			m_scene->CmdDraw(command_buffer, m_pipeline_layout, sizeof(uint32_t) * 2);
 		}
 		command_buffer->CmdEndRenderPass();
@@ -184,21 +181,20 @@ void Voxelizer::CountAndCreateFragmentList(const std::shared_ptr<myvk::CommandPo
 												 VMA_MEMORY_USAGE_GPU_ONLY, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 	m_descriptor_set->UpdateStorageBuffer(m_voxel_fragment_list, 1);
 
-	LOGV.printf("Voxel fragment list created with %u voxels (%.1lf MB)", m_voxel_fragment_count, m_voxel_fragment_list->GetSize() / 1000000.0);
+	LOGV.printf("Voxel fragment list created with %u voxels (%.1lf MB)", m_voxel_fragment_count,
+				m_voxel_fragment_list->GetSize() / 1000000.0);
 }
 
 void Voxelizer::CmdVoxelize(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
-	uint32_t pc_count_only = 0;
 	command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffer, {}, {m_voxel_resolution, m_voxel_resolution});
 	{
 		command_buffer->CmdBindPipeline(m_pipeline);
 		command_buffer->CmdBindDescriptorSets({m_descriptor_set, m_scene->GetDescriptorSetPtr()},
 											  m_pipeline, {});
-		command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t),
-										 &m_voxel_resolution);
-		command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(uint32_t),
-										 sizeof(uint32_t),
-										 &pc_count_only);
+
+		uint32_t push_constants[] = {m_voxel_resolution, 0};
+		command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 2 * sizeof(uint32_t),
+										 push_constants);
 		m_scene->CmdDraw(command_buffer, m_pipeline_layout, sizeof(uint32_t) * 2);
 	}
 	command_buffer->CmdEndRenderPass();

@@ -1,0 +1,13 @@
+#version 450 core
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1 ) in;
+
+layout (std140, binding = 0) buffer uuCounter { uint uCounter; };
+layout (std140, binding = 3) buffer uuBuildInfo { uint uAllocBegin, uAllocNum; };
+layout (std140, binding = 4) writeonly buffer uuIndirect { uint uNumGroupX, uNumGroupY, uNumGroupZ; };
+
+uint group_x_64(uint x) { return (x >> 6u) + (((x & 0x3fu) > 0u) ? 1u : 0u); }
+void main() {
+	uAllocBegin += uAllocNum;
+	uAllocNum = ( uCounter << 3u ) - uAllocBegin + 8u;
+	uNumGroupX = group_x_64( uAllocNum );
+}

@@ -274,6 +274,14 @@ namespace myvk {
 		}
 	}
 
+	void CommandBuffer::CmdDispatch(uint32_t group_x, uint32_t group_y, uint32_t group_z) const {
+		vkCmdDispatch(m_command_buffer, group_x, group_y, group_z);
+	}
+
+	void CommandBuffer::CmdDispatchIndirect(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset) const {
+		vkCmdDispatchIndirect(m_command_buffer, buffer->GetHandle(), offset);
+	}
+
 	CommandBufferGroup::CommandBufferGroup(const std::vector<std::shared_ptr<CommandBuffer>> &command_buffers) {
 		Initialize(command_buffers);
 	}
