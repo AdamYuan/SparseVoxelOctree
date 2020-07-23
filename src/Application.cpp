@@ -114,7 +114,7 @@ void Application::draw_frame() {
 	command_buffer->Begin();
 	command_buffer->CmdBeginRenderPass(
 		m_render_pass, m_framebuffers[image_index], {{{0.0f, 0.0f, 0.0f, 1.0f}}}, m_swapchain->GetExtent());
-	if (m_octree.GetBufferPtr())
+	if (!m_octree.Empty())
 		m_octree_tracer.CmdDrawPipeline(command_buffer, m_camera, m_frame_manager.GetCurrentFrame());
 	command_buffer->CmdNextSubpass();
 	m_imgui_renderer.CmdDrawPipeline(command_buffer, m_frame_manager.GetCurrentFrame());
@@ -210,11 +210,9 @@ Application::Application() {
 	create_framebuffers();
 	m_camera.m_position = glm::vec3(1.5);
 	m_frame_manager.Initialize(m_swapchain, kFrameCount);
-	m_octree_tracer.Initialize(m_swapchain, m_render_pass, 0, kFrameCount);
+	m_octree.Initialize(m_device);
+	m_octree_tracer.Initialize(m_octree, m_render_pass, 0, kFrameCount);
 	m_imgui_renderer.Initialize(m_graphics_compute_command_pool, m_render_pass, 1, kFrameCount);
-
-	//LoadScene("/home/adamyuan/Projects/Adypt/models/sponza/sponza.obj", 10);
-	//LoadScene("/home/adamyuan/Projects/Adypt/models/San_Miguel/san-miguel-mod.obj", 10);
 }
 
 void Application::LoadScene(const char *filename, uint32_t octree_level) {
@@ -249,8 +247,7 @@ void Application::LoadScene(const char *filename, uint32_t octree_level) {
 		fence->Wait();
 		time = glfwGetTime() - time;
 		LOGV.printf("Voxelize and Octree building FINISHED in %lf ms", time * 1000.0);
-		m_octree.Initialize(builder.GetOctree(), octree_level);
-		m_octree_tracer.UpdateOctree(m_octree);
+		m_octree.Update(builder.GetOctree(), octree_level);
 	}
 }
 
@@ -303,7 +300,7 @@ void Application::ui_info_overlay() {
 		//ImGui::Text("OpenGL version: %s", glGetString(GL_VERSION));
 		ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 
-		if (m_octree.GetBufferPtr()) {
+		if (!m_octree.Empty()) {
 			ImGui::Text("Octree Level: %d", m_octree.GetLevel());
 			ImGui::Text("Octree Size: %.1f MB", m_octree.GetBufferPtr()->GetSize() / 1000000.0f);
 		}

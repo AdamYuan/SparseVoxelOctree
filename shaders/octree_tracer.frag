@@ -3,8 +3,8 @@
 #define STACK_SIZE 23//must be 23
 #define EPS 3.552713678800501e-15
 
-layout (std430, binding = 0) readonly buffer uuOctree { uint uOctree[]; };
-layout (std140, binding = 1) uniform uuCamera {
+layout (std430, set = 0, binding = 0) readonly buffer uuOctree { uint uOctree[]; };
+layout (set = 1, binding = 0) uniform uuCamera {
 	mat4 uProjection;
 	mat4 uView;
 	vec4 uPosition;
@@ -155,6 +155,10 @@ vec3 GenRay() {
 	return normalize(mat3(inverse(uView)) * (inverse(uProjection) * vec4(coord, 1, 1)).xyz);
 }
 
+vec3 Heat(in float x) {
+	return sin(clamp(x, 0.0, 1.0) * 3.0 - vec3(1, 2, 3)) * 0.5 + 0.5;
+}
+
 void main() {
 	vec3 o = uPosition.xyz, d = GenRay();
 
@@ -169,5 +173,5 @@ void main() {
 
 	float t; vec3 color, normal;
 	bool hit = RayMarchLeaf(o, d, t, color, normal);
-	oColor = uViewType == 2 ? vec4(vec3(iter / 64.0f), 1) : vec4(hit ? (uViewType == 0 ? color : normal * 0.5f + 0.5f) : vec3(0), 1);
+	oColor = uViewType == 2 ? vec4(Heat(iter / 128.0), 1) : vec4(hit ? (uViewType == 0 ? pow(color, vec3(1.0 / 2.2)) : normal * 0.5 + 0.5) : vec3(0), 1);
 }

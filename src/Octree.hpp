@@ -2,15 +2,29 @@
 #define OCTREE_HPP
 
 #include "myvk/Buffer.hpp"
+#include "myvk/DescriptorSet.hpp"
 
 class Octree {
 private:
 	std::shared_ptr<myvk::Buffer> m_buffer;
 	uint32_t m_level{};
+	std::shared_ptr<myvk::DescriptorPool> m_descriptor_pool;
+	std::shared_ptr<myvk::DescriptorSetLayout> m_descriptor_set_layout;
+	std::shared_ptr<myvk::DescriptorSet> m_descriptor_set;
+
 public:
-	void Initialize(const std::shared_ptr<myvk::Buffer> &buffer, uint32_t level);
+	void Initialize(const std::shared_ptr<myvk::Device> &device);
+
+	void Update(const std::shared_ptr<myvk::Buffer> &buffer, uint32_t level);
+
+	bool Empty() const { return m_buffer == nullptr; }
 
 	const std::shared_ptr<myvk::Buffer> &GetBufferPtr() const { return m_buffer; }
+
+	const std::shared_ptr<myvk::DescriptorSetLayout> &
+	GetDescriptorSetLayoutPtr() const { return m_descriptor_set_layout; }
+
+	const std::shared_ptr<myvk::DescriptorSet> &GetDescriptorSetPtr() const { return m_descriptor_set; }
 
 	uint32_t GetLevel() const { return m_level; }
 };

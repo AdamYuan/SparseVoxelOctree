@@ -484,11 +484,13 @@ void vqsEnumerateDeviceQueueCreateInfos(
 			continue;
 
 		if (pDeviceQueueCreateInfos && pQueuePriorities) {
-			VkDeviceQueueCreateInfo createInfo = {};
+			VkDeviceQueueCreateInfo createInfo;
 			createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 			createInfo.queueFamilyIndex = i;
 			createInfo.queueCount = queueCount;
 			createInfo.pQueuePriorities = familyPriorityOffsets[i];
+			createInfo.flags = 0;
+			createInfo.pNext = NULL;
 
 			pDeviceQueueCreateInfos[infoCounter] = createInfo;
 		}

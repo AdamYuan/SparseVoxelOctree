@@ -14,19 +14,13 @@ void OctreeTracer::create_uniform_buffers(const std::shared_ptr<myvk::Device> &d
 
 void OctreeTracer::create_descriptors(const std::shared_ptr<myvk::Device> &device, uint32_t frame_count) {
 	{
-		VkDescriptorSetLayoutBinding octree_binding = {};
-		octree_binding.binding = 0;
-		octree_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		octree_binding.descriptorCount = 1;
-		octree_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
 		VkDescriptorSetLayoutBinding camera_binding = {};
-		camera_binding.binding = 1;
+		camera_binding.binding = 0;
 		camera_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		camera_binding.descriptorCount = 1;
 		camera_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {octree_binding, camera_binding});
+		m_camera_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {camera_binding});
 	}
 	{
 		VkDescriptorPoolSize pool_sizes[] = {
@@ -42,12 +36,12 @@ void OctreeTracer::create_descriptors(const std::shared_ptr<myvk::Device> &devic
 
 		m_descriptor_pool = myvk::DescriptorPool::Create(device, pool_info);
 	}
-	m_descriptor_sets = myvk::DescriptorSet::CreateMultiple(
+	m_camera_descriptor_sets = myvk::DescriptorSet::CreateMultiple(
 		m_descriptor_pool,
-		std::vector<std::shared_ptr<myvk::DescriptorSetLayout>>(frame_count, m_descriptor_set_layout));
+		std::vector<std::shared_ptr<myvk::DescriptorSetLayout>>(frame_count, m_camera_descriptor_set_layout));
 
 	for (uint32_t i = 0; i < frame_count; ++i)
-		m_descriptor_sets[i]->UpdateUniformBuffer(m_camera_uniform_buffers[i], 1);
+		m_camera_descriptor_sets[i]->UpdateUniformBuffer(m_camera_uniform_buffers[i], 0);
 }
 
 void OctreeTracer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass,
@@ -56,7 +50,7 @@ void OctreeTracer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &rend
 
 	m_pipeline_layout = myvk::PipelineLayout::Create(
 		device,
-		{m_descriptor_set_layout},
+		{m_octree->GetDescriptorSetLayoutPtr(), m_camera_descriptor_set_layout},
 		{{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 5 * sizeof(uint32_t)}});
 
 
@@ -150,26 +144,24 @@ void OctreeTracer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &rend
 	m_pipeline = myvk::GraphicsPipeline::Create(m_pipeline_layout, render_pass, pipeline_info);
 }
 
-void OctreeTracer::Initialize(const std::shared_ptr<myvk::Swapchain> &swapchain,
-							  const std::shared_ptr<myvk::RenderPass> &render_pass,
-							  uint32_t subpass, uint32_t frame_count) {
+void
+OctreeTracer::Initialize(const Octree &octree, const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass,
+						 uint32_t frame_count) {
+	m_octree = &octree;
 	std::shared_ptr<myvk::Device> device = render_pass->GetDevicePtr();
 
 	create_uniform_buffers(device, frame_count);
 	create_descriptors(device, frame_count);
-	create_pipeline(render_pass, subpass, swapchain->GetExtent());
-}
-
-void OctreeTracer::UpdateOctree(const Octree &octree) {
-	for (auto &i : m_descriptor_sets) i->UpdateStorageBuffer(octree.GetBufferPtr(), 0);
+	create_pipeline(render_pass, subpass, {kWidth, kHeight});
 }
 
 void OctreeTracer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, const Camera &camera,
 								   uint32_t current_frame) const {
 	m_camera_uniform_buffers[current_frame]->UpdateData(camera.GetBuffer());
 	command_buffer->CmdBindPipeline(m_pipeline);
-	command_buffer->CmdBindDescriptorSets({m_descriptor_sets[current_frame]}, m_pipeline, {});
-	uint32_t push_constants[] = {kWidth, kHeight, (uint32_t) m_view_type, 0, 0};
+	command_buffer->CmdBindDescriptorSets({m_octree->GetDescriptorSetPtr(), m_camera_descriptor_sets[current_frame]},
+										  m_pipeline, {});
+	uint32_t push_constants[] = {kWidth, kHeight, (uint32_t) m_view_type, m_beam_enable, kBeamSize};
 	command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push_constants),
 									 push_constants);
 	command_buffer->CmdDraw(3, 1, 0, 0);

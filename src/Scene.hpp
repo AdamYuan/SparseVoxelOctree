@@ -11,6 +11,8 @@
 #include "myvk/CommandBuffer.hpp"
 
 #include <glm/glm.hpp>
+#include <array>
+#include <string>
 
 class Scene {
 private:

@@ -16,14 +16,15 @@ public:
 
 private:
 	std::shared_ptr<myvk::DescriptorPool> m_descriptor_pool;
-	std::shared_ptr<myvk::DescriptorSetLayout> m_descriptor_set_layout;
-
+	std::shared_ptr<myvk::DescriptorSetLayout> m_camera_descriptor_set_layout;
 	std::shared_ptr<myvk::PipelineLayout> m_pipeline_layout;
 	std::shared_ptr<myvk::GraphicsPipeline> m_pipeline;
 
 	//per-frame resources
 	std::vector<std::shared_ptr<myvk::Buffer>> m_camera_uniform_buffers;
-	std::vector<std::shared_ptr<myvk::DescriptorSet>> m_descriptor_sets;
+	std::vector<std::shared_ptr<myvk::DescriptorSet>> m_camera_descriptor_sets;
+
+	const Octree *m_octree;
 
 	void create_uniform_buffers(const std::shared_ptr<myvk::Device> &device, uint32_t frame_count);
 
@@ -34,10 +35,7 @@ private:
 
 public:
 	void
-	Initialize(const std::shared_ptr<myvk::Swapchain> &swapchain, const std::shared_ptr<myvk::RenderPass> &render_pass,
-			   uint32_t subpass, uint32_t frame_count);
-
-	void UpdateOctree(const Octree &octree);
+	Initialize(const Octree &octree, const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass, uint32_t frame_count);
 
 	void CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, const Camera &camera, uint32_t current_frame) const;
 };

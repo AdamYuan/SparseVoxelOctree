@@ -1,4 +1,5 @@
 #include "CommandBuffer.hpp"
+#include <algorithm>
 
 namespace myvk {
 	std::shared_ptr<CommandBuffer>

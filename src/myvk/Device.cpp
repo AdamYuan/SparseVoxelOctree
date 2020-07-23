@@ -66,6 +66,7 @@ namespace myvk {
 		vk_funcs.vkInvalidateMappedMemoryRanges = vkInvalidateMappedMemoryRanges;
 		vk_funcs.vkMapMemory = vkMapMemory;
 		vk_funcs.vkUnmapMemory = vkUnmapMemory;
+		vk_funcs.vkCmdCopyBuffer = vkCmdCopyBuffer;
 
 		VmaAllocatorCreateInfo create_info = {};
 		create_info.device = m_device;
