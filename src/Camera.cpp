@@ -5,6 +5,32 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
+void Camera::Initialize(const std::shared_ptr<myvk::Device> &device, uint32_t frame_count) {
+	m_descriptor_pool =
+		myvk::DescriptorPool::Create(device, frame_count, {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frame_count}});
+	{
+		VkDescriptorSetLayoutBinding camera_binding = {};
+		camera_binding.binding = 0;
+		camera_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		camera_binding.descriptorCount = 1;
+		camera_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {camera_binding});
+	}
+
+	m_descriptor_sets =
+		myvk::DescriptorSet::CreateMultiple(m_descriptor_pool,
+											std::vector<std::shared_ptr<myvk::DescriptorSetLayout>>(frame_count,
+																									m_descriptor_set_layout));
+	m_uniform_buffers.resize(frame_count);
+
+	for (uint32_t i = 0; i < frame_count; ++i) {
+		m_uniform_buffers[i] = myvk::Buffer::Create(device, sizeof(UniformData), VMA_MEMORY_USAGE_CPU_TO_GPU,
+													VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		m_descriptor_sets[i]->UpdateUniformBuffer(m_uniform_buffers[i], 0);
+	}
+}
+
 void Camera::move_forward(float dist, float dir) {
 	m_position.x -= glm::sin(m_yaw + dir) * dist;
 	m_position.z -= glm::cos(m_yaw + dir) * dist;
@@ -46,13 +72,18 @@ void Camera::Control(GLFWwindow *window, float delta) {
 	m_last_mouse_pos = cur_pos;
 }
 
-void Camera::UpdateData() {
-	m_buffer.m_view = glm::rotate(glm::identity<glm::mat4>(), -m_pitch, glm::vec3(1.0f, 0.0f, 0.0f));
-	m_buffer.m_view = glm::rotate(m_buffer.m_view, -m_yaw, glm::vec3(0.0f, 1.0f, 0.0f));
-	m_buffer.m_view = glm::translate(m_buffer.m_view, -m_position);
-
-	m_buffer.m_projection = glm::perspective(m_fov, kCamAspectRatio, kCamNear, kCamFar);
-	m_buffer.m_projection[1][1] *= -1;
-
-	m_buffer.m_position = glm::vec4(m_position, 1.0f);
+Camera::UniformData Camera::fetch_uniform_data() const {
+	UniformData data = {};
+	data.m_view = glm::rotate(glm::identity<glm::mat4>(), -m_pitch, glm::vec3(1.0f, 0.0f, 0.0f));
+	data.m_view = glm::rotate(data.m_view, -m_yaw, glm::vec3(0.0f, 1.0f, 0.0f));
+	data.m_view = glm::translate(data.m_view, -m_position);
+	data.m_projection = glm::perspective(m_fov, kCamAspectRatio, kCamNear, kCamFar);
+	data.m_projection[1][1] *= -1;
+	data.m_position = glm::vec4(m_position, 1.0f);
+	return data;
 }
+
+void Camera::UpdateFrameUniformBuffer(uint32_t current_frame) const {
+	m_uniform_buffers[current_frame]->UpdateData(fetch_uniform_data());
+}
+

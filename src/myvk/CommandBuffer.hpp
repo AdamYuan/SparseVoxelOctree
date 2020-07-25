@@ -55,11 +55,11 @@ namespace myvk {
 
 		void CmdBindDescriptorSets(const std::vector<std::shared_ptr<DescriptorSet>> &descriptor_sets,
 								   const std::shared_ptr<PipelineLayout> &pipeline_layout,
-								   VkPipelineBindPoint pipeline_bind_point, const std::vector<uint32_t> &offsets) const;
+								   VkPipelineBindPoint pipeline_bind_point, const std::vector<uint32_t> &offsets = {}) const;
 
 		void CmdBindDescriptorSets(const std::vector<std::shared_ptr<DescriptorSet>> &descriptor_sets,
 								   const std::shared_ptr<PipelineBase> &pipeline,
-								   const std::vector<uint32_t> &offsets) const;
+								   const std::vector<uint32_t> &offsets = {}) const;
 
 		void
 		CmdBindVertexBuffer(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset,

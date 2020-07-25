@@ -108,16 +108,20 @@ void Application::draw_frame() {
 	m_swapchain->AcquireNextImage(&image_index, m_frame_manager.GetAcquireDoneSemaphorePtr(), nullptr);
 	m_frame_manager.AfterAcquire(image_index);
 
-	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_command_buffers[m_frame_manager.GetCurrentFrame()];
+	uint32_t current_frame = m_frame_manager.GetCurrentFrame();
+	m_camera.UpdateFrameUniformBuffer(current_frame);
+	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_command_buffers[current_frame];
 
 	command_buffer->Reset();
 	command_buffer->Begin();
+	if (!m_octree.Empty())
+		m_octree_tracer.CmdCompute(command_buffer, current_frame);
 	command_buffer->CmdBeginRenderPass(
 		m_render_pass, m_framebuffers[image_index], {{{0.0f, 0.0f, 0.0f, 1.0f}}}, m_swapchain->GetExtent());
 	if (!m_octree.Empty())
-		m_octree_tracer.CmdDrawPipeline(command_buffer, m_camera, m_frame_manager.GetCurrentFrame());
+		m_octree_tracer.CmdDrawPipeline(command_buffer, current_frame);
 	command_buffer->CmdNextSubpass();
-	m_imgui_renderer.CmdDrawPipeline(command_buffer, m_frame_manager.GetCurrentFrame());
+	m_imgui_renderer.CmdDrawPipeline(command_buffer, current_frame);
 	command_buffer->CmdEndRenderPass();
 	command_buffer->End();
 
@@ -208,10 +212,11 @@ Application::Application() {
 	initialize_vulkan();
 	create_render_pass();
 	create_framebuffers();
+	m_camera.Initialize(m_device, kFrameCount);
 	m_camera.m_position = glm::vec3(1.5);
 	m_frame_manager.Initialize(m_swapchain, kFrameCount);
 	m_octree.Initialize(m_device);
-	m_octree_tracer.Initialize(m_octree, m_render_pass, 0, kFrameCount);
+	m_octree_tracer.Initialize(m_octree, m_camera, m_render_pass, 0, kFrameCount);
 	m_imgui_renderer.Initialize(m_graphics_compute_command_pool, m_render_pass, 1, kFrameCount);
 }
 
@@ -230,7 +235,7 @@ void Application::LoadScene(const char *filename, uint32_t octree_level) {
 		command_buffer->Begin();
 		voxelizer.CmdVoxelize(command_buffer);
 		command_buffer->CmdPipelineBarrier(
-			VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 			{},
 			voxelizer.GetVoxelFragmentListPtr()->GetMemoryBarriers(
@@ -259,7 +264,6 @@ void Application::Run() {
 		glfwPollEvents();
 
 		m_camera.Control(m_window, float(cur_time - lst_time));
-		m_camera.UpdateData();
 
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();

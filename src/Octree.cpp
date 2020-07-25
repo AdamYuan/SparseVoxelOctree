@@ -6,7 +6,7 @@ void Octree::Initialize(const std::shared_ptr<myvk::Device> &device) {
 		octree_binding.binding = 0;
 		octree_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		octree_binding.descriptorCount = 1;
-		octree_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		octree_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {octree_binding});
 	}

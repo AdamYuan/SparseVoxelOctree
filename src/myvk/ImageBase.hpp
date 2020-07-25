@@ -28,6 +28,10 @@ namespace myvk {
 
 		uint32_t GetArrayLayers() const { return m_array_layers; }
 
+		VkImageSubresourceRange GetSubresourceRange(VkImageAspectFlags aspect_mask) const {
+			return {aspect_mask, 0, m_mip_levels, 0, m_array_layers};
+		}
+
 		std::vector<VkImageMemoryBarrier>
 		GetDstMemoryBarriers(const std::vector<VkBufferImageCopy> &regions, VkAccessFlags src_access_mask,
 							 VkAccessFlags dst_access_mask, VkImageLayout old_layout, VkImageLayout new_layout) const;
