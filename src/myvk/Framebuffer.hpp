@@ -16,6 +16,9 @@ namespace myvk {
 
 		VkFramebuffer m_framebuffer{nullptr};
 
+		VkExtent2D m_extent{};
+		uint32_t m_layers{};
+
 	public:
 		static std::shared_ptr<Framebuffer> Create(const std::shared_ptr<RenderPass> &render_pass,
 												   const std::vector<std::shared_ptr<ImageView>> &image_views,
@@ -29,6 +32,10 @@ namespace myvk {
 		const std::shared_ptr<RenderPass> &GetRenderPassPtr() const { return m_render_pass_ptr; }
 
 		const std::vector<std::shared_ptr<ImageView>> &GetImageViewPtrs() const { return m_image_view_ptrs; }
+
+		const VkExtent2D &GetExtent() const { return m_extent; }
+
+		uint32_t GetLayers() const { return m_layers; }
 
 		~Framebuffer();
 	};

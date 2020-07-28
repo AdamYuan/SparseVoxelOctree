@@ -21,28 +21,31 @@ namespace myvk {
 
 		std::vector<VkBufferMemoryBarrier>
 		GetMemoryBarriers(const std::vector<BufferSubresourceRange> &regions,
-						  VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask);
+						  VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask) const;
 
 		std::vector<VkBufferMemoryBarrier>
 		GetSrcMemoryBarriers(const std::vector<VkBufferCopy> &regions,
-							 VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask);
+							 VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask) const;
 
 		std::vector<VkBufferMemoryBarrier>
 		GetDstMemoryBarriers(const std::vector<VkBufferCopy> &regions,
-							 VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask);
+							 VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask) const;
 
 		std::vector<VkBufferMemoryBarrier> GetSrcMemoryBarriers(const std::vector<VkBufferImageCopy> &regions,
 																VkAccessFlags src_access_mask,
-																VkAccessFlags dst_access_mask);
+																VkAccessFlags dst_access_mask) const;
+
+		VkBufferMemoryBarrier GetMemoryBarrier(VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask) const;
+
 
 		VkBufferMemoryBarrier GetMemoryBarrier(const BufferSubresourceRange &region, VkAccessFlags src_access_mask,
-											   VkAccessFlags dst_access_mask);
+											   VkAccessFlags dst_access_mask) const;
 
 		VkBufferMemoryBarrier
-		GetSrcMemoryBarrier(const VkBufferCopy &region, VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask);
+		GetSrcMemoryBarrier(const VkBufferCopy &region, VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask) const;
 
 		VkBufferMemoryBarrier
-		GetDstMemoryBarrier(const VkBufferCopy &region, VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask);
+		GetDstMemoryBarrier(const VkBufferCopy &region, VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask) const;
 	};
 }
 

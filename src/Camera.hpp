@@ -26,8 +26,8 @@ private:
 
 	struct UniformData {
 		glm::mat4 m_projection;
-		glm::mat4 m_view;
-		glm::vec4 m_position;
+		glm::mat4 m_inv_projection;
+		glm::mat4 m_inv_view;
 	};
 
 	void move_forward(float dist, float dir);

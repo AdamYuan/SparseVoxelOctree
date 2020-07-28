@@ -45,6 +45,24 @@ namespace myvk {
 		GetMemoryBarriers(const std::vector<VkImageSubresourceRange> &regions,
 						  VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask, VkImageLayout old_layout,
 						  VkImageLayout new_layout) const;
+
+		VkImageMemoryBarrier
+		GetMemoryBarrier(VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask, VkImageLayout old_layout,
+						 VkImageLayout new_layout) const;
+
+		VkImageMemoryBarrier
+		GetDstMemoryBarrier(const VkBufferImageCopy &region, VkAccessFlags src_access_mask,
+							 VkAccessFlags dst_access_mask, VkImageLayout old_layout, VkImageLayout new_layout) const;
+
+		VkImageMemoryBarrier
+		GetMemoryBarrier(const VkImageSubresourceLayers &region,
+						  VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask, VkImageLayout old_layout,
+						  VkImageLayout new_layout) const;
+
+		VkImageMemoryBarrier
+		GetMemoryBarrier(const VkImageSubresourceRange &regions,
+						  VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask, VkImageLayout old_layout,
+						  VkImageLayout new_layout) const;
 	};
 }
 

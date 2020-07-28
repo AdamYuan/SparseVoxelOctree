@@ -9,6 +9,8 @@ namespace myvk {
 		std::shared_ptr<Framebuffer> ret = std::make_shared<Framebuffer>();
 		ret->m_render_pass_ptr = render_pass;
 		ret->m_image_view_ptrs = image_views;
+		ret->m_extent = extent;
+		ret->m_layers = layers;
 
 		std::vector<VkImageView> attachments(image_views.size());
 		for (uint32_t i = 0; i < image_views.size(); ++i)

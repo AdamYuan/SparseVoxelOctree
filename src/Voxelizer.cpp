@@ -18,20 +18,9 @@ void Voxelizer::Initialize(const Scene &scene, const std::shared_ptr<myvk::Comma
 }
 
 void Voxelizer::create_descriptors(const std::shared_ptr<myvk::Device> &device) {
-	{
-		constexpr uint32_t kPoolSizeCount = 1;
-		VkDescriptorPoolSize pool_sizes[kPoolSizeCount] = {
-			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2}
-		};
-		VkDescriptorPoolCreateInfo pool_info = {};
-		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-		pool_info.maxSets = 1;
-		pool_info.poolSizeCount = kPoolSizeCount;
-		pool_info.pPoolSizes = pool_sizes;
-
-		m_descriptor_pool = myvk::DescriptorPool::Create(device, pool_info);
-	}
+	m_descriptor_pool = myvk::DescriptorPool::Create(device, 1, {
+		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2}
+	});
 	{
 		VkDescriptorSetLayoutBinding atomic_counter_binding = {};
 		atomic_counter_binding.binding = 0;
@@ -159,7 +148,7 @@ void Voxelizer::count_and_create_fragment_list(const std::shared_ptr<myvk::Comma
 		m_atomic_counter.Reset(command_pool, 0);
 		std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
 		command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-		command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffer, {}, {m_voxel_resolution, m_voxel_resolution});
+		command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffer, {});
 		{
 			command_buffer->CmdBindPipeline(m_pipeline);
 			command_buffer->CmdBindDescriptorSets({m_descriptor_set, m_scene->GetDescriptorSetPtr()},
@@ -189,7 +178,7 @@ void Voxelizer::count_and_create_fragment_list(const std::shared_ptr<myvk::Comma
 }
 
 void Voxelizer::CmdVoxelize(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
-	command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffer, {}, {m_voxel_resolution, m_voxel_resolution});
+	command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffer, {});
 	{
 		command_buffer->CmdBindPipeline(m_pipeline);
 		command_buffer->CmdBindDescriptorSets({m_descriptor_set, m_scene->GetDescriptorSetPtr()},

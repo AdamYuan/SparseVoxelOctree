@@ -115,9 +115,8 @@ void Application::draw_frame() {
 	command_buffer->Reset();
 	command_buffer->Begin();
 	if (!m_octree.Empty())
-		m_octree_tracer.CmdCompute(command_buffer, current_frame);
-	command_buffer->CmdBeginRenderPass(
-		m_render_pass, m_framebuffers[image_index], {{{0.0f, 0.0f, 0.0f, 1.0f}}}, m_swapchain->GetExtent());
+		m_octree_tracer.CmdBeamRenderPass(command_buffer, current_frame);
+	command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffers[image_index], {{{0.0f, 0.0f, 0.0f, 1.0f}}});
 	if (!m_octree.Empty())
 		m_octree_tracer.CmdDrawPipeline(command_buffer, current_frame);
 	command_buffer->CmdNextSubpass();
@@ -232,16 +231,15 @@ void Application::LoadScene(const char *filename, uint32_t octree_level) {
 		std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(m_device);
 		std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(
 			m_graphics_compute_command_pool);
-		command_buffer->Begin();
+		command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 		voxelizer.CmdVoxelize(command_buffer);
 		command_buffer->CmdPipelineBarrier(
 			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 			{},
-			voxelizer.GetVoxelFragmentListPtr()->GetMemoryBarriers(
-				{{0u, voxelizer.GetVoxelFragmentListPtr()->GetSize()}},
+			{voxelizer.GetVoxelFragmentListPtr()->GetMemoryBarrier(
 				VK_ACCESS_SHADER_WRITE_BIT,
-				VK_ACCESS_SHADER_READ_BIT),
+				VK_ACCESS_SHADER_READ_BIT)},
 			{});
 		builder.CmdBuild(command_buffer);
 		command_buffer->End();
@@ -333,7 +331,7 @@ void Application::ui_main_menubar() {
 		}*/
 
 		if (ImGui::BeginMenu("Camera")) {
-			ImGui::DragAngle("FOV", &m_camera.m_fov, 1, 10, 180);
+			ImGui::DragAngle("FOV", &m_camera.m_fov, 1, 10, 179);
 			ImGui::DragFloat("Speed", &m_camera.m_speed, 0.005f, 0.005f, 0.2f);
 			ImGui::InputFloat3("Position", &m_camera.m_position[0]);
 			ImGui::DragAngle("Yaw", &m_camera.m_yaw, 1, 0, 360);
@@ -351,16 +349,14 @@ void Application::ui_main_menubar() {
 			ImGui::EndMenu();
 		}
 
-		/*if(ImGui::BeginMenu("Beam Optimization"))
+		if(ImGui::BeginMenu("Beam Optimization"))
 		{
 			if(ImGui::MenuItem("Enable", nullptr, m_octree_tracer.m_beam_enable))
 				m_octree_tracer.m_beam_enable ^= 1;
-			ImGui::DragFloat("Ray Direction Size", &m_octree_tracer.m_beam_dir_size, 0.001f, 0.0f, 0.1f);
-			ImGui::DragFloat("Ray Origin Size", &m_octree_tracer.m_beam_origin_size, 0.001f, 0.0f, 0.1f);
 			ImGui::EndMenu();
 		}
 
-		if(ImGui::BeginMenu("Path Tracer"))
+		/*if(ImGui::BeginMenu("Path Tracer"))
 		{
 			ImGui::DragInt("Bounce", &m_pathtracer.m_bounce, 1, 2, kMaxBounce);
 			ImGui::DragFloat3("Sun Radiance", &m_pathtracer.m_sun_radiance[0], 0.1f, 0.0f, 20.0f);

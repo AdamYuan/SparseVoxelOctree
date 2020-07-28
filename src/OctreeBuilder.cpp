@@ -48,25 +48,15 @@ void OctreeBuilder::create_buffers(const std::shared_ptr<myvk::Device> &device) 
 
 	m_octree_buffer = myvk::Buffer::Create(device, octree_node_num * sizeof(uint32_t), VMA_MEMORY_USAGE_GPU_ONLY,
 										   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	m_octree_buffer->Unmap();
 	LOGV.printf("Octree buffer created with %d nodes (%.1f MB)", octree_node_num,
 				m_octree_buffer->GetSize() / 1000000.0f);
 }
 
 void OctreeBuilder::create_descriptors(const std::shared_ptr<myvk::Device> &device) {
-	{
-		constexpr uint32_t kPoolSizeCount = 1;
-		VkDescriptorPoolSize pool_sizes[kPoolSizeCount] = {
-			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 5}
-		};
-		VkDescriptorPoolCreateInfo pool_info = {};
-		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-		pool_info.maxSets = 1;
-		pool_info.poolSizeCount = kPoolSizeCount;
-		pool_info.pPoolSizes = pool_sizes;
-
-		m_descriptor_pool = myvk::DescriptorPool::Create(device, pool_info);
-	}
+	m_descriptor_pool = myvk::DescriptorPool::Create(device, 1, {
+		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 5}
+	});
 	{
 		VkDescriptorSetLayoutBinding atomic_counter_binding = {};
 		atomic_counter_binding.binding = 0;
@@ -141,6 +131,7 @@ void OctreeBuilder::create_pipeline(const std::shared_ptr<myvk::Device> &device)
 }
 
 void OctreeBuilder::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
+	//transfers
 	{
 		command_buffer->CmdCopy(m_build_info_staging_buffer, m_build_info_buffer,
 								{{0, 0, m_build_info_buffer->GetSize()}});
@@ -151,20 +142,18 @@ void OctreeBuilder::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 			{},
-			m_build_info_buffer->GetMemoryBarriers(
-				{{0, m_build_info_buffer->GetSize()}},
+			{m_build_info_buffer->GetMemoryBarrier(
 				VK_ACCESS_TRANSFER_WRITE_BIT,
-				VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT),
+				VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT)},
 			{});
 
 		command_buffer->CmdPipelineBarrier(
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 			{},
-			m_indirect_buffer->GetMemoryBarriers(
-				{{0, m_indirect_buffer->GetSize()}},
+			{m_indirect_buffer->GetMemoryBarrier(
 				VK_ACCESS_TRANSFER_WRITE_BIT,
-				VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT),
+				VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT)},
 			{});
 	}
 
@@ -184,10 +173,9 @@ void OctreeBuilder::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command
 			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 			{},
-			m_octree_buffer->GetMemoryBarriers(
-				{{0, m_octree_buffer->GetSize()}},
+			{m_octree_buffer->GetMemoryBarrier(
 				VK_ACCESS_SHADER_WRITE_BIT,
-				VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT),
+				VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT)},
 			{});
 
 		command_buffer->CmdBindPipeline(m_tag_node_pipeline);
@@ -198,10 +186,9 @@ void OctreeBuilder::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command
 				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 				{},
-				m_octree_buffer->GetMemoryBarriers(
-					{{0, m_octree_buffer->GetSize()}},
+				{m_octree_buffer->GetMemoryBarrier(
 					VK_ACCESS_SHADER_WRITE_BIT,
-					VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT),
+					VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT)},
 				{});
 
 			command_buffer->CmdBindPipeline(m_alloc_node_pipeline);
@@ -211,10 +198,9 @@ void OctreeBuilder::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command
 				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 				{},
-				m_octree_buffer->GetMemoryBarriers(
-					{{0, m_octree_buffer->GetSize()}},
+				{m_octree_buffer->GetMemoryBarrier(
 					VK_ACCESS_SHADER_WRITE_BIT,
-					VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT),
+					VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT)},
 				{});
 
 			command_buffer->CmdBindPipeline(m_modify_arg_pipeline);
@@ -224,19 +210,16 @@ void OctreeBuilder::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command
 				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 				VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 				{},
-				m_indirect_buffer->GetMemoryBarriers(
-					{{0, m_indirect_buffer->GetSize()}},
+				{m_indirect_buffer->GetMemoryBarrier(
 					VK_ACCESS_SHADER_WRITE_BIT,
-					VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT),
+					VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT)},
 				{});
-
 			command_buffer->CmdPipelineBarrier(
 				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 				{},
-				m_build_info_buffer->GetMemoryBarriers(
-					{{0, m_build_info_buffer->GetSize()}},
-					VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT),
+				{m_build_info_buffer->GetMemoryBarrier(
+					VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT)},
 				{});
 
 		}

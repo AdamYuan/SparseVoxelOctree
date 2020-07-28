@@ -45,8 +45,14 @@ namespace myvk {
 		void
 		CmdBeginRenderPass(const std::shared_ptr<RenderPass> &render_pass,
 						   const std::shared_ptr<Framebuffer> &framebuffer,
-						   const std::vector<VkClearValue> &clear_values, const VkExtent2D &extent,
-						   const VkOffset2D &offset = {0, 0},
+						   const std::vector<VkClearValue> &clear_values,
+						   const VkOffset2D &offset, const VkExtent2D &extent,
+						   VkSubpassContents subpass_contents = VK_SUBPASS_CONTENTS_INLINE) const;
+
+		void
+		CmdBeginRenderPass(const std::shared_ptr<RenderPass> &render_pass,
+						   const std::shared_ptr<Framebuffer> &framebuffer,
+						   const std::vector<VkClearValue> &clear_values,
 						   VkSubpassContents subpass_contents = VK_SUBPASS_CONTENTS_INLINE) const;
 
 		void CmdEndRenderPass() const;

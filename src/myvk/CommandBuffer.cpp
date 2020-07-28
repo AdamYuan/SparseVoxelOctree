@@ -98,14 +98,30 @@ namespace myvk {
 
 	void CommandBuffer::CmdBeginRenderPass(const std::shared_ptr<RenderPass> &render_pass,
 										   const std::shared_ptr<Framebuffer> &framebuffer,
-										   const std::vector<VkClearValue> &clear_values, const VkExtent2D &extent,
-										   const VkOffset2D &offset, VkSubpassContents subpass_contents) const {
+										   const std::vector<VkClearValue> &clear_values, const VkOffset2D &offset,
+										   const VkExtent2D &extent, VkSubpassContents subpass_contents) const {
 		VkRenderPassBeginInfo render_begin_info = {};
 		render_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		render_begin_info.renderPass = render_pass->GetHandle();
 		render_begin_info.framebuffer = framebuffer->GetHandle();
 		render_begin_info.renderArea.offset = offset;
 		render_begin_info.renderArea.extent = extent;
+		render_begin_info.clearValueCount = clear_values.size();
+		render_begin_info.pClearValues = clear_values.data();
+
+		vkCmdBeginRenderPass(m_command_buffer, &render_begin_info, subpass_contents);
+	}
+
+	void CommandBuffer::CmdBeginRenderPass(const std::shared_ptr<RenderPass> &render_pass,
+										   const std::shared_ptr<Framebuffer> &framebuffer,
+										   const std::vector<VkClearValue> &clear_values,
+										   VkSubpassContents subpass_contents) const {
+		VkRenderPassBeginInfo render_begin_info = {};
+		render_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		render_begin_info.renderPass = render_pass->GetHandle();
+		render_begin_info.framebuffer = framebuffer->GetHandle();
+		render_begin_info.renderArea.offset = {0, 0};
+		render_begin_info.renderArea.extent = framebuffer->GetExtent();
 		render_begin_info.clearValueCount = clear_values.size();
 		render_begin_info.pClearValues = clear_values.data();
 
