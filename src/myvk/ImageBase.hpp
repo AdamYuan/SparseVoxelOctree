@@ -47,22 +47,23 @@ namespace myvk {
 						  VkImageLayout new_layout) const;
 
 		VkImageMemoryBarrier
-		GetMemoryBarrier(VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask, VkImageLayout old_layout,
-						 VkImageLayout new_layout) const;
+		GetMemoryBarrier(VkImageAspectFlags aspect_mask,
+						 VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+						 VkImageLayout old_layout, VkImageLayout new_layout) const;
 
 		VkImageMemoryBarrier
 		GetDstMemoryBarrier(const VkBufferImageCopy &region, VkAccessFlags src_access_mask,
-							 VkAccessFlags dst_access_mask, VkImageLayout old_layout, VkImageLayout new_layout) const;
+							VkAccessFlags dst_access_mask, VkImageLayout old_layout, VkImageLayout new_layout) const;
 
 		VkImageMemoryBarrier
 		GetMemoryBarrier(const VkImageSubresourceLayers &region,
-						  VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask, VkImageLayout old_layout,
-						  VkImageLayout new_layout) const;
+						 VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+						 VkImageLayout old_layout, VkImageLayout new_layout) const;
 
 		VkImageMemoryBarrier
-		GetMemoryBarrier(const VkImageSubresourceRange &regions,
-						  VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask, VkImageLayout old_layout,
-						  VkImageLayout new_layout) const;
+		GetMemoryBarrier(const VkImageSubresourceRange &region,
+						 VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+						 VkImageLayout old_layout, VkImageLayout new_layout) const;
 	};
 }
 

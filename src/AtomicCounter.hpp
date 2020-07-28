@@ -12,7 +12,7 @@ private:
 public:
 	void Initialize(const std::shared_ptr<myvk::Device> &device);
 	void Reset(const std::shared_ptr<myvk::CommandPool> &command_pool, uint32_t value = 0);
-	uint32_t Read(const std::shared_ptr<myvk::CommandPool> &command_pool);
+	uint32_t Read(const std::shared_ptr<myvk::CommandPool> &command_pool) const;
 
 	const std::shared_ptr<myvk::Buffer> &GetBufferPtr() const { return m_buffer; }
 };

@@ -20,7 +20,7 @@ void AtomicCounter::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool
 	m_fence->Reset();
 }
 
-uint32_t AtomicCounter::Read(const std::shared_ptr<myvk::CommandPool> &command_pool) {
+uint32_t AtomicCounter::Read(const std::shared_ptr<myvk::CommandPool> &command_pool) const {
 	std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
 	command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	command_buffer->CmdCopy(m_buffer, m_staging_buffer, {{0, 0, sizeof(uint32_t)}});

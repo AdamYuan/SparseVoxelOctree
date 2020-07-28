@@ -8,23 +8,23 @@ namespace myvk {
 			PFN_vkDebugUtilsMessengerCallbackEXT debug_callback) {
 		std::shared_ptr<Instance> ret = std::make_shared<Instance>();
 
-		VkInstanceCreateInfo instance_info{};
-		instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-		instance_info.pApplicationInfo = VK_NULL_HANDLE;
+		VkInstanceCreateInfo create_info{};
+		create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+		create_info.pApplicationInfo = nullptr;
 
 		uint32_t glfw_extension_count = 0;
 		const char **glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
 		std::vector<const char *> extensions(glfw_extensions, glfw_extensions + glfw_extension_count);
 		if (use_validation_layer) extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-		instance_info.enabledExtensionCount = extensions.size();
-		instance_info.ppEnabledExtensionNames = extensions.data();
+		create_info.enabledExtensionCount = extensions.size();
+		create_info.ppEnabledExtensionNames = extensions.data();
 		if (use_validation_layer) {
-			instance_info.enabledLayerCount = sizeof(kValidationLayers) / sizeof(const char *);
-			instance_info.ppEnabledLayerNames = kValidationLayers;
-		} else instance_info.enabledLayerCount = 0;
+			create_info.enabledLayerCount = sizeof(kValidationLayers) / sizeof(const char *);
+			create_info.ppEnabledLayerNames = kValidationLayers;
+		} else create_info.enabledLayerCount = 0;
 
-		if (vkCreateInstance(&instance_info, nullptr, &ret->m_instance) != VK_SUCCESS) return nullptr;
+		if (vkCreateInstance(&create_info, nullptr, &ret->m_instance) != VK_SUCCESS) return nullptr;
 		volkLoadInstance(ret->m_instance);
 
 		if (use_validation_layer && debug_callback) {

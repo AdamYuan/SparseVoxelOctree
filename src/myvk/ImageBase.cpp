@@ -70,4 +70,80 @@ namespace myvk {
 		}
 		return barriers;
 	}
+
+	VkImageMemoryBarrier ImageBase::GetMemoryBarrier(VkImageAspectFlags aspect_mask, VkAccessFlags src_access_mask,
+													 VkAccessFlags dst_access_mask, VkImageLayout old_layout,
+													 VkImageLayout new_layout) const {
+		VkImageMemoryBarrier ret = {};
+		ret.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		ret.image = m_image;
+		ret.oldLayout = old_layout;
+		ret.newLayout = new_layout;
+		ret.srcAccessMask = src_access_mask;
+		ret.dstAccessMask = dst_access_mask;
+		ret.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ret.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ret.subresourceRange = GetSubresourceRange(aspect_mask);
+		return ret;
+	}
+
+	VkImageMemoryBarrier ImageBase::GetDstMemoryBarrier(const VkBufferImageCopy &region, VkAccessFlags src_access_mask,
+														VkAccessFlags dst_access_mask, VkImageLayout old_layout,
+														VkImageLayout new_layout) const {
+		VkImageMemoryBarrier ret = {};
+		ret.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		ret.image = m_image;
+		ret.oldLayout = old_layout;
+		ret.newLayout = new_layout;
+		ret.srcAccessMask = src_access_mask;
+		ret.dstAccessMask = dst_access_mask;
+		ret.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ret.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		VkImageSubresourceRange &range = ret.subresourceRange;
+		range.aspectMask = region.imageSubresource.aspectMask;
+		range.baseMipLevel = region.imageSubresource.mipLevel;
+		range.levelCount = 1;
+		range.baseArrayLayer = region.imageSubresource.baseArrayLayer;
+		range.layerCount = region.imageSubresource.layerCount;
+		return ret;
+	}
+
+	VkImageMemoryBarrier
+	ImageBase::GetMemoryBarrier(const VkImageSubresourceLayers &region, VkAccessFlags src_access_mask,
+								VkAccessFlags dst_access_mask, VkImageLayout old_layout,
+								VkImageLayout new_layout) const {
+		VkImageMemoryBarrier ret = {};
+		ret.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		ret.image = m_image;
+		ret.oldLayout = old_layout;
+		ret.newLayout = new_layout;
+		ret.srcAccessMask = src_access_mask;
+		ret.dstAccessMask = dst_access_mask;
+		ret.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ret.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		VkImageSubresourceRange &range = ret.subresourceRange;
+		range.aspectMask = region.aspectMask;
+		range.baseMipLevel = region.mipLevel;
+		range.levelCount = 1;
+		range.baseArrayLayer = region.baseArrayLayer;
+		range.layerCount = region.layerCount;
+		return ret;
+	}
+
+	VkImageMemoryBarrier
+	ImageBase::GetMemoryBarrier(const VkImageSubresourceRange &region, VkAccessFlags src_access_mask,
+								VkAccessFlags dst_access_mask, VkImageLayout old_layout,
+								VkImageLayout new_layout) const {
+		VkImageMemoryBarrier ret = {};
+		ret.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		ret.image = m_image;
+		ret.oldLayout = old_layout;
+		ret.newLayout = new_layout;
+		ret.srcAccessMask = src_access_mask;
+		ret.dstAccessMask = dst_access_mask;
+		ret.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ret.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ret.subresourceRange = region;
+		return ret;
+	}
 }

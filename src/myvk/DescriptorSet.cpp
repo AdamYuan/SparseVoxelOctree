@@ -53,8 +53,8 @@ namespace myvk {
 
 	void
 	DescriptorSet::UpdateUniformBuffer(const std::shared_ptr<BufferBase> &buffer, uint32_t binding,
-									   uint32_t array_element, VkDeviceSize range,
-									   VkDeviceSize offset) const {
+									   uint32_t array_element,
+									   VkDeviceSize offset, VkDeviceSize range) const {
 		VkDescriptorBufferInfo info = {};
 		info.buffer = buffer->GetHandle();
 		info.range = range;
@@ -73,7 +73,8 @@ namespace myvk {
 	}
 
 	void DescriptorSet::UpdateStorageBuffer(const std::shared_ptr<BufferBase> &buffer, uint32_t binding,
-											uint32_t array_element, VkDeviceSize range, VkDeviceSize offset) const {
+											uint32_t array_element,
+											VkDeviceSize offset, VkDeviceSize range) const {
 		VkDescriptorBufferInfo info = {};
 		info.buffer = buffer->GetHandle();
 		info.range = range;

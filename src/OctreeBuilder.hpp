@@ -38,6 +38,7 @@ public:
 	void Initialize(const Voxelizer &voxelizer, const std::shared_ptr<myvk::CommandPool> &command_pool,
 					uint32_t octree_level);
 	void CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
+	VkDeviceSize GetOctreeRange(const std::shared_ptr<myvk::CommandPool> &command_pool) const;
 	const std::shared_ptr<myvk::Buffer> &GetOctree() const { return m_octree_buffer; }
 };
 

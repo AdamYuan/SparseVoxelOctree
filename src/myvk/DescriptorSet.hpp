@@ -28,14 +28,14 @@ namespace myvk {
 
 		void
 		UpdateUniformBuffer(const std::shared_ptr<BufferBase> &buffer, uint32_t binding, uint32_t array_element = 0,
-							VkDeviceSize range = VK_WHOLE_SIZE, VkDeviceSize offset = 0) const;
+							VkDeviceSize offset = 0, VkDeviceSize range = VK_WHOLE_SIZE) const;
 
 		void UpdateCombinedImageSampler(const std::shared_ptr<Sampler> &sampler, const std::shared_ptr<ImageView> &image_view,
 										uint32_t binding, uint32_t array_element = 0) const;
 
 		void
 		UpdateStorageBuffer(const std::shared_ptr<BufferBase> &buffer, uint32_t binding, uint32_t array_element = 0,
-							VkDeviceSize range = VK_WHOLE_SIZE, VkDeviceSize offset = 0) const;
+							VkDeviceSize offset = 0, VkDeviceSize range = VK_WHOLE_SIZE) const;
 
 		void
 		UpdateStorageImage(const std::shared_ptr<ImageView> &image_view, uint32_t binding,

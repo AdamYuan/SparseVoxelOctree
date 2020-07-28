@@ -10,24 +10,24 @@ namespace myvk {
 	}
 
 	std::shared_ptr<Device>
-		Device::Create(const DeviceCreateInfo &device_create_info) {
-			std::shared_ptr<Device> ret = std::make_shared<Device>();
-			ret->m_physical_device_ptr = device_create_info.m_physical_device_ptr;
+	Device::Create(const DeviceCreateInfo &device_create_info) {
+		std::shared_ptr<Device> ret = std::make_shared<Device>();
+		ret->m_physical_device_ptr = device_create_info.m_physical_device_ptr;
 
-			std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
-			std::vector<float> queue_priorities;
-			device_create_info.enumerate_device_queue_create_infos(&queue_create_infos, &queue_priorities);
+		std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
+		std::vector<float> queue_priorities;
+		device_create_info.enumerate_device_queue_create_infos(&queue_create_infos, &queue_priorities);
 
-			if (!ret->create_device(queue_create_infos, device_create_info.m_extensions))
-				return nullptr;
-            volkLoadDevice(ret->m_device);
-			if (device_create_info.m_use_allocator && !ret->create_allocator())
-				return nullptr;
+		if (!ret->create_device(queue_create_infos, device_create_info.m_extensions))
+			return nullptr;
+		volkLoadDevice(ret->m_device);
+		if (device_create_info.m_use_allocator && !ret->create_allocator())
+			return nullptr;
 
-			device_create_info.fetch_queues(ret);
+		device_create_info.fetch_queues(ret);
 
-			return ret;
-		}
+		return ret;
+	}
 
 	bool Device::create_device(
 		const std::vector<VkDeviceQueueCreateInfo> &queue_create_infos,
@@ -42,31 +42,40 @@ namespace myvk {
 		create_info.enabledLayerCount = 0;
 
 		return vkCreateDevice(m_physical_device_ptr->GetHandle(), &create_info,
-								  nullptr, &m_device) == VK_SUCCESS;
+							  nullptr, &m_device) == VK_SUCCESS;
 	}
+
 	bool Device::create_allocator() {
-		VmaVulkanFunctions vk_funcs{};
-		vk_funcs.vkAllocateMemory = vkAllocateMemory;
-		vk_funcs.vkBindBufferMemory = vkBindBufferMemory;
-		vk_funcs.vkBindImageMemory = vkBindImageMemory;
-		vk_funcs.vkCreateBuffer = vkCreateBuffer;
-		vk_funcs.vkCreateImage = vkCreateImage;
-		vk_funcs.vkDestroyBuffer = vkDestroyBuffer;
-		vk_funcs.vkDestroyImage = vkDestroyImage;
-		vk_funcs.vkFlushMappedMemoryRanges = vkFlushMappedMemoryRanges;
-		vk_funcs.vkFreeMemory = vkFreeMemory;
-		vk_funcs.vkGetBufferMemoryRequirements = vkGetBufferMemoryRequirements;
-		vk_funcs.vkGetBufferMemoryRequirements2KHR =
-			vkGetBufferMemoryRequirements2KHR;
-		vk_funcs.vkGetImageMemoryRequirements = vkGetImageMemoryRequirements;
-		vk_funcs.vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2KHR;
-		vk_funcs.vkGetPhysicalDeviceMemoryProperties =
-			vkGetPhysicalDeviceMemoryProperties;
-		vk_funcs.vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties;
-		vk_funcs.vkInvalidateMappedMemoryRanges = vkInvalidateMappedMemoryRanges;
-		vk_funcs.vkMapMemory = vkMapMemory;
-		vk_funcs.vkUnmapMemory = vkUnmapMemory;
-		vk_funcs.vkCmdCopyBuffer = vkCmdCopyBuffer;
+		VmaVulkanFunctions vk_funcs = {
+			vkGetPhysicalDeviceProperties,
+			vkGetPhysicalDeviceMemoryProperties,
+			vkAllocateMemory,
+			vkFreeMemory,
+			vkMapMemory,
+			vkUnmapMemory,
+			vkFlushMappedMemoryRanges,
+			vkInvalidateMappedMemoryRanges,
+			vkBindBufferMemory,
+			vkBindImageMemory,
+			vkGetBufferMemoryRequirements,
+			vkGetImageMemoryRequirements,
+			vkCreateBuffer,
+			vkDestroyBuffer,
+			vkCreateImage,
+			vkDestroyImage,
+			vkCmdCopyBuffer,
+#if VMA_DEDICATED_ALLOCATION || VMA_VULKAN_VERSION >= 1001000
+			vkGetBufferMemoryRequirements2KHR,
+			vkGetImageMemoryRequirements2KHR,
+#endif
+#if VMA_BIND_MEMORY2 || VMA_VULKAN_VERSION >= 1001000
+			vkBindBufferMemory2KHR,
+			vkBindImageMemory2KHR,
+#endif
+#if VMA_MEMORY_BUDGET || VMA_VULKAN_VERSION >= 1001000
+			vkGetPhysicalDeviceMemoryProperties2KHR,
+#endif
+		};
 
 		VmaAllocatorCreateInfo create_info = {};
 		create_info.device = m_device;

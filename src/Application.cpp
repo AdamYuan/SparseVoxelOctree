@@ -250,7 +250,8 @@ void Application::LoadScene(const char *filename, uint32_t octree_level) {
 		fence->Wait();
 		time = glfwGetTime() - time;
 		LOGV.printf("Voxelize and Octree building FINISHED in %lf ms", time * 1000.0);
-		m_octree.Update(builder.GetOctree(), octree_level);
+		m_octree.Update(builder.GetOctree(), octree_level, builder.GetOctreeRange(m_graphics_compute_command_pool));
+		LOGV.printf("Octree range: %lu (%.1f MB)", m_octree.GetRange(), m_octree.GetRange() / 1000000.0f);
 	}
 }
 
@@ -298,13 +299,13 @@ void Application::ui_info_overlay() {
 					 | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove
 					 | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus)) {
 		ImGui::Text("Toggle UI display with [X]");
-		//ImGui::Text("Renderer: %s", glGetString(GL_RENDERER));
+		ImGui::Text("Physical Device: %s", m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
 		//ImGui::Text("OpenGL version: %s", glGetString(GL_VERSION));
 		ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 
 		if (!m_octree.Empty()) {
 			ImGui::Text("Octree Level: %d", m_octree.GetLevel());
-			ImGui::Text("Octree Size: %.1f MB", m_octree.GetBufferPtr()->GetSize() / 1000000.0f);
+			ImGui::Text("Octree Size: %.1f MB (%.1f MB Used)", m_octree.GetBufferPtr()->GetSize() / 1000000.0f, m_octree.GetRange() / 1000000.0f);
 		}
 
 		/*if(m_pathtracing_flag)
@@ -346,13 +347,8 @@ void Application::ui_main_menubar() {
 				m_octree_tracer.m_view_type = OctreeTracer::kNormal;
 			if (ImGui::MenuItem("Iterations", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kIteration))
 				m_octree_tracer.m_view_type = OctreeTracer::kIteration;
-			ImGui::EndMenu();
-		}
 
-		if(ImGui::BeginMenu("Beam Optimization"))
-		{
-			if(ImGui::MenuItem("Enable", nullptr, m_octree_tracer.m_beam_enable))
-				m_octree_tracer.m_beam_enable ^= 1;
+			ImGui::Checkbox("Beam Optimization", &m_octree_tracer.m_beam_enable);
 			ImGui::EndMenu();
 		}
 

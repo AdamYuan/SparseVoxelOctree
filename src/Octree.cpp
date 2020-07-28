@@ -16,8 +16,9 @@ void Octree::Initialize(const std::shared_ptr<myvk::Device> &device) {
 	m_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
 }
 
-void Octree::Update(const std::shared_ptr<myvk::Buffer> &buffer, uint32_t level) {
+void Octree::Update(const std::shared_ptr<myvk::Buffer> &buffer, uint32_t level, VkDeviceSize range) {
 	m_buffer = buffer;
 	m_level = level;
-	m_descriptor_set->UpdateStorageBuffer(buffer, 0);
+	m_range = range;
+	m_descriptor_set->UpdateStorageBuffer(buffer, 0, 0, 0, range);
 }
