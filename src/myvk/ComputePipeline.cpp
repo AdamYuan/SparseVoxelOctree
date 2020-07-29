@@ -10,8 +10,9 @@ namespace myvk {
 		VkComputePipelineCreateInfo new_info = create_info;
 		new_info.layout = pipeline_layout->GetHandle();
 
-		if (vkCreateComputePipelines(pipeline_layout->GetDevicePtr()->GetHandle(), VK_NULL_HANDLE, 1, &new_info,
-									  nullptr, &ret->m_pipeline) != VK_SUCCESS)
+		if (vkCreateComputePipelines(pipeline_layout->GetDevicePtr()->GetHandle(),
+									 pipeline_layout->GetDevicePtr()->GetPipelineCacheHandle(),
+									 1, &new_info, nullptr, &ret->m_pipeline) != VK_SUCCESS)
 			return nullptr;
 		return ret;
 	}
@@ -26,8 +27,9 @@ namespace myvk {
 		create_info.layout = pipeline_layout->GetHandle();
 		create_info.stage = shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_COMPUTE_BIT);
 
-		if (vkCreateComputePipelines(pipeline_layout->GetDevicePtr()->GetHandle(), VK_NULL_HANDLE, 1, &create_info,
-									 nullptr, &ret->m_pipeline) != VK_SUCCESS)
+		if (vkCreateComputePipelines(pipeline_layout->GetDevicePtr()->GetHandle(),
+									 pipeline_layout->GetDevicePtr()->GetPipelineCacheHandle(),
+									 1, &create_info, nullptr, &ret->m_pipeline) != VK_SUCCESS)
 			return nullptr;
 		return ret;
 	}

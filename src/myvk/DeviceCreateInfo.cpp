@@ -27,9 +27,11 @@ namespace myvk {
 			const std::shared_ptr<PhysicalDevice> &physical_device,
 			const std::vector<QueueRequirement> &queue_requirements,
 			const std::vector<const char *> &extensions,
-			bool use_allocator) {
+			bool use_allocator,
+			bool use_pipeline_cache) {
 		m_physical_device_ptr = physical_device;
 		m_use_allocator = use_allocator;
+		m_use_pipeline_cache = use_pipeline_cache;
 
 		//CHECK EXTENSIONS
 		m_extensions = extensions;

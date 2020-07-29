@@ -77,6 +77,10 @@ void Voxelizer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 		geom_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT),
 		frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)
 	};
+	uint32_t specialization_texture_num = std::max(m_scene->GetTextureCount(), 1u);
+	VkSpecializationMapEntry frag_spec_entry = {0, 0, sizeof(uint32_t)};
+	VkSpecializationInfo frag_spec_info = {1, &frag_spec_entry, sizeof(uint32_t), &specialization_texture_num};
+	shader_stages[2].pSpecializationInfo = &frag_spec_info;
 
 	auto binding_descriptor = Scene::GetVertexBindingDescription();
 	auto attribute_descriptions = Scene::GetVertexAttributeDescriptions();

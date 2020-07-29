@@ -133,6 +133,8 @@ add_executable(VulkanSVO
 		src/OctreeTracer.hpp
 		src/Octree.cpp
 		src/Octree.hpp
+		src/Sobol.cpp
+		src/Sobol.hpp
 
 		src/VoxelizerSpirv.hpp
 		src/OctreeBuilderSpirv.hpp

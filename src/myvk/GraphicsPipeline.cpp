@@ -13,8 +13,9 @@ namespace myvk {
 		new_info.renderPass = render_pass->GetHandle();
 		new_info.layout = pipeline_layout->GetHandle();
 
-		if (vkCreateGraphicsPipelines(pipeline_layout->GetDevicePtr()->GetHandle(), VK_NULL_HANDLE, 1, &new_info,
-									  nullptr, &ret->m_pipeline) != VK_SUCCESS)
+		if (vkCreateGraphicsPipelines(pipeline_layout->GetDevicePtr()->GetHandle(),
+									  pipeline_layout->GetDevicePtr()->GetPipelineCacheHandle(),
+									  1, &new_info, nullptr, &ret->m_pipeline) != VK_SUCCESS)
 			return nullptr;
 		return ret;
 	}

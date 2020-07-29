@@ -174,6 +174,7 @@ void Application::initialize_vulkan() {
 			exit(EXIT_FAILURE);
 		}
 	}
+
 	LOGI.printf("Physical Device: %s", m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
 	LOGI.printf("Present Queue: %p, Graphics|Compute Queue: %p, Async Compute Queue: %p",
 				m_present_queue->GetHandle(),
@@ -341,12 +342,14 @@ void Application::ui_main_menubar() {
 		}
 
 		if (ImGui::BeginMenu("Primary View")) {
-			if (ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kDiffuse))
+			ImGui::ListBoxHeader("Type", 3);
+			if (ImGui::Selectable("Diffuse", m_octree_tracer.m_view_type == OctreeTracer::kDiffuse))
 				m_octree_tracer.m_view_type = OctreeTracer::kDiffuse;
-			if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kNormal))
+			if (ImGui::Selectable("Normal", m_octree_tracer.m_view_type == OctreeTracer::kNormal))
 				m_octree_tracer.m_view_type = OctreeTracer::kNormal;
-			if (ImGui::MenuItem("Iterations", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kIteration))
+			if (ImGui::Selectable("Iteration", m_octree_tracer.m_view_type == OctreeTracer::kIteration))
 				m_octree_tracer.m_view_type = OctreeTracer::kIteration;
+			ImGui::ListBoxFooter();
 
 			ImGui::Checkbox("Beam Optimization", &m_octree_tracer.m_beam_enable);
 			ImGui::EndMenu();
@@ -385,8 +388,8 @@ void Application::ui_main_menubar() {
 
 	if (open_load_scene_popup)
 		ImGui::OpenPopup("Load Scene");
-	if (open_export_exr_popup)
-		ImGui::OpenPopup("Export OpenEXR");
+	//if (open_export_exr_popup)
+	//	ImGui::OpenPopup("Export OpenEXR");
 
 	ui_load_scene_modal();
 	ui_export_exr_modal();

@@ -45,7 +45,7 @@ namespace myvk {
 		std::vector<const char *> m_extensions;
 		bool m_extensions_support{true};
 
-		bool m_use_allocator{true};
+		bool m_use_allocator{true}, m_use_pipeline_cache{true};
 
 		void enumerate_device_queue_create_infos(
 				std::vector<VkDeviceQueueCreateInfo> *out_create_infos,
@@ -59,7 +59,8 @@ namespace myvk {
 		void Initialize(const std::shared_ptr<PhysicalDevice> &physical_device,
 						const std::vector<QueueRequirement> &queue_requirements,
 						const std::vector<const char *> &extensions,
-						bool use_allocator = true);
+						bool use_allocator = true,
+						bool use_pipeline_cache = true);
 
 		bool QueueSupport() const { return m_query; }
 		bool ExtensionSupport() const { return m_extensions_support; }

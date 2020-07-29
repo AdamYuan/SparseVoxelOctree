@@ -11,23 +11,34 @@
 
 namespace myvk {
 	class Device {
-		private:
-			std::shared_ptr<PhysicalDevice> m_physical_device_ptr;
+	private:
+		std::shared_ptr<PhysicalDevice> m_physical_device_ptr;
 
-			VkDevice m_device{nullptr};
-			VmaAllocator m_allocator{nullptr};
+		VkDevice m_device{nullptr};
+		VkPipelineCache m_pipeline_cache{nullptr};
+		VmaAllocator m_allocator{nullptr};
 
-			bool create_allocator();
-			bool create_device(const std::vector<VkDeviceQueueCreateInfo> &queue_create_infos, const std::vector<const char *> &extensions);
-		public:
-			static std::shared_ptr<Device> Create(const DeviceCreateInfo &device_create_info);
-			VmaAllocator GetAllocatorHandle() const { return m_allocator; }
-			const std::shared_ptr<PhysicalDevice> &GetPhysicalDevicePtr() const { return m_physical_device_ptr; }
-			VkDevice GetHandle() const { return m_device; }
+		VkResult create_allocator();
 
-			VkResult WaitIdle() const;
+		VkResult create_device(const std::vector<VkDeviceQueueCreateInfo> &queue_create_infos,
+							   const std::vector<const char *> &extensions);
 
-			~Device();
+		VkResult create_pipeline_cache();
+
+	public:
+		static std::shared_ptr<Device> Create(const DeviceCreateInfo &device_create_info);
+
+		VmaAllocator GetAllocatorHandle() const { return m_allocator; }
+
+		VkPipelineCache GetPipelineCacheHandle() const { return m_pipeline_cache; }
+
+		const std::shared_ptr<PhysicalDevice> &GetPhysicalDevicePtr() const { return m_physical_device_ptr; }
+
+		VkDevice GetHandle() const { return m_device; }
+
+		VkResult WaitIdle() const;
+
+		~Device();
 	};
 }
 

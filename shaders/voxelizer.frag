@@ -1,8 +1,10 @@
 #version 450
 
+layout (constant_id = 0) const uint kTextureNum = 1024;
+
 layout (std140, set = 0, binding = 0) buffer uuCounter { uint uCounter; };
 layout (std430, set = 0, binding = 1) writeonly buffer uuFragmentList { uvec2 uFragmentList[]; };
-layout (set = 1, binding = 0) uniform sampler2D uTextures[1024];
+layout (set = 1, binding = 0) uniform sampler2D uTextures[kTextureNum];
 
 layout (push_constant) uniform uuPushConstant { uint uVoxelResolution, uCountOnly, uTextureId, uAlbedo; };
 
