@@ -107,25 +107,25 @@ void OctreeBuilder::create_pipeline(const std::shared_ptr<myvk::Device> &device)
 
 	{
 		std::shared_ptr<myvk::ShaderModule> octree_tag_node_shader_module =
-			myvk::ShaderModule::Create(device, (uint32_t *) kOctreeTagNodeCompSpv, sizeof(kOctreeTagNodeCompSpv));
+			myvk::ShaderModule::Create(device, kOctreeTagNodeCompSpv, sizeof(kOctreeTagNodeCompSpv));
 		m_tag_node_pipeline = myvk::ComputePipeline::Create(m_pipeline_layout, octree_tag_node_shader_module);
 	}
 
 	{
 		std::shared_ptr<myvk::ShaderModule> octree_init_node_shader_module =
-			myvk::ShaderModule::Create(device, (uint32_t *) kOctreeInitNodeCompSpv, sizeof(kOctreeInitNodeCompSpv));
+			myvk::ShaderModule::Create(device, kOctreeInitNodeCompSpv, sizeof(kOctreeInitNodeCompSpv));
 		m_init_node_pipeline = myvk::ComputePipeline::Create(m_pipeline_layout, octree_init_node_shader_module);
 	}
 
 	{
 		std::shared_ptr<myvk::ShaderModule> octree_alloc_node_shader_module =
-			myvk::ShaderModule::Create(device, (uint32_t *) kOctreeAllocNodeCompSpv, sizeof(kOctreeAllocNodeCompSpv));
+			myvk::ShaderModule::Create(device, kOctreeAllocNodeCompSpv, sizeof(kOctreeAllocNodeCompSpv));
 		m_alloc_node_pipeline = myvk::ComputePipeline::Create(m_pipeline_layout, octree_alloc_node_shader_module);
 	}
 
 	{
 		std::shared_ptr<myvk::ShaderModule> octree_modify_arg_shader_module =
-			myvk::ShaderModule::Create(device, (uint32_t *) kOctreeModifyArgCompSpv, sizeof(kOctreeModifyArgCompSpv));
+			myvk::ShaderModule::Create(device, kOctreeModifyArgCompSpv, sizeof(kOctreeModifyArgCompSpv));
 		m_modify_arg_pipeline = myvk::ComputePipeline::Create(m_pipeline_layout, octree_modify_arg_shader_module);
 	}
 }

@@ -1,11 +1,11 @@
-#ifndef ATOMIC_COUNTER_HPP
-#define ATOMIC_COUNTER_HPP
+#ifndef COUNTER_HPP
+#define COUNTER_HPP
 
 #include "myvk/Buffer.hpp"
 #include "myvk/CommandBuffer.hpp"
 #include "myvk/Fence.hpp"
 
-class AtomicCounter {
+class Counter {
 private:
 	std::shared_ptr<myvk::Buffer> m_buffer, m_staging_buffer;
 	std::shared_ptr<myvk::Fence> m_fence;

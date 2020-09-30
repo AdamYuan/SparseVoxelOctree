@@ -292,21 +292,28 @@ void Application::ui_pop_disable() {
 }
 
 void Application::ui_info_overlay() {
-	ImGui::SetNextWindowPos(ImVec2(10.0f, ImGui::GetIO().DisplaySize.y - 10.0f),
+	ImGui::SetNextWindowPos(ImVec2(5.0f, ImGui::GetIO().DisplaySize.y - 5.0f),
 							ImGuiCond_Always, ImVec2(0, 1));
 	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.4f)); // Transparent background
 	if (ImGui::Begin("INFO", nullptr,
 					 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize
 					 | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove
 					 | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus)) {
-		ImGui::Text("Toggle UI display with [X]");
-		ImGui::Text("Physical Device: %s", m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
-		//ImGui::Text("OpenGL version: %s", glGetString(GL_VERSION));
-		ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
+		//ImGui::Text("Toggle UI display with [X]");
+		if (ImGui::CollapsingHeader("Basic", ImGuiTreeNodeFlags_DefaultOpen)) {
+			uint32_t vulkan_version = volkGetInstanceVersion();
+			ImGui::Text("Vulkan Version: %u.%u.%u",
+						VK_VERSION_MAJOR(vulkan_version),
+						VK_VERSION_MINOR(vulkan_version),
+						VK_VERSION_PATCH(vulkan_version));
+			ImGui::Text("Physical Device: %s", m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
+			ImGui::Text("Framerate: %f", ImGui::GetIO().Framerate);
+		}
 
-		if (!m_octree.Empty()) {
-			ImGui::Text("Octree Level: %d", m_octree.GetLevel());
-			ImGui::Text("Octree Size: %.1f MB (%.1f MB Used)", m_octree.GetBufferPtr()->GetSize() / 1000000.0f, m_octree.GetRange() / 1000000.0f);
+		if (!m_octree.Empty() && ImGui::CollapsingHeader("Octree")) {
+			ImGui::Text("Level: %d", m_octree.GetLevel());
+			ImGui::Text("Allocated Size: %.1f MB", m_octree.GetBufferPtr()->GetSize() / 1000000.0f);
+			ImGui::Text("Used Size: %.1f MB", m_octree.GetRange() / 1000000.0f);
 		}
 
 		/*if(m_pathtracing_flag)

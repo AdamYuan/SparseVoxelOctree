@@ -21,9 +21,9 @@ void main() {
 	uint ucolor = (uTextureId == 0xffffffffu) ? uAlbedo : packUnorm4x8(SampleOrDiscard());
 	uint cur = atomicAdd(uCounter, 1u);
 	//set fragment list
-	if(uCountOnly == 0) {
+	if (uCountOnly == 0) {
 		uvec3 uvoxel_pos = clamp(uvec3(gVoxelPos * uVoxelResolution), uvec3(0u), uvec3(uVoxelResolution - 1u));
-		uFragmentList[cur].x = uvoxel_pos.x | (uvoxel_pos.y << 12u) | ((uvoxel_pos.z & 0xffu) << 24u); //only have the last 8 bits of uvoxel_pos.z
+		uFragmentList[cur].x = uvoxel_pos.x | (uvoxel_pos.y << 12u) | ((uvoxel_pos.z & 0xffu) << 24u);//only have the last 8 bits of uvoxel_pos.z
 		uFragmentList[cur].y = ((uvoxel_pos.z >> 8u) << 28u) | (ucolor & 0x00ffffffu);
 	}
 }

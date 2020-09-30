@@ -1,13 +1,11 @@
-// Usage: ./byte_packer [OUTPUT HPP FILE] [INPUT FILE #1] [IDENTIFIER #1] [INPUT
+// Usage: ./spirv_u32_packer [OUTPUT HPP FILE] [INPUT FILE #1] [IDENTIFIER #1] [INPUT
 // FILE #2] [IDENTIFIER #2] ...
 
 #include <cstring>
 #include <cctype>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <string>
-#include <vector>
 
 inline void print_hpp_head(const char *hpp_name) {
 	std::string hpp_identifier;
@@ -15,35 +13,21 @@ inline void print_hpp_head(const char *hpp_name) {
 	for (int i = 0; i < len; ++i)
 		hpp_identifier.push_back(isalpha(hpp_name[i]) ? toupper(hpp_name[i]) : '_');
 
-	printf("#ifndef %s\n#define %s\n", hpp_identifier.c_str(), hpp_identifier.c_str());
+	printf("#ifndef %s\n#define %s\n\n#include <cinttypes>\n", hpp_identifier.c_str(), hpp_identifier.c_str());
 }
 
 inline void print_hpp_tail() { printf("#endif\n"); }
 
 inline void print_file(const char *filename, const char *identifier) {
-	printf("constexpr unsigned char %s[] = {", identifier);
-	std::ifstream fin{filename, std::ios::ate | std::ios::binary};
+	printf("constexpr uint32_t %s[] = {", identifier);
+	std::ifstream fin{filename};
 	if (fin.is_open()) {
-		size_t file_size = (size_t) fin.tellg();
-		std::vector<char> buffer(file_size);
-		fin.seekg(0);
-		fin.read(buffer.data(), file_size);
-		fin.close();
-		auto *ubuffer = (unsigned char *) buffer.data();
-		std::ostringstream ss;
-		for (size_t i = 0; i < file_size; ++i) {
-			ss << (int) ubuffer[i];
-			if (i != file_size - 1)
-				ss << ',';
-			if (ss.str().length() >= 80) {
-				printf("\n\t%s", ss.str().c_str());
-				ss.str("");
-			}
-		}
-		printf("\n\t%s", ss.str().c_str());
+		std::string str;
+		std::getline(fin, str, '\0');
+		printf("\n%s", str.c_str());
 	} else
-		printf("\n\t//Failed to open file: %s", filename);
-	printf("\n};\n");
+		printf("\n\t//Failed to open file: %s\n", filename);
+	printf("};\n");
 }
 
 int main(int argc, const char **argv) {

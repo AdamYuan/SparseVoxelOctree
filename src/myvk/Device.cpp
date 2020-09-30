@@ -1,7 +1,6 @@
 #include "Device.hpp"
 
 namespace myvk {
-
 	Device::~Device() {
 		if (m_pipeline_cache)
 			vkDestroyPipelineCache(m_device, m_pipeline_cache, nullptr);

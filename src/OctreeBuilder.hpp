@@ -2,7 +2,7 @@
 #define OCTREE_BUILDER_HPP
 
 #include "Voxelizer.hpp"
-#include "AtomicCounter.hpp"
+#include "Counter.hpp"
 
 #include "myvk/RenderPass.hpp"
 #include "myvk/Framebuffer.hpp"
@@ -16,7 +16,7 @@ private:
 	std::shared_ptr<myvk::PipelineLayout> m_pipeline_layout;
 	std::shared_ptr<myvk::ComputePipeline> m_tag_node_pipeline, m_init_node_pipeline, m_alloc_node_pipeline, m_modify_arg_pipeline;
 
-	AtomicCounter m_atomic_counter;
+	Counter m_atomic_counter;
 
 	std::shared_ptr<myvk::Buffer> m_octree_buffer;
 	std::shared_ptr<myvk::Buffer> m_build_info_buffer, m_build_info_staging_buffer;

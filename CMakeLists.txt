@@ -13,47 +13,49 @@ include_directories(
 		dep/glfw/include
 )
 
-add_subdirectory(dep/glfw)
+add_subdirectory(
+		dep/glfw
+)
 
 function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
 	add_custom_command(
 			OUTPUT ${OUTPUT_FILE}
-			COMMAND glslc ${INPUT_FILE} -o ${OUTPUT_FILE} -O -Os
+			COMMAND glslc ${INPUT_FILE} -o ${OUTPUT_FILE} -O -Os -mfmt=num
 			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 			DEPENDS ${INPUT_FILE}
 	)
 endfunction()
 
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/quad.vert ${CMAKE_SOURCE_DIR}/shaders/quad_vert.spv)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/quad.vert ${CMAKE_SOURCE_DIR}/shaders/quad_vert.u32)
 
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.vert ${CMAKE_SOURCE_DIR}/shaders/voxelizer_vert.spv)
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.frag ${CMAKE_SOURCE_DIR}/shaders/voxelizer_frag.spv)
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.geom ${CMAKE_SOURCE_DIR}/shaders/voxelizer_geom.spv)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.vert ${CMAKE_SOURCE_DIR}/shaders/voxelizer_vert.u32)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.frag ${CMAKE_SOURCE_DIR}/shaders/voxelizer_frag.u32)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.geom ${CMAKE_SOURCE_DIR}/shaders/voxelizer_geom.u32)
 
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tag_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_tag_node_comp.spv)
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_init_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_init_node_comp.spv)
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node_comp.spv)
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg.comp ${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg_comp.spv)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tag_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_tag_node_comp.u32)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_init_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_init_node_comp.u32)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node_comp.u32)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg.comp ${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg_comp.u32)
 
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer.frag ${CMAKE_SOURCE_DIR}/shaders/octree_tracer_frag.spv)
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer_beam.frag ${CMAKE_SOURCE_DIR}/shaders/octree_tracer_beam_frag.spv)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer.frag ${CMAKE_SOURCE_DIR}/shaders/octree_tracer_frag.u32)
+add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer_beam.frag ${CMAKE_SOURCE_DIR}/shaders/octree_tracer_beam_frag.u32)
 
-add_executable(byte_packer src/byte_packer.cpp dep/tiny_obj_loader.cpp)
+add_executable(spirv_u32_packer src/spirv_u32_packer.cpp dep/tiny_obj_loader.cpp)
 
 add_custom_command(
 		OUTPUT ${CMAKE_SOURCE_DIR}/src/VoxelizerSpirv.hpp
 
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 
-		COMMAND byte_packer src/VoxelizerSpirv.hpp
-		shaders/voxelizer_vert.spv kVoxelizerVertSpv
-		shaders/voxelizer_geom.spv kVoxelizerGeomSpv
-		shaders/voxelizer_frag.spv kVoxelizerFragSpv
+		COMMAND spirv_u32_packer src/VoxelizerSpirv.hpp
+		shaders/voxelizer_vert.u32 kVoxelizerVertSpv
+		shaders/voxelizer_geom.u32 kVoxelizerGeomSpv
+		shaders/voxelizer_frag.u32 kVoxelizerFragSpv
 
-		DEPENDS byte_packer
-		${CMAKE_SOURCE_DIR}/shaders/voxelizer_vert.spv
-		${CMAKE_SOURCE_DIR}/shaders/voxelizer_geom.spv
-		${CMAKE_SOURCE_DIR}/shaders/voxelizer_frag.spv
+		DEPENDS spirv_u32_packer
+		${CMAKE_SOURCE_DIR}/shaders/voxelizer_vert.u32
+		${CMAKE_SOURCE_DIR}/shaders/voxelizer_geom.u32
+		${CMAKE_SOURCE_DIR}/shaders/voxelizer_frag.u32
 )
 
 add_custom_command(
@@ -61,17 +63,17 @@ add_custom_command(
 
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 
-		COMMAND byte_packer src/OctreeBuilderSpirv.hpp
-		shaders/octree_tag_node_comp.spv kOctreeTagNodeCompSpv
-		shaders/octree_init_node_comp.spv kOctreeInitNodeCompSpv
-		shaders/octree_alloc_node_comp.spv kOctreeAllocNodeCompSpv
-		shaders/octree_modify_arg_comp.spv kOctreeModifyArgCompSpv
+		COMMAND spirv_u32_packer src/OctreeBuilderSpirv.hpp
+		shaders/octree_tag_node_comp.u32 kOctreeTagNodeCompSpv
+		shaders/octree_init_node_comp.u32 kOctreeInitNodeCompSpv
+		shaders/octree_alloc_node_comp.u32 kOctreeAllocNodeCompSpv
+		shaders/octree_modify_arg_comp.u32 kOctreeModifyArgCompSpv
 
-		DEPENDS byte_packer
-		${CMAKE_SOURCE_DIR}/shaders/octree_tag_node_comp.spv
-		${CMAKE_SOURCE_DIR}/shaders/octree_init_node_comp.spv
-		${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node_comp.spv
-		${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg_comp.spv
+		DEPENDS spirv_u32_packer
+		${CMAKE_SOURCE_DIR}/shaders/octree_tag_node_comp.u32
+		${CMAKE_SOURCE_DIR}/shaders/octree_init_node_comp.u32
+		${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node_comp.u32
+		${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg_comp.u32
 )
 
 add_custom_command(
@@ -79,11 +81,11 @@ add_custom_command(
 
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 
-		COMMAND byte_packer src/QuadSpirv.hpp
-		shaders/quad_vert.spv kQuadVertSpv
+		COMMAND spirv_u32_packer src/QuadSpirv.hpp
+		shaders/quad_vert.u32 kQuadVertSpv
 
-		DEPENDS byte_packer
-		${CMAKE_SOURCE_DIR}/shaders/quad_vert.spv
+		DEPENDS spirv_u32_packer
+		${CMAKE_SOURCE_DIR}/shaders/quad_vert.u32
 )
 
 add_custom_command(
@@ -91,13 +93,13 @@ add_custom_command(
 
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 
-		COMMAND byte_packer src/OctreeTracerSpirv.hpp
-		shaders/octree_tracer_frag.spv kOctreeTracerFragSpv
-		shaders/octree_tracer_beam_frag.spv kOctreeTracerBeamFragSpv
+		COMMAND spirv_u32_packer src/OctreeTracerSpirv.hpp
+		shaders/octree_tracer_frag.u32 kOctreeTracerFragSpv
+		shaders/octree_tracer_beam_frag.u32 kOctreeTracerBeamFragSpv
 
-		DEPENDS byte_packer
-		${CMAKE_SOURCE_DIR}/shaders/octree_tracer_frag.spv
-		${CMAKE_SOURCE_DIR}/shaders/octree_tracer_beam_frag.spv
+		DEPENDS spirv_u32_packer
+		${CMAKE_SOURCE_DIR}/shaders/octree_tracer_frag.u32
+		${CMAKE_SOURCE_DIR}/shaders/octree_tracer_beam_frag.u32
 )
 
 add_executable(VulkanSVO
@@ -123,8 +125,8 @@ add_executable(VulkanSVO
 		src/ImGuiRenderer.hpp
 		src/Scene.cpp
 		src/Scene.hpp
-		src/AtomicCounter.cpp
-		src/AtomicCounter.hpp
+		src/Counter.cpp
+		src/Counter.hpp
 		src/OctreeBuilder.cpp
 		src/OctreeBuilder.hpp
 		src/Voxelizer.cpp

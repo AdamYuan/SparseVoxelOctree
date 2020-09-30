@@ -15,10 +15,19 @@ private:
 	std::shared_ptr<myvk::PipelineLayout> m_pipeline_layout;
 	std::shared_ptr<myvk::ComputePipeline> m_compute_pipeline;
 	uint32_t m_dimension{};
+
 public:
 	void Initialize(const std::shared_ptr<myvk::Device> &device);
+
 	void Reset(const std::shared_ptr<myvk::CommandPool> &command_pool, uint32_t dimension);
-	void CmdNext(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, const std::shared_ptr<myvk::DescriptorSet> &index_descriptor_set);
+
+	void CmdNext(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
+				 const std::shared_ptr<myvk::DescriptorSet> &index_descriptor_set);
+
+	const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayout() const { return m_descriptor_set_layout; }
+
+	const std::shared_ptr<myvk::DescriptorSet> &GetDescriptorSet() const { return m_descriptor_set; }
+
 	uint32_t GetDimension() const { return m_dimension; }
 };
 

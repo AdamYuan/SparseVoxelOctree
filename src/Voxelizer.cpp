@@ -68,9 +68,9 @@ void Voxelizer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 									 {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t) * 4}});
 
 	std::shared_ptr<myvk::ShaderModule> vert_shader_module, geom_shader_module, frag_shader_module;
-	vert_shader_module = myvk::ShaderModule::Create(device, (uint32_t *) kVoxelizerVertSpv, sizeof(kVoxelizerVertSpv));
-	geom_shader_module = myvk::ShaderModule::Create(device, (uint32_t *) kVoxelizerGeomSpv, sizeof(kVoxelizerGeomSpv));
-	frag_shader_module = myvk::ShaderModule::Create(device, (uint32_t *) kVoxelizerFragSpv, sizeof(kVoxelizerFragSpv));
+	vert_shader_module = myvk::ShaderModule::Create(device, kVoxelizerVertSpv, sizeof(kVoxelizerVertSpv));
+	geom_shader_module = myvk::ShaderModule::Create(device, kVoxelizerGeomSpv, sizeof(kVoxelizerGeomSpv));
+	frag_shader_module = myvk::ShaderModule::Create(device, kVoxelizerFragSpv, sizeof(kVoxelizerFragSpv));
 
 	VkPipelineShaderStageCreateInfo shader_stages[] = {
 		vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),

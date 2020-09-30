@@ -51,8 +51,8 @@ OctreeTracer::create_main_graphics_pipeline(const std::shared_ptr<myvk::RenderPa
 	std::shared_ptr<myvk::Device> device = render_pass->GetDevicePtr();
 
 	std::shared_ptr<myvk::ShaderModule> vert_shader_module, frag_shader_module;
-	vert_shader_module = myvk::ShaderModule::Create(device, (uint32_t *) kQuadVertSpv, sizeof(kQuadVertSpv));
-	frag_shader_module = myvk::ShaderModule::Create(device, (uint32_t *) kOctreeTracerFragSpv,
+	vert_shader_module = myvk::ShaderModule::Create(device, kQuadVertSpv, sizeof(kQuadVertSpv));
+	frag_shader_module = myvk::ShaderModule::Create(device, kOctreeTracerFragSpv,
 													sizeof(kOctreeTracerFragSpv));
 
 	VkPipelineShaderStageCreateInfo shader_stages[] = {
@@ -176,9 +176,8 @@ void OctreeTracer::create_beam_render_pass(const std::shared_ptr<myvk::Device> &
 
 void OctreeTracer::create_beam_graphics_pipeline(const std::shared_ptr<myvk::Device> &device) {
 	std::shared_ptr<myvk::ShaderModule> vert_shader_module, frag_shader_module;
-	vert_shader_module = myvk::ShaderModule::Create(device, (uint32_t *) kQuadVertSpv, sizeof(kQuadVertSpv));
-	frag_shader_module = myvk::ShaderModule::Create(device, (uint32_t *) kOctreeTracerBeamFragSpv,
-													sizeof(kOctreeTracerBeamFragSpv));
+	vert_shader_module = myvk::ShaderModule::Create(device, kQuadVertSpv, sizeof(kQuadVertSpv));
+	frag_shader_module = myvk::ShaderModule::Create(device, kOctreeTracerBeamFragSpv, sizeof(kOctreeTracerBeamFragSpv));
 
 	VkPipelineShaderStageCreateInfo shader_stages[] = {
 		vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),

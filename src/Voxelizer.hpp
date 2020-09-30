@@ -2,7 +2,7 @@
 #define VOXELIZER_HPP
 
 #include "Scene.hpp"
-#include "AtomicCounter.hpp"
+#include "Counter.hpp"
 
 #include "myvk/RenderPass.hpp"
 #include "myvk/Framebuffer.hpp"
@@ -18,7 +18,7 @@ private:
 	std::shared_ptr<myvk::PipelineLayout> m_pipeline_layout;
 	std::shared_ptr<myvk::GraphicsPipeline> m_pipeline;
 
-	AtomicCounter m_atomic_counter;
+	Counter m_atomic_counter;
 
 	std::shared_ptr<myvk::Buffer> m_voxel_fragment_list;
 
