@@ -39,7 +39,6 @@ private:
 	struct Mesh;
 	std::vector<DrawCmd> m_draw_commands;
 
-
 	static bool load_meshes(const char *filename, const char *base_dir, std::vector<Mesh> *meshes,
 							std::vector<std::string> *texture_filenames);
 
@@ -58,7 +57,7 @@ public:
 
 	static VkVertexInputBindingDescription GetVertexBindingDescription();
 
-	static std::array<VkVertexInputAttributeDescription, 3> GetVertexAttributeDescriptions();
+	static std::array<VkVertexInputAttributeDescription, 2> GetVertexAttributeDescriptions();
 
 	static VkPushConstantRange GetDefaultPushConstantRange();
 

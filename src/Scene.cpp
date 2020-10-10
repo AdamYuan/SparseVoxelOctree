@@ -8,6 +8,7 @@
 #include <mutex>
 #include <algorithm>
 
+#include <meshoptimizer.h>
 #include <tiny_obj_loader.h>
 #include <stb_image.h>
 
@@ -19,19 +20,17 @@
 
 struct Vertex {
 	glm::vec3 m_position;
-	glm::vec3 m_normal;
 	glm::vec2 m_texcoord;
 
 	bool operator==(const Vertex &r) const {
-		return m_position == r.m_position && m_normal == r.m_normal && m_texcoord == r.m_texcoord;
+		return m_position == r.m_position && m_texcoord == r.m_texcoord;
 	}
 };
 namespace std {
 	template<>
 	struct hash<Vertex> {
 		size_t operator()(const Vertex &vert) const {
-			return ((hash<glm::vec3>()(vert.m_position) ^ (hash<glm::vec3>()(vert.m_normal) << 1u)) >> 1u) ^
-				   (hash<glm::vec2>()(vert.m_texcoord) << 1u);
+			return (hash<glm::vec3>()(vert.m_position)) ^ (hash<glm::vec2>()(vert.m_texcoord) << 1u);
 		}
 	};
 }
@@ -94,12 +93,6 @@ bool Scene::load_meshes(const char *filename, const char *base_dir, std::vector<
 				};
 				pmin = glm::min(vert.m_position, pmin);
 				pmax = glm::max(vert.m_position, pmax);
-				if (index.normal_index != -1)
-					vert.m_normal = {
-						attrib.normals[3 * index.normal_index + 0],
-						attrib.normals[3 * index.normal_index + 1],
-						attrib.normals[3 * index.normal_index + 2]
-					};
 
 				if (index.texcoord_index != -1)
 					vert.m_texcoord = {
@@ -173,26 +166,14 @@ bool Scene::load_meshes(const char *filename, const char *base_dir, std::vector<
 void
 Scene::load_buffers_and_draw_cmd(const std::shared_ptr<myvk::Queue> &graphics_queue, const std::vector<Mesh> &meshes) {
 	m_draw_commands.clear();
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
-	{
-		//shrink vertices
-		uint32_t vertex_cnt = 0;
-		std::unordered_map<Vertex, uint32_t> vertex_map;
-		for (const Mesh &mesh : meshes) {
-			for (const Vertex &vertex : mesh.m_vertices) {
-				if (vertex_map.find(vertex) == vertex_map.end())
-					vertex_map[vertex] = vertex_map.size();
-			}
-			vertex_cnt += mesh.m_vertices.size();
-		}
-		LOGI.printf("%u/%u vertices after shrinking", vertex_map.size(), vertex_cnt);
 
-		//fill vertex/index buffers and draw commands
-		vertices.resize(vertex_map.size());
-		for (const auto &i : vertex_map)
-			vertices[i.second] = i.first;
-		indices.resize(vertex_cnt);
+	//count vertices, set draw commands and vertex buffers
+	uint32_t index_count = 0;
+	std::vector<Vertex> naive_vertices;
+	{
+		for (const Mesh &mesh : meshes)
+			index_count += mesh.m_vertices.size();
+		naive_vertices.resize(index_count);
 		m_draw_commands.resize(meshes.size());
 		for (uint32_t i = 0, c = 0; i < meshes.size(); ++i) {
 			const Mesh &mesh = meshes[i];
@@ -201,12 +182,36 @@ Scene::load_buffers_and_draw_cmd(const std::shared_ptr<myvk::Queue> &graphics_qu
 			m_draw_commands[i].m_first_index = c;
 			m_draw_commands[i].m_index_count = mesh.m_vertices.size();
 
-			for (uint32_t j = 0; j < mesh.m_vertices.size(); ++j)
-				indices[c + j] = vertex_map[mesh.m_vertices[j]];
-
+			std::copy(mesh.m_vertices.begin(), mesh.m_vertices.end(), naive_vertices.begin() + c);
 			c += mesh.m_vertices.size();
 		}
 	}
+
+	//build index buffer and optimize meshes
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices(index_count);
+	{
+		std::vector<unsigned int> remap(index_count);
+		uint32_t vertex_count = meshopt_generateVertexRemap(remap.data(), nullptr, index_count, naive_vertices.data(),
+															index_count, sizeof(Vertex));
+		vertices.resize(vertex_count);
+		meshopt_remapIndexBuffer(indices.data(), nullptr, index_count, remap.data());
+		meshopt_remapVertexBuffer(vertices.data(), naive_vertices.data(), index_count, sizeof(Vertex), remap.data());
+		naive_vertices.clear();
+		naive_vertices.shrink_to_fit();
+
+		for (uint32_t i = 0, c = 0; i < meshes.size(); ++i) {
+			uint32_t mesh_vert_cnt = meshes[i].m_vertices.size();
+			meshopt_optimizeVertexCache(indices.data() + c, indices.data() + c, mesh_vert_cnt, vertex_count);
+			meshopt_optimizeOverdraw(indices.data() + c, indices.data() + c, mesh_vert_cnt, &vertices[0].m_position.x,
+									 vertex_count,
+									 sizeof(Vertex), 1.05f);
+			c += mesh_vert_cnt;
+		}
+		meshopt_optimizeVertexFetch(vertices.data(), indices.data(), index_count, vertices.data(), vertex_count,
+									sizeof(Vertex));
+	}
+	LOGI.printf("Mesh optimized (%lu/%u vertices)", vertices.size(), index_count);
 
 	const std::shared_ptr<myvk::Device> &device = graphics_queue->GetDevicePtr();
 	uint32_t
@@ -432,8 +437,8 @@ VkVertexInputBindingDescription Scene::GetVertexBindingDescription() {
 	return ret;
 }
 
-std::array<VkVertexInputAttributeDescription, 3> Scene::GetVertexAttributeDescriptions() {
-	std::array<VkVertexInputAttributeDescription, 3> ret = {};
+std::array<VkVertexInputAttributeDescription, 2> Scene::GetVertexAttributeDescriptions() {
+	std::array<VkVertexInputAttributeDescription, 2> ret = {};
 	ret[0].binding = 0;
 	ret[0].location = 0;
 	ret[0].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -441,13 +446,8 @@ std::array<VkVertexInputAttributeDescription, 3> Scene::GetVertexAttributeDescri
 
 	ret[1].binding = 0;
 	ret[1].location = 1;
-	ret[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	ret[1].offset = offsetof(Vertex, m_normal);
-
-	ret[2].binding = 0;
-	ret[2].location = 2;
-	ret[2].format = VK_FORMAT_R32G32_SFLOAT;
-	ret[2].offset = offsetof(Vertex, m_texcoord);
+	ret[1].format = VK_FORMAT_R32G32_SFLOAT;
+	ret[1].offset = offsetof(Vertex, m_texcoord);
 
 	return ret;
 }

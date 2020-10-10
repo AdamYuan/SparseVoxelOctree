@@ -1,52 +1,53 @@
 #ifndef APPLICATION_HPP
 #define APPLICATION_HPP
 
-#include <volk.h>
 #include <GLFW/glfw3.h>
+#include <volk.h>
 
-#include <memory>
 #include <array>
+#include <memory>
 #include <vector>
 
-#include "ImGuiRenderer.hpp"
 #include "Camera.hpp"
-#include "myvk/Queue.hpp"
-#include "myvk/Instance.hpp"
-#include "myvk/Device.hpp"
-#include "myvk/Swapchain.hpp"
-#include "myvk/Buffer.hpp"
-#include "myvk/Surface.hpp"
-#include "myvk/SwapchainImage.hpp"
-#include "myvk/ImageView.hpp"
-#include "myvk/RenderPass.hpp"
-#include "myvk/CommandPool.hpp"
-#include "myvk/CommandBuffer.hpp"
-#include "myvk/PipelineLayout.hpp"
-#include "myvk/ShaderModule.hpp"
-#include "myvk/GraphicsPipeline.hpp"
-#include "myvk/Framebuffer.hpp"
-#include "myvk/DescriptorPool.hpp"
-#include "myvk/DescriptorSet.hpp"
-#include "myvk//FrameManager.hpp"
-#include "myvk/Image.hpp"
-#include "myvk/Sampler.hpp"
-#include "Scene.hpp"
+#include "ImGuiRenderer.hpp"
 #include "Octree.hpp"
 #include "OctreeTracer.hpp"
+#include "Scene.hpp"
+#include "myvk/FrameManager.hpp"
+#include "myvk/Buffer.hpp"
+#include "myvk/CommandBuffer.hpp"
+#include "myvk/CommandPool.hpp"
+#include "myvk/DescriptorPool.hpp"
+#include "myvk/DescriptorSet.hpp"
+#include "myvk/Device.hpp"
+#include "myvk/Framebuffer.hpp"
+#include "myvk/GraphicsPipeline.hpp"
+#include "myvk/Image.hpp"
+#include "myvk/ImageView.hpp"
+#include "myvk/Instance.hpp"
+#include "myvk/PipelineLayout.hpp"
+#include "myvk/Queue.hpp"
+#include "myvk/RenderPass.hpp"
+#include "myvk/Sampler.hpp"
+#include "myvk/ShaderModule.hpp"
+#include "myvk/Surface.hpp"
+#include "myvk/Swapchain.hpp"
+#include "myvk/SwapchainImage.hpp"
 
 class Application {
 private:
 	GLFWwindow *m_window{nullptr};
 
-	//base
+	// base
 	std::shared_ptr<myvk::Instance> m_instance;
 	std::shared_ptr<myvk::Surface> m_surface;
 	std::shared_ptr<myvk::Device> m_device;
-	std::shared_ptr<myvk::Queue> m_graphics_compute_queue, m_async_compute_queue;
+	std::shared_ptr<myvk::Queue> m_graphics_compute_queue,
+	    m_async_compute_queue;
 	std::shared_ptr<myvk::PresentQueue> m_present_queue;
 	std::shared_ptr<myvk::CommandPool> m_graphics_compute_command_pool;
 
-	//frame objects
+	// frame objects
 	std::shared_ptr<myvk::Swapchain> m_swapchain;
 	std::vector<std::shared_ptr<myvk::SwapchainImage>> m_swapchain_images;
 	std::vector<std::shared_ptr<myvk::ImageView>> m_swapchain_image_views;
@@ -54,16 +55,16 @@ private:
 	std::vector<std::shared_ptr<myvk::CommandBuffer>> m_frame_command_buffers;
 	myvk::FrameManager m_frame_manager;
 
-	//render pass
+	// render pass
 	std::shared_ptr<myvk::RenderPass> m_render_pass;
 
-	//global data
+	// global data
 	Camera m_camera;
 	ImGuiRenderer m_imgui_renderer;
 	Octree m_octree;
 	OctreeTracer m_octree_tracer;
 
-	//ui flags
+	// ui flags
 	bool m_pathtracing_flag{false}, m_ui_display_flag{true};
 
 	void create_window();
@@ -90,14 +91,16 @@ private:
 
 	void ui_export_exr_modal();
 
-	static bool
-	ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title, int filter_num,
-				 const char *const *filter_patterns);
+	static bool ui_file_open(const char *label, const char *btn, char *buf,
+	                         size_t buf_size, const char *title, int filter_num,
+	                         const char *const *filter_patterns);
 
-	static bool ui_file_save(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
-							 int filter_num, const char *const *filter_patterns);
+	static bool ui_file_save(const char *label, const char *btn, char *buf,
+	                         size_t buf_size, const char *title, int filter_num,
+	                         const char *const *filter_patterns);
 
-	static void glfw_key_callback(GLFWwindow *window, int key, int, int action, int);
+	static void glfw_key_callback(GLFWwindow *window, int key, int, int action,
+	                              int);
 
 public:
 	Application();

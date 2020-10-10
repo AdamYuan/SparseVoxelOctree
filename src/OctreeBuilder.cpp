@@ -1,6 +1,7 @@
 #include "OctreeBuilder.hpp"
 #include "OctreeBuilderSpirv.hpp"
 #include "Config.hpp"
+#include "glm/vector_relational.hpp"
 
 #include <plog/Log.h>
 
