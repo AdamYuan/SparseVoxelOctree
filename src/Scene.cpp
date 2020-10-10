@@ -14,26 +14,10 @@
 
 #include <plog/Log.h>
 
-#define GLM_ENABLE_EXPERIMENTAL
-
-#include <glm/gtx/hash.hpp>
-
 struct Vertex {
 	glm::vec3 m_position;
 	glm::vec2 m_texcoord;
-
-	bool operator==(const Vertex &r) const {
-		return m_position == r.m_position && m_texcoord == r.m_texcoord;
-	}
 };
-namespace std {
-	template<>
-	struct hash<Vertex> {
-		size_t operator()(const Vertex &vert) const {
-			return (hash<glm::vec3>()(vert.m_position)) ^ (hash<glm::vec2>()(vert.m_texcoord) << 1u);
-		}
-	};
-}
 struct Scene::Mesh {
 	uint32_t m_texture_id;
 	glm::vec3 m_albedo;
