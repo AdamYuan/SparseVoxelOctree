@@ -39,7 +39,7 @@ void Application::create_window() {
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGui::StyleColorsVisualDark();
+	ImGui::StyleColorsCinder();
 	ImGui_ImplGlfw_InitForVulkan(m_window, true);
 }
 
