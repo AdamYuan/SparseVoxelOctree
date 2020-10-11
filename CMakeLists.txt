@@ -15,7 +15,6 @@ include_directories(
 )
 
 add_subdirectory(dep/glfw)
-add_subdirectory(dep/meshoptimizer)
 
 function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
 	add_custom_command(
@@ -115,6 +114,11 @@ add_executable(VulkanSVO
 		dep/imgui/imgui_impl_glfw.cpp
 		dep/imgui/imgui_widgets.cpp
 
+		dep/meshoptimizer/src/indexgenerator.cpp
+		dep/meshoptimizer/src/vcacheoptimizer.cpp
+		dep/meshoptimizer/src/overdrawoptimizer.cpp
+		dep/meshoptimizer/src/vfetchoptimizer.cpp
+
 		src/main.cpp
 		src/Config.hpp
 		src/Application.cpp
@@ -208,4 +212,4 @@ add_executable(VulkanSVO
 
 find_package(Threads)
 target_compile_definitions(VulkanSVO PUBLIC VK_NO_PROTOTYPES)
-target_link_libraries(VulkanSVO ${CMAKE_DL_LIBS} glfw meshoptimizer Threads::Threads)
+target_link_libraries(VulkanSVO ${CMAKE_DL_LIBS} glfw Threads::Threads)
