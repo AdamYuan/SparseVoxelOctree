@@ -39,7 +39,7 @@ void Application::create_window() {
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGui::StyleColorsDarcula();
+	ImGui::StyleColorsVisualDark();
 	ImGui_ImplGlfw_InitForVulkan(m_window, true);
 }
 
@@ -391,17 +391,12 @@ void Application::ui_main_menubar() {
 		}
 
 		if (ImGui::BeginMenu("Primary View")) {
-			ImGui::ListBoxHeader("Type", 3);
-			if (ImGui::Selectable("Diffuse", m_octree_tracer.m_view_type ==
-			                                     OctreeTracer::kDiffuse))
+			if(ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kDiffuse))
 				m_octree_tracer.m_view_type = OctreeTracer::kDiffuse;
-			if (ImGui::Selectable("Normal", m_octree_tracer.m_view_type ==
-			                                    OctreeTracer::kNormal))
+			if(ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kNormal))
 				m_octree_tracer.m_view_type = OctreeTracer::kNormal;
-			if (ImGui::Selectable("Iteration", m_octree_tracer.m_view_type ==
-			                                       OctreeTracer::kIteration))
+			if(ImGui::MenuItem("Iterations", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kIteration))
 				m_octree_tracer.m_view_type = OctreeTracer::kIteration;
-			ImGui::ListBoxFooter();
 
 			ImGui::Checkbox("Beam Optimization",
 			                &m_octree_tracer.m_beam_enable);
