@@ -111,8 +111,10 @@ bool Scene::load_meshes(const char *filename, const char *base_dir, std::vector<
 			materials[i].diffuse[2]
 		};
 		const std::string &texture_name = materials[i].diffuse_texname;
-		if (!texture_name.empty() && texture_name_map.find(texture_name) == texture_name_map.end())
-			texture_name_map[texture_name] = texture_name_map.size();
+		if (!texture_name.empty() && texture_name_map.find(texture_name) == texture_name_map.end()) {
+			uint32_t idx = texture_name_map.size();
+			texture_name_map[texture_name] = idx;
+		}
 		else if (texture_name.empty())
 			mesh.m_texture_id = UINT32_MAX;
 	}
