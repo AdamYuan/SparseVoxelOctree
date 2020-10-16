@@ -208,6 +208,8 @@ add_executable(VulkanSVO
 		src/myvk/Sampler.hpp
 		src/myvk/ObjectTracker.cpp
 		src/myvk/ObjectTracker.hpp
+		src/myvk/QueryPool.cpp
+		src/myvk/QueryPool.hpp
 		)
 
 find_package(Threads)

@@ -10,6 +10,7 @@
 #include "RenderPass.hpp"
 #include "PipelineBase.hpp"
 #include "DescriptorSet.hpp"
+#include "QueryPool.hpp"
 
 #include <memory>
 #include <vector>
@@ -61,7 +62,8 @@ namespace myvk {
 
 		void CmdBindDescriptorSets(const std::vector<std::shared_ptr<DescriptorSet>> &descriptor_sets,
 								   const std::shared_ptr<PipelineLayout> &pipeline_layout,
-								   VkPipelineBindPoint pipeline_bind_point, const std::vector<uint32_t> &offsets = {}) const;
+								   VkPipelineBindPoint pipeline_bind_point,
+								   const std::vector<uint32_t> &offsets = {}) const;
 
 		void CmdBindDescriptorSets(const std::vector<std::shared_ptr<DescriptorSet>> &descriptor_sets,
 								   const std::shared_ptr<PipelineBase> &pipeline,
@@ -114,6 +116,14 @@ namespace myvk {
 		void CmdDispatch(uint32_t group_x, uint32_t group_y, uint32_t group_z) const;
 
 		void CmdDispatchIndirect(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset = 0) const;
+
+		void CmdResetQueryPool(const std::shared_ptr<QueryPool> &query_pool,
+							   uint32_t first_query, uint32_t query_count) const;
+
+		void CmdResetQueryPool(const std::shared_ptr<QueryPool> &query_pool) const;
+
+		void CmdWriteTimestamp(VkPipelineStageFlagBits pipeline_stage, const std::shared_ptr<QueryPool> &query_pool,
+							   uint32_t query) const;
 
 		VkCommandBuffer GetHandle() const { return m_command_buffer; }
 

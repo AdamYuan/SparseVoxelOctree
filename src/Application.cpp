@@ -12,18 +12,17 @@
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
-               VkDebugUtilsMessageTypeFlagsEXT message_type,
-               const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
-               void *user_data) {
+			   VkDebugUtilsMessageTypeFlagsEXT message_type,
+			   const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
+			   void *user_data) {
 	if (message_severity >= VkDebugUtilsMessageSeverityFlagBitsEXT::
-	                            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+	VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 		LOGE.printf("%s", callback_data->pMessage);
 	else if (message_severity >=
-	         VkDebugUtilsMessageSeverityFlagBitsEXT::
-	             VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+			 VkDebugUtilsMessageSeverityFlagBitsEXT::
+			 VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
 		LOGW.printf("%s", callback_data->pMessage);
-	else
-		LOGI.printf("%s", callback_data->pMessage);
+	else LOGI.printf("%s", callback_data->pMessage);
 	return VK_FALSE;
 }
 
@@ -80,24 +79,24 @@ void Application::create_render_pass() {
 	subpass_dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 	subpass_dependencies[0].dstSubpass = 0;
 	subpass_dependencies[0].srcStageMask =
-	    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	subpass_dependencies[0].dstStageMask =
-	    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	subpass_dependencies[0].srcAccessMask = 0;
 	subpass_dependencies[0].dstAccessMask =
-	    VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-	    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 	subpass_dependencies[1].srcSubpass = 0;
 	subpass_dependencies[1].dstSubpass = 1;
 	subpass_dependencies[1].srcStageMask =
-	    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	subpass_dependencies[1].dstStageMask =
-	    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	subpass_dependencies[1].srcAccessMask =
-	    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	subpass_dependencies[1].dstAccessMask =
-	    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 	render_pass_info.dependencyCount = subpass_dependencies.size();
 	render_pass_info.pDependencies = subpass_dependencies.data();
@@ -109,8 +108,8 @@ void Application::create_framebuffers() {
 	m_framebuffers.resize(m_swapchain->GetImageCount());
 	for (uint32_t i = 0; i < m_swapchain->GetImageCount(); ++i) {
 		m_framebuffers[i] = myvk::Framebuffer::Create(
-		    m_render_pass, {m_swapchain_image_views[i]},
-		    m_swapchain->GetExtent());
+			m_render_pass, {m_swapchain_image_views[i]},
+			m_swapchain->GetExtent());
 	}
 }
 
@@ -118,21 +117,21 @@ void Application::draw_frame() {
 	m_frame_manager.BeforeAcquire();
 	uint32_t image_index;
 	m_swapchain->AcquireNextImage(
-	    &image_index, m_frame_manager.GetAcquireDoneSemaphorePtr(), nullptr);
+		&image_index, m_frame_manager.GetAcquireDoneSemaphorePtr(), nullptr);
 	m_frame_manager.AfterAcquire(image_index);
 
 	uint32_t current_frame = m_frame_manager.GetCurrentFrame();
 	m_camera.UpdateFrameUniformBuffer(current_frame);
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer =
-	    m_frame_command_buffers[current_frame];
+		m_frame_command_buffers[current_frame];
 
 	command_buffer->Reset();
 	command_buffer->Begin();
 	if (!m_octree.Empty())
 		m_octree_tracer.CmdBeamRenderPass(command_buffer, current_frame);
 	command_buffer->CmdBeginRenderPass(m_render_pass,
-	                                   m_framebuffers[image_index],
-	                                   {{{0.0f, 0.0f, 0.0f, 1.0f}}});
+									   m_framebuffers[image_index],
+									   {{{0.0f, 0.0f, 0.0f, 1.0f}}});
 	if (!m_octree.Empty())
 		m_octree_tracer.CmdDrawPipeline(command_buffer, current_frame);
 	command_buffer->CmdNextSubpass();
@@ -142,11 +141,11 @@ void Application::draw_frame() {
 
 	m_frame_manager.BeforeSubmit();
 	command_buffer->Submit({{m_frame_manager.GetAcquireDoneSemaphorePtr(),
-	                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT}},
-	                       {m_frame_manager.GetRenderDoneSemaphorePtr()},
-	                       m_frame_manager.GetFrameFencePtr());
+								VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT}},
+						   {m_frame_manager.GetRenderDoneSemaphorePtr()},
+						   m_frame_manager.GetFrameFencePtr());
 	m_swapchain->Present(image_index,
-	                     {m_frame_manager.GetRenderDoneSemaphorePtr()});
+						 {m_frame_manager.GetRenderDoneSemaphorePtr()});
 }
 
 void Application::initialize_vulkan() {
@@ -157,7 +156,7 @@ void Application::initialize_vulkan() {
 	}
 
 	std::vector<std::shared_ptr<myvk::PhysicalDevice>> physical_devices =
-	    myvk::PhysicalDevice::Fetch(m_instance);
+		myvk::PhysicalDevice::Fetch(m_instance);
 	if (physical_devices.empty()) {
 		LOGE.printf("Failed to find physical device with vulkan support!");
 		exit(EXIT_FAILURE);
@@ -172,14 +171,14 @@ void Application::initialize_vulkan() {
 	// DEVICE CREATION
 	{
 		std::vector<myvk::QueueRequirement> queue_requirements = {
-		    myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT,
-		                           &m_graphics_compute_queue, m_surface,
-		                           &m_present_queue),
-		    myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT,
-		                           &m_async_compute_queue)};
+			myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT,
+								   &m_graphics_compute_queue, m_surface,
+								   &m_present_queue),
+			myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT,
+								   &m_async_compute_queue)};
 		myvk::DeviceCreateInfo device_create_info;
 		device_create_info.Initialize(physical_devices[0], queue_requirements,
-		                              {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
+									  {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
 		if (!device_create_info.QueueSupport()) {
 			LOGE.printf("Failed to find queues!");
 			exit(EXIT_FAILURE);
@@ -196,38 +195,38 @@ void Application::initialize_vulkan() {
 	}
 
 	LOGI.printf("Physical Device: %s",
-	            m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
+				m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
 	LOGI.printf("Present Queue: %p, Graphics|Compute Queue: %p, Async Compute "
-	            "Queue: %p",
-	            m_present_queue->GetHandle(),
-	            m_graphics_compute_queue->GetHandle(),
-	            m_async_compute_queue->GetHandle());
+				"Queue: %p",
+				m_present_queue->GetHandle(),
+				m_graphics_compute_queue->GetHandle(),
+				m_async_compute_queue->GetHandle());
 
 	if (m_async_compute_queue->GetHandle() ==
-	    m_graphics_compute_queue->GetHandle()) {
+		m_graphics_compute_queue->GetHandle()) {
 		LOGE.printf(
-		    "No separate Compute Queue support, Path Tracer not available");
+				"No separate Compute Queue support, Path Tracer not available");
 	} else if (m_async_compute_queue->GetFamilyIndex() ==
-	           m_graphics_compute_queue->GetFamilyIndex()) {
+			   m_graphics_compute_queue->GetFamilyIndex()) {
 		LOGW.printf("Async Compute Queue is not fully asynchronous");
 	}
 
 	m_swapchain = myvk::Swapchain::Create(m_graphics_compute_queue,
-	                                      m_present_queue, false);
+										  m_present_queue, false);
 	LOGI.printf("Swapchain image count: %u", m_swapchain->GetImageCount());
 
 	m_swapchain_images = myvk::SwapchainImage::Create(m_swapchain);
 	m_swapchain_image_views.resize(m_swapchain->GetImageCount());
 	for (uint32_t i = 0; i < m_swapchain->GetImageCount(); ++i)
 		m_swapchain_image_views[i] =
-		    myvk::ImageView::Create(m_swapchain_images[i]);
+			myvk::ImageView::Create(m_swapchain_images[i]);
 
 	m_graphics_compute_command_pool = myvk::CommandPool::Create(
-	    m_graphics_compute_queue,
-	    VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+		m_graphics_compute_queue,
+		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
 	m_frame_command_buffers = myvk::CommandBuffer::CreateMultiple(
-	    m_graphics_compute_command_pool, kFrameCount);
+		m_graphics_compute_command_pool, kFrameCount);
 }
 
 Application::Application() {
@@ -245,9 +244,9 @@ Application::Application() {
 	m_frame_manager.Initialize(m_swapchain, kFrameCount);
 	m_octree.Initialize(m_device);
 	m_octree_tracer.Initialize(m_octree, m_camera, m_render_pass, 0,
-	                           kFrameCount);
+							   kFrameCount);
 	m_imgui_renderer.Initialize(m_graphics_compute_command_pool, m_render_pass,
-	                            1, kFrameCount);
+								1, kFrameCount);
 }
 
 void Application::LoadScene(const char *filename, uint32_t octree_level) {
@@ -256,37 +255,54 @@ void Application::LoadScene(const char *filename, uint32_t octree_level) {
 	if (scene.Initialize(m_graphics_compute_queue, filename)) {
 		Voxelizer voxelizer;
 		voxelizer.Initialize(scene, m_graphics_compute_command_pool,
-		                     octree_level);
+							 octree_level);
 		OctreeBuilder builder;
 		builder.Initialize(voxelizer, m_graphics_compute_command_pool,
-		                   octree_level);
+						   octree_level);
 
 		std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(m_device);
+		std::shared_ptr<myvk::QueryPool> query_pool = myvk::QueryPool::Create(m_device, VK_QUERY_TYPE_TIMESTAMP, 4);
 		std::shared_ptr<myvk::CommandBuffer> command_buffer =
-		    myvk::CommandBuffer::Create(m_graphics_compute_command_pool);
+			myvk::CommandBuffer::Create(m_graphics_compute_command_pool);
 		command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+		command_buffer->CmdResetQueryPool(query_pool);
+
+		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, query_pool, 0);
 		voxelizer.CmdVoxelize(command_buffer);
+		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 1);
+
 		command_buffer->CmdPipelineBarrier(
-		    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-		    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {},
-		    {voxelizer.GetVoxelFragmentListPtr()->GetMemoryBarrier(
-		        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT)},
-		    {});
+			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {},
+			{voxelizer.GetVoxelFragmentListPtr()->GetMemoryBarrier(
+				VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT)},
+			{});
+
+		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, query_pool, 2);
 		builder.CmdBuild(command_buffer);
+		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 3);
+
 		command_buffer->End();
 
-		double time = glfwGetTime();
 		LOGV.printf("Voxelize and Octree building BEGIN");
+
 		command_buffer->Submit({}, {}, fence);
 		fence->Wait();
-		time = glfwGetTime() - time;
-		LOGV.printf("Voxelize and Octree building FINISHED in %lf ms",
-		            time * 1000.0);
+
+		//time measurement
+		uint64_t timestamps[4];
+		query_pool->GetResults64(timestamps, VK_QUERY_RESULT_WAIT_BIT);
+		LOGV.printf("Voxelize and Octree building FINISHED in %lf ms (Voxelize %lf ms, Octree building %lf ms)",
+					double(timestamps[3] - timestamps[0]) * 0.000001,
+					double(timestamps[1] - timestamps[0]) * 0.000001,
+					double(timestamps[3] - timestamps[2]) * 0.000001);
+
 		m_octree.Update(
-		    builder.GetOctree(), octree_level,
-		    builder.GetOctreeRange(m_graphics_compute_command_pool));
+			builder.GetOctree(), octree_level,
+			builder.GetOctreeRange(m_graphics_compute_command_pool));
 		LOGV.printf("Octree range: %lu (%.1f MB)", m_octree.GetRange(),
-		            m_octree.GetRange() / 1000000.0f);
+					m_octree.GetRange() / 1000000.0f);
 	}
 }
 
@@ -327,35 +343,40 @@ void Application::ui_pop_disable() {
 }
 
 void Application::ui_info_overlay() {
-	ImGui::SetNextWindowPos(ImVec2(5.0f, ImGui::GetIO().DisplaySize.y - 5.0f),
-	                        ImGuiCond_Always, ImVec2(0, 1));
+	ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y),
+							ImGuiCond_Always, ImVec2(1.0f, 1.0f));
 	ImGui::PushStyleColor(
-	    ImGuiCol_WindowBg,
-	    ImVec4(0.0f, 0.0f, 0.0f, 0.4f)); // Transparent background
+		ImGuiCol_WindowBg,
+		ImVec4(0.0f, 0.0f, 0.0f, 0.4f)); // Transparent background
 	if (ImGui::Begin("INFO", nullptr,
-	                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-	                     ImGuiWindowFlags_AlwaysAutoResize |
-	                     ImGuiWindowFlags_NoMove |
-	                     ImGuiWindowFlags_NoSavedSettings |
-	                     ImGuiWindowFlags_NoBringToFrontOnFocus)) {
+					 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+					 ImGuiWindowFlags_AlwaysAutoResize |
+					 ImGuiWindowFlags_NoMove |
+					 ImGuiWindowFlags_NoSavedSettings |
+					 ImGuiWindowFlags_NoBringToFrontOnFocus)) {
 		// ImGui::Text("Toggle UI display with [X]");
-		if (ImGui::CollapsingHeader("Basic", ImGuiTreeNodeFlags_DefaultOpen)) {
+		if (ImGui::TreeNodeEx("Basic", ImGuiTreeNodeFlags_DefaultOpen)) {
 			uint32_t vulkan_version = volkGetInstanceVersion();
 			ImGui::Text("Vulkan Version: %u.%u.%u",
-			            VK_VERSION_MAJOR(vulkan_version),
-			            VK_VERSION_MINOR(vulkan_version),
-			            VK_VERSION_PATCH(vulkan_version));
+						VK_VERSION_MAJOR(vulkan_version),
+						VK_VERSION_MINOR(vulkan_version),
+						VK_VERSION_PATCH(vulkan_version));
 			ImGui::Text(
-			    "Physical Device: %s",
-			    m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
+				"Physical Device: %s",
+				m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
 			ImGui::Text("Framerate: %f", ImGui::GetIO().Framerate);
+
+			ImGui::TreePop();
+			ImGui::Separator();
 		}
 
-		if (!m_octree.Empty() && ImGui::CollapsingHeader("Octree")) {
+		if (!m_octree.Empty() && ImGui::TreeNodeEx("Octree")) {
 			ImGui::Text("Level: %d", m_octree.GetLevel());
 			ImGui::Text("Allocated Size: %.1f MB",
-			            m_octree.GetBufferPtr()->GetSize() / 1000000.0f);
+						m_octree.GetBufferPtr()->GetSize() / 1000000.0f);
 			ImGui::Text("Used Size: %.1f MB", m_octree.GetRange() / 1000000.0f);
+
+			ImGui::TreePop();
 		}
 
 		/*if(m_pathtracing_flag)
@@ -391,15 +412,15 @@ void Application::ui_main_menubar() {
 		}
 
 		if (ImGui::BeginMenu("Primary View")) {
-			if(ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kDiffuse))
+			if (ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kDiffuse))
 				m_octree_tracer.m_view_type = OctreeTracer::kDiffuse;
-			if(ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kNormal))
+			if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kNormal))
 				m_octree_tracer.m_view_type = OctreeTracer::kNormal;
-			if(ImGui::MenuItem("Iterations", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kIteration))
+			if (ImGui::MenuItem("Iterations", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kIteration))
 				m_octree_tracer.m_view_type = OctreeTracer::kIteration;
 
 			ImGui::Checkbox("Beam Optimization",
-			                &m_octree_tracer.m_beam_enable);
+							&m_octree_tracer.m_beam_enable);
 			ImGui::EndMenu();
 		}
 
@@ -444,15 +465,15 @@ void Application::ui_main_menubar() {
 }
 
 bool Application::ui_file_open(const char *label, const char *btn, char *buf,
-                               size_t buf_size, const char *title,
-                               int filter_num,
-                               const char *const *filter_patterns) {
+							   size_t buf_size, const char *title,
+							   int filter_num,
+							   const char *const *filter_patterns) {
 	bool ret = ImGui::InputText(label, buf, buf_size);
 	ImGui::SameLine();
 
 	if (ImGui::Button(btn)) {
 		const char *filename = tinyfd_openFileDialog(
-		    title, "", filter_num, filter_patterns, nullptr, false);
+			title, "", filter_num, filter_patterns, nullptr, false);
 		if (filename)
 			strcpy(buf, filename);
 		ret = true;
@@ -461,15 +482,15 @@ bool Application::ui_file_open(const char *label, const char *btn, char *buf,
 }
 
 bool Application::ui_file_save(const char *label, const char *btn, char *buf,
-                               size_t buf_size, const char *title,
-                               int filter_num,
-                               const char *const *filter_patterns) {
+							   size_t buf_size, const char *title,
+							   int filter_num,
+							   const char *const *filter_patterns) {
 	bool ret = ImGui::InputText(label, buf, buf_size);
 	ImGui::SameLine();
 
 	if (ImGui::Button(btn)) {
 		const char *filename = tinyfd_saveFileDialog(title, "", filter_num,
-		                                             filter_patterns, nullptr);
+													 filter_patterns, nullptr);
 		if (filename)
 			strcpy(buf, filename);
 		ret = true;
@@ -479,16 +500,16 @@ bool Application::ui_file_save(const char *label, const char *btn, char *buf,
 
 void Application::ui_load_scene_modal() {
 	if (ImGui::BeginPopupModal("Load Scene", nullptr,
-	                           ImGuiWindowFlags_AlwaysAutoResize |
-	                               ImGuiWindowFlags_NoTitleBar |
-	                               ImGuiWindowFlags_NoMove)) {
+							   ImGuiWindowFlags_AlwaysAutoResize |
+							   ImGuiWindowFlags_NoTitleBar |
+							   ImGuiWindowFlags_NoMove)) {
 		static char name_buf[kFilenameBufSize];
 		static int octree_leve = 10;
 
 		constexpr const char *kFilter[] = {"*.obj"};
 
 		ui_file_open("OBJ Filename", "...##5", name_buf, kFilenameBufSize,
-		             "OBJ Filename", 1, kFilter);
+					 "OBJ Filename", 1, kFilter);
 		ImGui::DragInt("Octree Level", &octree_leve, 1, 2, 12);
 
 		if (ImGui::Button("Load", ImVec2(256, 0))) {
@@ -541,11 +562,11 @@ void Application::ui_export_exr_modal() {
 }
 
 void Application::glfw_key_callback(GLFWwindow *window, int key, int,
-                                    int action, int) {
-	auto *app = (Application *)glfwGetWindowUserPointer(window);
+									int action, int) {
+	auto *app = (Application *) glfwGetWindowUserPointer(window);
 	if (!ImGui::GetCurrentContext()->NavWindow ||
-	    (ImGui::GetCurrentContext()->NavWindow->Flags &
-	     ImGuiWindowFlags_NoBringToFrontOnFocus)) {
+		(ImGui::GetCurrentContext()->NavWindow->Flags &
+		 ImGuiWindowFlags_NoBringToFrontOnFocus)) {
 		if (action == GLFW_PRESS && key == GLFW_KEY_X)
 			app->m_ui_display_flag ^= 1u;
 	}

@@ -299,6 +299,21 @@ namespace myvk {
 		vkCmdDispatchIndirect(m_command_buffer, buffer->GetHandle(), offset);
 	}
 
+	void CommandBuffer::CmdResetQueryPool(const std::shared_ptr<QueryPool> &query_pool, uint32_t first_query,
+										  uint32_t query_count) const {
+		vkCmdResetQueryPool(m_command_buffer, query_pool->GetHandle(), first_query, query_count);
+	}
+
+	void CommandBuffer::CmdResetQueryPool(const std::shared_ptr<QueryPool> &query_pool) const {
+		vkCmdResetQueryPool(m_command_buffer, query_pool->GetHandle(), 0, query_pool->GetCount());
+	}
+
+	void
+	CommandBuffer::CmdWriteTimestamp(VkPipelineStageFlagBits pipeline_stage, const std::shared_ptr<QueryPool> &query_pool,
+									 uint32_t query) const {
+		vkCmdWriteTimestamp(m_command_buffer, pipeline_stage, query_pool->GetHandle(), query);
+	}
+
 	CommandBufferGroup::CommandBufferGroup(const std::vector<std::shared_ptr<CommandBuffer>> &command_buffers) {
 		Initialize(command_buffers);
 	}
