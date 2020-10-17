@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <thread>
 #include <future>
-#include <mutex>
 #include <algorithm>
 
 #include <meshoptimizer.h>
@@ -238,7 +237,6 @@ void Scene::load_textures(const std::shared_ptr<myvk::Queue> &graphics_queue,
 	std::vector<std::future<void>> future_vector;
 	future_vector.reserve(cores);
 	std::atomic_uint32_t texture_id{0};
-	std::mutex mutex;
 	while (cores--) {
 		future_vector.push_back(std::async(
 			[&]() -> void {
@@ -320,10 +318,7 @@ void Scene::load_textures(const std::shared_ptr<myvk::Queue> &graphics_queue,
 					tracker.Track(fence, {command_buffer, staging_buffer});
 					tracker.Update();
 
-					{
-						std::lock_guard<std::mutex> lock_guard{mutex};
-						command_buffer->Submit({}, {}, fence);
-					}
+					command_buffer->Submit({}, {}, fence);
 
 					LOGI.printf("Texture %s loaded", texture_filenames[i].c_str());
 				}

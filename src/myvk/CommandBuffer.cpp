@@ -77,6 +77,7 @@ namespace myvk {
 			info.pSignalSemaphores = signal_semaphores.GetSemaphoresPtr();
 		}
 
+		std::lock_guard<std::mutex> lock_guard{m_command_pool_ptr->GetQueuePtr()->GetMutex()};
 		return vkQueueSubmit(m_command_pool_ptr->GetQueuePtr()->GetHandle(), 1, &info,
 							 fence ? fence->GetHandle() : VK_NULL_HANDLE);
 	}

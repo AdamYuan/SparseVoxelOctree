@@ -6,6 +6,7 @@
 #include <volk.h>
 #include <cinttypes>
 #include <memory>
+#include <mutex>
 
 namespace myvk {
 	class Queue : public DeviceObjectBase { //only can be created with device creation
@@ -14,6 +15,8 @@ namespace myvk {
 
 		VkQueue m_queue{nullptr};
 		uint32_t m_family_index;
+
+		std::mutex m_mutex;
 
 		static std::shared_ptr<Queue>
 		create(const std::shared_ptr<Device> &device, uint32_t family_index, uint32_t queue_index);
@@ -24,6 +27,8 @@ namespace myvk {
 		VkQueue GetHandle() const { return m_queue; }
 
 		uint32_t GetFamilyIndex() const { return m_family_index; }
+
+		std::mutex &GetMutex() { return m_mutex; }
 
 		VkResult WaitIdle() const;
 

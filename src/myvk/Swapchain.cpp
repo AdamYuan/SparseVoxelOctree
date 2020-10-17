@@ -142,6 +142,7 @@ namespace myvk {
 		present_info.pImageIndices = &image_index;
 		present_info.pResults = nullptr;
 
+		std::lock_guard<std::mutex> lock_guard{m_present_queue_ptr->GetMutex()};
 		return vkQueuePresentKHR(m_present_queue_ptr->GetHandle(), &present_info);
 	}
 }
