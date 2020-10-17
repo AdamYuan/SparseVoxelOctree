@@ -26,6 +26,92 @@ debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
 	return VK_FALSE;
 }
 
+namespace ImGui {
+	bool
+	BufferingBar(const char *label, float value, const ImVec2 &size_arg, const ImU32 &bg_col, const ImU32 &fg_col) {
+		ImGuiWindow *window = GetCurrentWindow();
+		if (window->SkipItems)
+			return false;
+
+		ImGuiContext &g = *GImGui;
+		const ImGuiStyle &style = g.Style;
+		const ImGuiID id = window->GetID(label);
+
+		ImVec2 pos = window->DC.CursorPos;
+		ImVec2 size = size_arg;
+		size.x -= style.FramePadding.x * 2;
+
+		const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
+		ItemSize(bb, style.FramePadding.y);
+		if (!ItemAdd(bb, id))
+			return false;
+
+		// Render
+		const float circleStart = size.x * 0.7f;
+		const float circleEnd = size.x;
+		const float circleWidth = circleEnd - circleStart;
+
+		window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + circleStart, bb.Max.y), bg_col);
+		window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + circleStart * value, bb.Max.y), fg_col);
+
+		const float t = g.Time;
+		const float r = size.y / 2;
+		const float speed = 1.5f;
+
+		const float a = speed * 0;
+		const float b = speed * 0.333f;
+		const float c = speed * 0.666f;
+
+		const float o1 = (circleWidth + r) * (t + a - speed * (int) ((t + a) / speed)) / speed;
+		const float o2 = (circleWidth + r) * (t + b - speed * (int) ((t + b) / speed)) / speed;
+		const float o3 = (circleWidth + r) * (t + c - speed * (int) ((t + c) / speed)) / speed;
+
+		window->DrawList->AddCircleFilled(ImVec2(pos.x + circleEnd - o1, bb.Min.y + r), r, bg_col);
+		window->DrawList->AddCircleFilled(ImVec2(pos.x + circleEnd - o2, bb.Min.y + r), r, bg_col);
+		window->DrawList->AddCircleFilled(ImVec2(pos.x + circleEnd - o3, bb.Min.y + r), r, bg_col);
+
+		return true;
+	}
+
+	bool Spinner(const char *label, float radius, int thickness, const ImU32 &color) {
+		ImGuiWindow *window = GetCurrentWindow();
+		if (window->SkipItems)
+			return false;
+
+		ImGuiContext &g = *GImGui;
+		const ImGuiStyle &style = g.Style;
+		const ImGuiID id = window->GetID(label);
+
+		ImVec2 pos = window->DC.CursorPos;
+		ImVec2 size((radius) * 2, (radius + style.FramePadding.y) * 2);
+
+		const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
+		ItemSize(bb, style.FramePadding.y);
+		if (!ItemAdd(bb, id))
+			return false;
+
+		// Render
+		window->DrawList->PathClear();
+
+		int num_segments = 30;
+		int start = abs(ImSin(g.Time * 1.8f) * (num_segments - 5));
+
+		const float a_min = IM_PI * 2.0f * ((float) start) / (float) num_segments;
+		const float a_max = IM_PI * 2.0f * ((float) num_segments - 3) / (float) num_segments;
+
+		const ImVec2 centre = ImVec2(pos.x + radius, pos.y + radius + style.FramePadding.y);
+
+		for (int i = 0; i < num_segments; i++) {
+			const float a = a_min + ((float) i / (float) num_segments) * (a_max - a_min);
+			window->DrawList->PathLineTo(ImVec2(centre.x + ImCos(a + g.Time * 8) * radius,
+												centre.y + ImSin(a + g.Time * 8) * radius));
+		}
+
+		window->DrawList->PathStroke(color, false, thickness);
+		return true;
+	}
+}
+
 void Application::create_window() {
 	glfwInit();
 
@@ -149,7 +235,7 @@ void Application::draw_frame() {
 }
 
 void Application::initialize_vulkan() {
-	m_instance = myvk::Instance::CreateWithGlfwExtensions(false, debug_callback);
+	m_instance = myvk::Instance::CreateWithGlfwExtensions(true, debug_callback);
 	if (!m_instance) {
 		LOGE.printf("Failed to create instance!");
 		exit(EXIT_FAILURE);
@@ -250,60 +336,8 @@ Application::Application() {
 }
 
 void Application::LoadScene(const char *filename, uint32_t octree_level) {
-	m_device->WaitIdle();
-	Scene scene;
-	if (scene.Initialize(m_graphics_compute_queue, filename)) {
-		Voxelizer voxelizer;
-		voxelizer.Initialize(scene, m_graphics_compute_command_pool,
-							 octree_level);
-		OctreeBuilder builder;
-		builder.Initialize(voxelizer, m_graphics_compute_command_pool,
-						   octree_level);
-
-		std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(m_device);
-		std::shared_ptr<myvk::QueryPool> query_pool = myvk::QueryPool::Create(m_device, VK_QUERY_TYPE_TIMESTAMP, 4);
-		std::shared_ptr<myvk::CommandBuffer> command_buffer =
-			myvk::CommandBuffer::Create(m_graphics_compute_command_pool);
-		command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-		command_buffer->CmdResetQueryPool(query_pool);
-
-		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, query_pool, 0);
-		voxelizer.CmdVoxelize(command_buffer);
-		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 1);
-
-		command_buffer->CmdPipelineBarrier(
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {},
-			{voxelizer.GetVoxelFragmentListPtr()->GetMemoryBarrier(
-				VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT)},
-			{});
-
-		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, query_pool, 2);
-		builder.CmdBuild(command_buffer);
-		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 3);
-
-		command_buffer->End();
-
-		LOGV.printf("Voxelize and Octree building BEGIN");
-
-		command_buffer->Submit({}, {}, fence);
-		fence->Wait();
-
-		//time measurement
-		uint64_t timestamps[4];
-		query_pool->GetResults64(timestamps, VK_QUERY_RESULT_WAIT_BIT);
-		LOGV.printf("Voxelize and Octree building FINISHED in %lf ms (Voxelize %lf ms, Octree building %lf ms)",
-					double(timestamps[3] - timestamps[0]) * 0.000001,
-					double(timestamps[1] - timestamps[0]) * 0.000001,
-					double(timestamps[3] - timestamps[2]) * 0.000001);
-
-		m_octree.Update(
-			builder.GetOctree(), octree_level,
-			builder.GetOctreeRange(m_graphics_compute_command_pool));
-		LOGV.printf("Octree range: %lu (%.1f MB)", m_octree.GetRange(),
-					m_octree.GetRange() / 1000000.0f);
-	}
+	if (m_loader_thread.joinable()) return;
+	m_loader_thread = std::thread(&Application::loader_thread, this, filename, octree_level);
 }
 
 void Application::Run() {
@@ -315,10 +349,12 @@ void Application::Run() {
 
 		m_camera.Control(m_window, float(cur_time - lst_time));
 
+		ui_switch_state();
+
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 		if (m_ui_display_flag)
-			ui_main();
+			ui_render_main();
 		ImGui::Render();
 
 		draw_frame();
@@ -327,8 +363,28 @@ void Application::Run() {
 	m_device->WaitIdle();
 }
 
-void Application::ui_main() {
-	ui_main_menubar();
+void Application::ui_switch_state() {
+	if (m_loader_thread.joinable()) {
+		m_ui_state = UIStates::kLoading;
+
+		if (m_loader_ready_to_join) {
+			m_loader_condition_variable.notify_all();
+			m_loader_thread.join();
+			m_loader_ready_to_join = false;
+		}
+	} else if (m_octree.Empty()) m_ui_state = UIStates::kEmpty;
+	else m_ui_state = UIStates::kOctreeTracer;
+}
+
+void Application::ui_render_main() {
+	if (m_ui_state == UIStates::kLoading) {
+		ImGui::OpenPopup("Loading");
+		ui_loading_modal();
+	}
+	if (m_ui_state != UIStates::kPathTracing) ui_regular_menubar();
+	else {
+
+	}
 	ui_info_overlay();
 }
 
@@ -387,51 +443,51 @@ void Application::ui_info_overlay() {
 	ImGui::PopStyleColor();
 }
 
-void Application::ui_main_menubar() {
+void Application::ui_regular_menubar() {
 	bool open_load_scene_popup = false, open_export_exr_popup = false;
 
 	ImGui::BeginMainMenuBar();
 
-	if (!m_pathtracing_flag) {
-		if (ImGui::Button("Load Scene"))
-			open_load_scene_popup = true;
+	if (m_ui_state == UIStates::kLoading) ui_push_disable();
+	if (ImGui::Button("Load Scene"))
+		open_load_scene_popup = true;
+	if (m_ui_state == UIStates::kLoading) ui_pop_disable();
 
-		/*if(m_octree && ImGui::Button("Start PT"))
-		{
-		    m_pathtracing_flag = true;
-		    m_pathtracer.Prepare(m_camera, *m_octree, m_octree_tracer);
-		}*/
+	/*if(m_octree && ImGui::Button("Start PT"))
+	{
+		m_pathtracing_flag = true;
+		m_pathtracer.Prepare(m_camera, *m_octree, m_octree_tracer);
+	}*/
 
-		if (ImGui::BeginMenu("Camera")) {
-			ImGui::DragAngle("FOV", &m_camera.m_fov, 1, 10, 179);
-			ImGui::DragFloat("Speed", &m_camera.m_speed, 0.005f, 0.005f, 0.2f);
-			ImGui::InputFloat3("Position", &m_camera.m_position[0]);
-			ImGui::DragAngle("Yaw", &m_camera.m_yaw, 1, 0, 360);
-			ImGui::DragAngle("Pitch", &m_camera.m_pitch, 1, -90, 90);
-			ImGui::EndMenu();
-		}
-
-		if (ImGui::BeginMenu("Primary View")) {
-			if (ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kDiffuse))
-				m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kDiffuse;
-			if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kNormal))
-				m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kNormal;
-			if (ImGui::MenuItem("Iterations", nullptr,
-								m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kIteration))
-				m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kIteration;
-
-			ImGui::Checkbox("Beam Optimization",
-							&m_octree_tracer.m_beam_enable);
-			ImGui::EndMenu();
-		}
-
-		/*if(ImGui::BeginMenu("Path Tracer"))
-		{
-		    ImGui::DragInt("Bounce", &m_pathtracer.m_bounce, 1, 2, kMaxBounce);
-		    ImGui::DragFloat3("Sun Radiance", &m_pathtracer.m_sun_radiance[0],
-		0.1f, 0.0f, 20.0f); ImGui::EndMenu();
-		}*/
+	if (ImGui::BeginMenu("Camera")) {
+		ImGui::DragAngle("FOV", &m_camera.m_fov, 1, 10, 179);
+		ImGui::DragFloat("Speed", &m_camera.m_speed, 0.005f, 0.005f, 0.2f);
+		ImGui::InputFloat3("Position", &m_camera.m_position[0]);
+		ImGui::DragAngle("Yaw", &m_camera.m_yaw, 1, 0, 360);
+		ImGui::DragAngle("Pitch", &m_camera.m_pitch, 1, -90, 90);
+		ImGui::EndMenu();
 	}
+
+	if (ImGui::BeginMenu("Primary View")) {
+		if (ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kDiffuse))
+			m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kDiffuse;
+		if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kNormal))
+			m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kNormal;
+		if (ImGui::MenuItem("Iterations", nullptr,
+							m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kIteration))
+			m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kIteration;
+
+		ImGui::Checkbox("Beam Optimization",
+						&m_octree_tracer.m_beam_enable);
+		ImGui::EndMenu();
+	}
+
+	/*if(ImGui::BeginMenu("Path Tracer"))
+	{
+		ImGui::DragInt("Bounce", &m_pathtracer.m_bounce, 1, 2, kMaxBounce);
+		ImGui::DragFloat3("Sun Radiance", &m_pathtracer.m_sun_radiance[0],
+	0.1f, 0.0f, 20.0f); ImGui::EndMenu();
+	}*/
 	/*else if(m_octree)
 	{
 	    if(ImGui::Button("Exit PT"))
@@ -526,6 +582,19 @@ void Application::ui_load_scene_modal() {
 	}
 }
 
+void Application::ui_loading_modal() {
+	if (ImGui::BeginPopupModal("Loading", nullptr,
+							   ImGuiWindowFlags_AlwaysAutoResize |
+							   ImGuiWindowFlags_NoTitleBar |
+							   ImGuiWindowFlags_NoMove)) {
+		ImGui::Spinner("##spinner", 12, 6, ImGui::GetColorU32(ImGuiCol_ButtonHovered));
+		ImGui::SameLine();
+		ImGui::Text("Loading ...");
+
+		ImGui::EndPopup();
+	}
+}
+
 void Application::ui_export_exr_modal() {
 	/*if (ImGui::BeginPopupModal("Export OpenEXR", nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize |
@@ -571,4 +640,61 @@ void Application::glfw_key_callback(GLFWwindow *window, int key, int,
 		if (action == GLFW_PRESS && key == GLFW_KEY_X)
 			app->m_ui_display_flag ^= 1u;
 	}
+}
+
+void Application::loader_thread(const char *filename, uint32_t octree_level) {
+	Scene scene;
+	std::shared_ptr<myvk::CommandPool> command_pool = myvk::CommandPool::Create(m_graphics_compute_queue);
+	if (scene.Initialize(m_graphics_compute_queue, filename)) {
+		Voxelizer voxelizer;
+		voxelizer.Initialize(scene, command_pool, octree_level);
+		OctreeBuilder builder;
+		builder.Initialize(voxelizer, command_pool, octree_level);
+
+		std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(m_device);
+		std::shared_ptr<myvk::QueryPool> query_pool = myvk::QueryPool::Create(m_device, VK_QUERY_TYPE_TIMESTAMP, 4);
+		std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
+		command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+		command_buffer->CmdResetQueryPool(query_pool);
+
+		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, query_pool, 0);
+		voxelizer.CmdVoxelize(command_buffer);
+		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 1);
+
+		command_buffer->CmdPipelineBarrier(
+			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {},
+			{voxelizer.GetVoxelFragmentListPtr()->GetMemoryBarrier(
+				VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT)},
+			{});
+
+		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, query_pool, 2);
+		builder.CmdBuild(command_buffer);
+		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 3);
+
+		command_buffer->End();
+
+		LOGV.printf("Voxelize and Octree building BEGIN");
+
+		command_buffer->Submit({}, {}, fence);
+		fence->Wait();
+
+		//time measurement
+		uint64_t timestamps[4];
+		query_pool->GetResults64(timestamps, VK_QUERY_RESULT_WAIT_BIT);
+		LOGV.printf("Voxelize and Octree building FINISHED in %lf ms (Voxelize %lf ms, Octree building %lf ms)",
+					double(timestamps[3] - timestamps[0]) * 0.000001,
+					double(timestamps[1] - timestamps[0]) * 0.000001,
+					double(timestamps[3] - timestamps[2]) * 0.000001);
+
+		m_loader_ready_to_join = true;
+
+		std::unique_lock<std::mutex> lock{m_loader_mutex};
+		m_loader_condition_variable.wait(lock);
+
+		m_octree.Update(builder.GetOctree(), octree_level, builder.GetOctreeRange(command_pool));
+		LOGV.printf("Octree range: %lu (%.1f MB)", m_octree.GetRange(), m_octree.GetRange() / 1000000.0f);
+	}
+	m_loader_ready_to_join = true;
 }

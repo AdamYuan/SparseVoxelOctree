@@ -7,6 +7,8 @@
 #include <array>
 #include <memory>
 #include <vector>
+#include <thread>
+#include <condition_variable>
 
 #include "Camera.hpp"
 #include "ImGuiRenderer.hpp"
@@ -43,7 +45,7 @@ private:
 	std::shared_ptr<myvk::Surface> m_surface;
 	std::shared_ptr<myvk::Device> m_device;
 	std::shared_ptr<myvk::Queue> m_graphics_compute_queue,
-	    m_async_compute_queue;
+		m_async_compute_queue;
 	std::shared_ptr<myvk::PresentQueue> m_present_queue;
 	std::shared_ptr<myvk::CommandPool> m_graphics_compute_command_pool;
 
@@ -64,12 +66,23 @@ private:
 	Octree m_octree;
 	OctreeTracer m_octree_tracer;
 
+	// multithreading loader
+	std::thread m_loader_thread;
+	std::mutex m_loader_mutex;
+	bool m_loader_ready_to_join{false};
+	std::condition_variable m_loader_condition_variable;
+
 	// ui flags
-	bool m_pathtracing_flag{false}, m_ui_display_flag{true};
+	enum class UIStates {
+		kEmpty, kOctreeTracer, kPathTracing, kLoading
+	} m_ui_state{UIStates::kEmpty};
+	bool m_ui_display_flag{true};
 
 	void create_window();
 
 	void initialize_vulkan();
+
+	void loader_thread(const char *filename, uint32_t octree_level);
 
 	void create_render_pass();
 
@@ -77,13 +90,15 @@ private:
 
 	void draw_frame();
 
-	void ui_main();
+	void ui_switch_state();
+
+	void ui_render_main();
 
 	static void ui_push_disable();
 
 	static void ui_pop_disable();
 
-	void ui_main_menubar();
+	void ui_regular_menubar();
 
 	void ui_info_overlay();
 
@@ -91,16 +106,18 @@ private:
 
 	void ui_export_exr_modal();
 
+	void ui_loading_modal();
+
 	static bool ui_file_open(const char *label, const char *btn, char *buf,
-	                         size_t buf_size, const char *title, int filter_num,
-	                         const char *const *filter_patterns);
+							 size_t buf_size, const char *title, int filter_num,
+							 const char *const *filter_patterns);
 
 	static bool ui_file_save(const char *label, const char *btn, char *buf,
-	                         size_t buf_size, const char *title, int filter_num,
-	                         const char *const *filter_patterns);
+							 size_t buf_size, const char *title, int filter_num,
+							 const char *const *filter_patterns);
 
 	static void glfw_key_callback(GLFWwindow *window, int key, int, int action,
-	                              int);
+								  int);
 
 public:
 	Application();
