@@ -314,7 +314,7 @@ namespace myvk {
 		vkCmdWriteTimestamp(m_command_buffer, pipeline_stage, query_pool->GetHandle(), query);
 	}
 
-	CommandBufferGroup::CommandBufferGroup(const std::vector<std::shared_ptr<CommandBuffer>> &command_buffers) {
+	/*CommandBufferGroup::CommandBufferGroup(const std::vector<std::shared_ptr<CommandBuffer>> &command_buffers) {
 		Initialize(command_buffers);
 	}
 
@@ -354,5 +354,5 @@ namespace myvk {
 			if (res != VK_SUCCESS) return res;
 		}
 		return VK_SUCCESS;
-	}
+	}*/
 }

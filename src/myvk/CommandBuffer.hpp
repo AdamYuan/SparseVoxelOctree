@@ -134,7 +134,7 @@ namespace myvk {
 		~CommandBuffer();
 	};
 
-	class CommandBufferGroup {
+	/*class CommandBufferGroup {
 	private:
 		std::map<VkQueue, std::vector<VkCommandBuffer>> m_command_buffers;
 
@@ -150,7 +150,7 @@ namespace myvk {
 		VkResult Submit(const SemaphoreStageGroup &wait_semaphores = SemaphoreStageGroup(),
 						const SemaphoreGroup &signal_semaphores = SemaphoreGroup(),
 						const std::shared_ptr<Fence> &fence = nullptr) const;
-	};
+	};*/
 } // namespace myvk
 
 #endif
