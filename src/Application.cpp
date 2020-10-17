@@ -412,12 +412,13 @@ void Application::ui_main_menubar() {
 		}
 
 		if (ImGui::BeginMenu("Primary View")) {
-			if (ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kDiffuse))
-				m_octree_tracer.m_view_type = OctreeTracer::kDiffuse;
-			if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kNormal))
-				m_octree_tracer.m_view_type = OctreeTracer::kNormal;
-			if (ImGui::MenuItem("Iterations", nullptr, m_octree_tracer.m_view_type == OctreeTracer::kIteration))
-				m_octree_tracer.m_view_type = OctreeTracer::kIteration;
+			if (ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kDiffuse))
+				m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kDiffuse;
+			if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kNormal))
+				m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kNormal;
+			if (ImGui::MenuItem("Iterations", nullptr,
+								m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kIteration))
+				m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kIteration;
 
 			ImGui::Checkbox("Beam Optimization",
 							&m_octree_tracer.m_beam_enable);
