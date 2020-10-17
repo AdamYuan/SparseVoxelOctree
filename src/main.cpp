@@ -1,8 +1,8 @@
 #include "Application.hpp"
 #include "Config.hpp"
 
-#include <plog/Appenders/ColorConsoleAppender.h>
-#include <plog/Init.h>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 constexpr const char *kHelpStr =
     "AdamYuan's GPU Sparse Voxel Octree (Driven by Vulkan)\n"
@@ -10,8 +10,8 @@ constexpr const char *kHelpStr =
     "\t-lvl [OCTREE LEVEL (%u <= lvl <= %u)]\n";
 
 int main(int argc, char **argv) {
-	plog::ColorConsoleAppender<plog::TxtFormatter> console_appender;
-	plog::init(plog::verbose, &console_appender);
+	spdlog::set_pattern("[%H:%M:%S.%e] [%n] [%^%l%$] [thread %t] %v");
+
 	--argc;
 	++argv;
 	char **filename = nullptr;

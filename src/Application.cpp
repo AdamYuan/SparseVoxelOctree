@@ -3,7 +3,7 @@
 #include "Config.hpp"
 #include "OctreeBuilder.hpp"
 #include "Voxelizer.hpp"
-#include <plog/Log.h>
+#include <spdlog/spdlog.h>
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
@@ -17,62 +17,16 @@ debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
 			   void *user_data) {
 	if (message_severity >= VkDebugUtilsMessageSeverityFlagBitsEXT::
 	VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-		LOGE.printf("%s", callback_data->pMessage);
+		spdlog::error("{}", callback_data->pMessage);
 	else if (message_severity >=
 			 VkDebugUtilsMessageSeverityFlagBitsEXT::
 			 VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-		LOGW.printf("%s", callback_data->pMessage);
-	else LOGI.printf("%s", callback_data->pMessage);
+		spdlog::warn("{}", callback_data->pMessage);
+	else spdlog::info("{}", callback_data->pMessage);
 	return VK_FALSE;
 }
 
 namespace ImGui {
-	bool
-	BufferingBar(const char *label, float value, const ImVec2 &size_arg, const ImU32 &bg_col, const ImU32 &fg_col) {
-		ImGuiWindow *window = GetCurrentWindow();
-		if (window->SkipItems)
-			return false;
-
-		ImGuiContext &g = *GImGui;
-		const ImGuiStyle &style = g.Style;
-		const ImGuiID id = window->GetID(label);
-
-		ImVec2 pos = window->DC.CursorPos;
-		ImVec2 size = size_arg;
-		size.x -= style.FramePadding.x * 2;
-
-		const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
-		ItemSize(bb, style.FramePadding.y);
-		if (!ItemAdd(bb, id))
-			return false;
-
-		// Render
-		const float circleStart = size.x * 0.7f;
-		const float circleEnd = size.x;
-		const float circleWidth = circleEnd - circleStart;
-
-		window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + circleStart, bb.Max.y), bg_col);
-		window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + circleStart * value, bb.Max.y), fg_col);
-
-		const float t = g.Time;
-		const float r = size.y / 2;
-		const float speed = 1.5f;
-
-		const float a = speed * 0;
-		const float b = speed * 0.333f;
-		const float c = speed * 0.666f;
-
-		const float o1 = (circleWidth + r) * (t + a - speed * (int) ((t + a) / speed)) / speed;
-		const float o2 = (circleWidth + r) * (t + b - speed * (int) ((t + b) / speed)) / speed;
-		const float o3 = (circleWidth + r) * (t + c - speed * (int) ((t + c) / speed)) / speed;
-
-		window->DrawList->AddCircleFilled(ImVec2(pos.x + circleEnd - o1, bb.Min.y + r), r, bg_col);
-		window->DrawList->AddCircleFilled(ImVec2(pos.x + circleEnd - o2, bb.Min.y + r), r, bg_col);
-		window->DrawList->AddCircleFilled(ImVec2(pos.x + circleEnd - o3, bb.Min.y + r), r, bg_col);
-
-		return true;
-	}
-
 	bool Spinner(const char *label, float radius, int thickness, const ImU32 &color) {
 		ImGuiWindow *window = GetCurrentWindow();
 		if (window->SkipItems)
@@ -235,22 +189,22 @@ void Application::draw_frame() {
 }
 
 void Application::initialize_vulkan() {
-	m_instance = myvk::Instance::CreateWithGlfwExtensions(true, debug_callback);
+	m_instance = myvk::Instance::CreateWithGlfwExtensions(false, debug_callback);
 	if (!m_instance) {
-		LOGE.printf("Failed to create instance!");
+		spdlog::error("Failed to create instance!");
 		exit(EXIT_FAILURE);
 	}
 
 	std::vector<std::shared_ptr<myvk::PhysicalDevice>> physical_devices =
 		myvk::PhysicalDevice::Fetch(m_instance);
 	if (physical_devices.empty()) {
-		LOGE.printf("Failed to find physical device with vulkan support!");
+		spdlog::error("Failed to find physical device with vulkan support!");
 		exit(EXIT_FAILURE);
 	}
 
 	m_surface = myvk::Surface::Create(m_instance, m_window);
 	if (!m_surface) {
-		LOGE.printf("Failed to create surface!");
+		spdlog::error("Failed to create surface!");
 		exit(EXIT_FAILURE);
 	}
 
@@ -266,40 +220,34 @@ void Application::initialize_vulkan() {
 		device_create_info.Initialize(physical_devices[0], queue_requirements,
 									  {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
 		if (!device_create_info.QueueSupport()) {
-			LOGE.printf("Failed to find queues!");
+			spdlog::error("Failed to find queues!");
 			exit(EXIT_FAILURE);
 		}
 		if (!device_create_info.ExtensionSupport()) {
-			LOGE.printf("Failed to find extension support!");
+			spdlog::error("Failed to find extension support!");
 			exit(EXIT_FAILURE);
 		}
 		m_device = myvk::Device::Create(device_create_info);
 		if (!m_device) {
-			LOGE.printf("Failed to create logical device!");
+			spdlog::error("Failed to create logical device!");
 			exit(EXIT_FAILURE);
 		}
 	}
 
-	LOGI.printf("Physical Device: %s",
-				m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
-	LOGI.printf("Present Queue: %p, Graphics|Compute Queue: %p, Async Compute "
-				"Queue: %p",
-				m_present_queue->GetHandle(),
-				m_graphics_compute_queue->GetHandle(),
-				m_async_compute_queue->GetHandle());
+	spdlog::info("Physical Device: {}", m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
+	spdlog::info("Present Queue: {}, Graphics|Compute Queue: {}, Async Compute Queue: {}",
+				 (void *) m_present_queue->GetHandle(),
+				 (void *) m_graphics_compute_queue->GetHandle(),
+				 (void *) m_async_compute_queue->GetHandle());
 
 	if (m_async_compute_queue->GetHandle() ==
 		m_graphics_compute_queue->GetHandle()) {
-		LOGE.printf(
-				"No separate Compute Queue support, Path Tracer not available");
-	} else if (m_async_compute_queue->GetFamilyIndex() ==
-			   m_graphics_compute_queue->GetFamilyIndex()) {
-		LOGW.printf("Async Compute Queue is not fully asynchronous");
+		spdlog::warn("No separate Compute Queue support, Path Tracer not available");
 	}
 
 	m_swapchain = myvk::Swapchain::Create(m_graphics_compute_queue,
 										  m_present_queue, false);
-	LOGI.printf("Swapchain image count: %u", m_swapchain->GetImageCount());
+	spdlog::info("Swapchain image count: {}", m_swapchain->GetImageCount());
 
 	m_swapchain_images = myvk::SwapchainImage::Create(m_swapchain);
 	m_swapchain_image_views.resize(m_swapchain->GetImageCount());
@@ -317,7 +265,7 @@ void Application::initialize_vulkan() {
 
 Application::Application() {
 	if (volkInitialize() != VK_SUCCESS) {
-		LOGE.printf("Failed to load vulkan!");
+		spdlog::error("Failed to load vulkan!");
 		exit(EXIT_FAILURE);
 	}
 
@@ -675,7 +623,7 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 
 		command_buffer->End();
 
-		LOGV.printf("Voxelize and Octree building BEGIN");
+		spdlog::info("Voxelize and Octree building BEGIN");
 
 		command_buffer->Submit({}, {}, fence);
 		fence->Wait();
@@ -683,10 +631,10 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 		//time measurement
 		uint64_t timestamps[4];
 		query_pool->GetResults64(timestamps, VK_QUERY_RESULT_WAIT_BIT);
-		LOGV.printf("Voxelize and Octree building FINISHED in %lf ms (Voxelize %lf ms, Octree building %lf ms)",
-					double(timestamps[3] - timestamps[0]) * 0.000001,
-					double(timestamps[1] - timestamps[0]) * 0.000001,
-					double(timestamps[3] - timestamps[2]) * 0.000001);
+		spdlog::info("Voxelize and Octree building FINISHED in {} ms (Voxelize {} ms, Octree building {} ms)",
+					 double(timestamps[3] - timestamps[0]) * 0.000001,
+					 double(timestamps[1] - timestamps[0]) * 0.000001,
+					 double(timestamps[3] - timestamps[2]) * 0.000001);
 
 		m_loader_ready_to_join = true;
 
@@ -694,7 +642,7 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 		m_loader_condition_variable.wait(lock);
 
 		m_octree.Update(builder.GetOctree(), octree_level, builder.GetOctreeRange(command_pool));
-		LOGV.printf("Octree range: %lu (%.1f MB)", m_octree.GetRange(), m_octree.GetRange() / 1000000.0f);
+		spdlog::info("Octree range: {} ({} MB)", m_octree.GetRange(), m_octree.GetRange() / 1000000.0f);
 	}
 	m_loader_ready_to_join = true;
 }

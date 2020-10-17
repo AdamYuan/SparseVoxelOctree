@@ -1,4 +1,4 @@
-#include <plog/Log.h>
+#include <spdlog/spdlog.h>
 #include "Voxelizer.hpp"
 #include "myvk/ShaderModule.hpp"
 #include "VoxelizerSpirv.hpp"
@@ -177,7 +177,7 @@ void Voxelizer::count_and_create_fragment_list(const std::shared_ptr<myvk::Comma
 												 VMA_MEMORY_USAGE_GPU_ONLY, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 	m_descriptor_set->UpdateStorageBuffer(m_voxel_fragment_list, 1);
 
-	LOGV.printf("Voxel fragment list created with %u voxels (%.1lf MB)", m_voxel_fragment_count,
+	spdlog::info("Voxel fragment list created with {} voxels ({} MB)", m_voxel_fragment_count,
 				m_voxel_fragment_list->GetSize() / 1000000.0);
 }
 

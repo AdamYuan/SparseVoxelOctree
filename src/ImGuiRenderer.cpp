@@ -5,8 +5,6 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
-#include <plog/Log.h>
-
 void ImGuiRenderer::Initialize(const std::shared_ptr<myvk::CommandPool> &command_pool,
 							   const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass,
 							   uint32_t frame_count) {

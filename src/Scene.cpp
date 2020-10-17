@@ -11,7 +11,7 @@
 #include <tiny_obj_loader.h>
 #include <stb_image.h>
 
-#include <plog/Log.h>
+#include <spdlog/spdlog.h>
 
 struct Vertex {
 	glm::vec3 m_position;
@@ -25,10 +25,7 @@ struct Scene::Mesh {
 
 static std::string get_base_dir(const char *filename) {
 	size_t len = strlen(filename);
-	if (len == 0) {
-		LOGE.printf("[SCENE]Filename \"%s\" invalid", filename);
-		return {};
-	}
+	if (len == 0) return {};
 	const char *s = filename + len;
 	while (*(s - 1) != '/' && *(s - 1) != '\\' && s > filename) s--;
 	return {filename, s};
@@ -42,15 +39,15 @@ bool Scene::load_meshes(const char *filename, const char *base_dir, std::vector<
 
 	std::string load_outputs;
 	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &load_outputs, filename, base_dir)) {
-		LOGE.printf("Failed to load \"%s\"", filename);
+		spdlog::error("Failed to load {}", filename);
 		return false;
 	}
 	if (materials.empty()) {
-		LOGE.printf("No material found");
+		spdlog::error("No material found");
 		return false;
 	}
 	if (!load_outputs.empty()) {
-		LOGW.printf("%s", load_outputs.c_str());
+		spdlog::warn("{}", load_outputs.c_str());
 	}
 
 	meshes->clear();
@@ -137,7 +134,7 @@ bool Scene::load_meshes(const char *filename, const char *base_dir, std::vector<
 	}
 
 	if (meshes->empty()) {
-		LOGE.printf("Empty mesh");
+		spdlog::error("Empty mesh");
 		return false;
 	}
 
@@ -196,7 +193,7 @@ Scene::load_buffers_and_draw_cmd(const std::shared_ptr<myvk::Queue> &graphics_qu
 		meshopt_optimizeVertexFetch(vertices.data(), indices.data(), index_count, vertices.data(), vertex_count,
 									sizeof(Vertex));
 	}
-	LOGI.printf("Mesh optimized (%lu/%u vertices)", vertices.size(), index_count);
+	spdlog::info("Mesh optimized ({}/{} vertices)", vertices.size(), index_count);
 
 	const std::shared_ptr<myvk::Device> &device = graphics_queue->GetDevicePtr();
 	uint32_t
@@ -223,7 +220,7 @@ Scene::load_buffers_and_draw_cmd(const std::shared_ptr<myvk::Queue> &graphics_qu
 
 	fence->Wait();
 
-	LOGI.printf("Vertex and Index buffers generated");
+	spdlog::info("Vertex and Index buffers generated");
 }
 
 void Scene::load_textures(const std::shared_ptr<myvk::Queue> &graphics_queue,
@@ -252,7 +249,7 @@ void Scene::load_textures(const std::shared_ptr<myvk::Queue> &graphics_queue,
 					int width, height, channels;
 					stbi_uc *data = stbi_load(texture_filenames[i].c_str(), &width, &height, &channels, 4);
 					if (data == nullptr) {
-						LOGE.printf("Unable to load texture %s", texture_filenames[i].c_str());
+						spdlog::critical("Unable to load texture {}", texture_filenames[i].c_str());
 						continue;
 					}
 					uint32_t data_size = width * height * 4;
@@ -320,7 +317,7 @@ void Scene::load_textures(const std::shared_ptr<myvk::Queue> &graphics_queue,
 
 					command_buffer->Submit({}, {}, fence);
 
-					LOGI.printf("Texture %s loaded", texture_filenames[i].c_str());
+					spdlog::info("Texture {} loaded", texture_filenames[i].c_str());
 				}
 			}
 		));
@@ -345,7 +342,7 @@ void Scene::process_texture_errors() {
 			m_textures[new_index_mapper[i]] = m_textures[i];
 	}
 	m_textures.resize(prefix.back());
-	LOGI.printf("%u textures loaded", m_textures.size());
+	spdlog::info("{} textures loaded", m_textures.size());
 	//reindex draw commands
 	for (auto &cmd : m_draw_commands) {
 		if (cmd.m_push_constant.m_texture_id != UINT32_MAX) {
@@ -397,10 +394,10 @@ bool Scene::Initialize(const std::shared_ptr<myvk::Queue> &graphics_queue, const
 	std::vector<std::string> texture_filenames;
 
 	if (!load_meshes(filename, base_dir.c_str(), &meshes, &texture_filenames)) {
-		LOGE.printf("Failed to load meshes");
+		spdlog::error("Failed to load meshes");
 		return false;
 	}
-	LOGI.printf("Meshes loaded from \"%s\"", filename);
+	spdlog::info("Meshes loaded from {}", filename);
 
 	load_buffers_and_draw_cmd(graphics_queue, meshes);
 	load_textures(graphics_queue, texture_filenames);

@@ -12,9 +12,11 @@ include_directories(
 		dep
 		dep/glfw/include
 		dep/meshoptimizer/src
+		dep/spdlog/include
 )
 
 add_subdirectory(dep/glfw)
+add_subdirectory(dep/spdlog)
 
 function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
 	add_custom_command(
@@ -214,4 +216,4 @@ add_executable(VulkanSVO
 
 find_package(Threads)
 target_compile_definitions(VulkanSVO PUBLIC VK_NO_PROTOTYPES)
-target_link_libraries(VulkanSVO ${CMAKE_DL_LIBS} glfw Threads::Threads)
+target_link_libraries(VulkanSVO ${CMAKE_DL_LIBS} glfw spdlog Threads::Threads)

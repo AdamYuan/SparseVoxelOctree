@@ -1,9 +1,8 @@
 #include "OctreeBuilder.hpp"
 #include "OctreeBuilderSpirv.hpp"
 #include "Config.hpp"
-#include "glm/vector_relational.hpp"
 
-#include <plog/Log.h>
+#include <spdlog/spdlog.h>
 
 inline static uint32_t group_x_64(uint32_t x) { return (x >> 6u) + ((x & 0x3fu) ? 1u : 0u); }
 
@@ -50,8 +49,8 @@ void OctreeBuilder::create_buffers(const std::shared_ptr<myvk::Device> &device) 
 	m_octree_buffer = myvk::Buffer::Create(device, octree_node_num * sizeof(uint32_t), VMA_MEMORY_USAGE_GPU_ONLY,
 										   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 	m_octree_buffer->Unmap();
-	LOGV.printf("Octree buffer created with %d nodes (%.1f MB)", octree_node_num,
-				m_octree_buffer->GetSize() / 1000000.0f);
+	spdlog::info("Octree buffer created with {} nodes ({} MB)", octree_node_num,
+				 m_octree_buffer->GetSize() / 1000000.0);
 }
 
 void OctreeBuilder::create_descriptors(const std::shared_ptr<myvk::Device> &device) {
