@@ -48,7 +48,6 @@ void OctreeBuilder::create_buffers(const std::shared_ptr<myvk::Device> &device) 
 
 	m_octree_buffer = myvk::Buffer::Create(device, octree_node_num * sizeof(uint32_t), VMA_MEMORY_USAGE_GPU_ONLY,
 										   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-	m_octree_buffer->Unmap();
 	spdlog::info("Octree buffer created with {} nodes ({} MB)", octree_node_num,
 				 m_octree_buffer->GetSize() / 1000000.0);
 }
