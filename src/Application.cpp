@@ -189,7 +189,7 @@ void Application::draw_frame() {
 }
 
 void Application::initialize_vulkan() {
-	m_instance = myvk::Instance::CreateWithGlfwExtensions(false, debug_callback);
+	m_instance = myvk::Instance::CreateWithGlfwExtensions(true, debug_callback);
 	if (!m_instance) {
 		spdlog::error("Failed to create instance!");
 		exit(EXIT_FAILURE);
@@ -211,11 +211,11 @@ void Application::initialize_vulkan() {
 	// DEVICE CREATION
 	{
 		std::vector<myvk::QueueRequirement> queue_requirements = {
-			myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT,
-								   &m_graphics_compute_queue, m_surface,
+			myvk::QueueRequirement(VK_QUEUE_GRAPHICS_BIT,
+								   &m_main_queue, m_surface,
 								   &m_present_queue),
-			myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT,
-								   &m_async_compute_queue)};
+			myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT,
+								   &m_async_queue)};
 		myvk::DeviceCreateInfo device_create_info;
 		device_create_info.Initialize(physical_devices[0], queue_requirements,
 									  {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
@@ -235,17 +235,17 @@ void Application::initialize_vulkan() {
 	}
 
 	spdlog::info("Physical Device: {}", m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
-	spdlog::info("Present Queue: {}, Graphics|Compute Queue: {}, Async Compute Queue: {}",
+	spdlog::info("Present Queue: {}, Main Graphics Queue: {}, Async Compute|Graphics Queue: {}",
 				 (void *) m_present_queue->GetHandle(),
-				 (void *) m_graphics_compute_queue->GetHandle(),
-				 (void *) m_async_compute_queue->GetHandle());
+				 (void *) m_main_queue->GetHandle(),
+				 (void *) m_async_queue->GetHandle());
 
-	if (m_async_compute_queue->GetHandle() ==
-		m_graphics_compute_queue->GetHandle()) {
+	if (m_async_queue->GetHandle() ==
+		m_main_queue->GetHandle()) {
 		spdlog::warn("No separate Compute Queue support, Path Tracer not available");
 	}
 
-	m_swapchain = myvk::Swapchain::Create(m_graphics_compute_queue,
+	m_swapchain = myvk::Swapchain::Create(m_main_queue,
 										  m_present_queue, false);
 	spdlog::info("Swapchain image count: {}", m_swapchain->GetImageCount());
 
@@ -255,12 +255,12 @@ void Application::initialize_vulkan() {
 		m_swapchain_image_views[i] =
 			myvk::ImageView::Create(m_swapchain_images[i]);
 
-	m_graphics_compute_command_pool = myvk::CommandPool::Create(
-		m_graphics_compute_queue,
+	m_main_command_pool = myvk::CommandPool::Create(
+		m_main_queue,
 		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
 	m_frame_command_buffers = myvk::CommandBuffer::CreateMultiple(
-		m_graphics_compute_command_pool, kFrameCount);
+		m_main_command_pool, kFrameCount);
 }
 
 Application::Application() {
@@ -268,6 +268,9 @@ Application::Application() {
 		spdlog::error("Failed to load vulkan!");
 		exit(EXIT_FAILURE);
 	}
+
+	m_log_sink = std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(kLogLimit);
+	spdlog::default_logger()->sinks().push_back(m_log_sink);
 
 	create_window();
 	initialize_vulkan();
@@ -279,7 +282,7 @@ Application::Application() {
 	m_octree.Initialize(m_device);
 	m_octree_tracer.Initialize(m_octree, m_camera, m_render_pass, 0,
 							   kFrameCount);
-	m_imgui_renderer.Initialize(m_graphics_compute_command_pool, m_render_pass,
+	m_imgui_renderer.Initialize(m_main_command_pool, m_render_pass,
 								1, kFrameCount);
 }
 
@@ -358,27 +361,8 @@ void Application::ui_info_overlay() {
 					 ImGuiWindowFlags_NoMove |
 					 ImGuiWindowFlags_NoSavedSettings |
 					 ImGuiWindowFlags_NoBringToFrontOnFocus)) {
-		// ImGui::Text("Toggle UI display with [X]");
-		if (ImGui::TreeNodeEx("Basic", ImGuiTreeNodeFlags_DefaultOpen)) {
-			uint32_t vulkan_version = volkGetInstanceVersion();
-			ImGui::Text("Vulkan Version: %u.%u.%u",
-						VK_VERSION_MAJOR(vulkan_version),
-						VK_VERSION_MINOR(vulkan_version),
-						VK_VERSION_PATCH(vulkan_version));
-			ImGui::Text(
-				"Physical Device: %s",
-				m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
-			ImGui::Text("Framerate: %f", ImGui::GetIO().Framerate);
-
-			ImGui::TreePop();
-			ImGui::Separator();
-		}
-
-		if (!m_octree.Empty() && ImGui::TreeNodeEx("Octree")) {
-			ImGui::Text("Level: %d", m_octree.GetLevel());
-			ImGui::Text("Allocated Size: %.1f MB",
-						m_octree.GetBufferPtr()->GetSize() / 1000000.0f);
-			ImGui::Text("Used Size: %.1f MB", m_octree.GetRange() / 1000000.0f);
+		if (ImGui::TreeNodeEx("Log", ImGuiTreeNodeFlags_DefaultOpen)) {
+			ui_log();
 
 			ImGui::TreePop();
 		}
@@ -429,6 +413,14 @@ void Application::ui_regular_menubar() {
 						&m_octree_tracer.m_beam_enable);
 		ImGui::EndMenu();
 	}
+
+	if (!m_octree.Empty())
+		ImGui::Text("Octree Level: %d, Size: %.1f/%.1f MB",
+					m_octree.GetLevel(),
+					m_octree.GetRange() / 1000000.0f,
+					m_octree.GetBufferPtr()->GetSize() / 1000000.0f);
+	ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+	ImGui::Text("%s", m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
 
 	/*if(ImGui::BeginMenu("Path Tracer"))
 	{
@@ -592,8 +584,9 @@ void Application::glfw_key_callback(GLFWwindow *window, int key, int,
 
 void Application::loader_thread(const char *filename, uint32_t octree_level) {
 	Scene scene;
-	std::shared_ptr<myvk::CommandPool> command_pool = myvk::CommandPool::Create(m_graphics_compute_queue);
-	if (scene.Initialize(m_graphics_compute_queue, filename)) {
+	std::shared_ptr<myvk::CommandPool> command_pool =
+		myvk::CommandPool::Create(m_async_queue);
+	if (scene.Initialize(m_async_queue, filename)) {
 		Voxelizer voxelizer;
 		voxelizer.Initialize(scene, command_pool, octree_level);
 		OctreeBuilder builder;
@@ -621,6 +614,15 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 		builder.CmdBuild(command_buffer);
 		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 3);
 
+		if (m_main_queue->GetFamilyIndex() != m_async_queue->GetFamilyIndex()) {
+			//TODO: Test queue ownership transfer
+			command_buffer->CmdPipelineBarrier(
+				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+				VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
+				{builder.GetOctree()->GetMemoryBarrier(0, 0, m_async_queue, m_main_queue)},
+				{});
+		}
+
 		command_buffer->End();
 
 		spdlog::info("Voxelize and Octree building BEGIN");
@@ -636,13 +638,69 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 					 double(timestamps[1] - timestamps[0]) * 0.000001,
 					 double(timestamps[3] - timestamps[2]) * 0.000001);
 
+		//join to main thread and update octree
 		m_loader_ready_to_join = true;
+		{
+			std::unique_lock<std::mutex> lock{m_loader_mutex};
+			m_loader_condition_variable.wait(lock);
 
-		std::unique_lock<std::mutex> lock{m_loader_mutex};
-		m_loader_condition_variable.wait(lock);
+			if (m_main_queue->GetFamilyIndex() != m_async_queue->GetFamilyIndex()) {
+				//TODO: Test queue ownership transfer
+				command_buffer = myvk::CommandBuffer::Create(m_main_command_pool);
+				fence->Reset();
+				command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+				// transfer ownership
+				command_buffer->CmdPipelineBarrier(
+					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
+					{builder.GetOctree()->GetMemoryBarrier(0, 0, m_async_queue, m_main_queue)},
+					{});
+				command_buffer->End();
 
-		m_octree.Update(builder.GetOctree(), octree_level, builder.GetOctreeRange(command_pool));
-		spdlog::info("Octree range: {} ({} MB)", m_octree.GetRange(), m_octree.GetRange() / 1000000.0f);
+				command_buffer->Submit({}, {}, fence);
+				fence->Wait();
+			}
+
+			m_main_queue->WaitIdle();
+			m_octree.Update(builder.GetOctree(), octree_level, builder.GetOctreeRange(command_pool));
+			spdlog::info("Octree range: {} ({} MB)", m_octree.GetRange(), m_octree.GetRange() / 1000000.0f);
+		}
 	}
 	m_loader_ready_to_join = true;
+}
+
+void Application::ui_log() {
+/*
+ * SPDLOG_LEVEL_TRACE 0
+ * SPDLOG_LEVEL_DEBUG 1
+ * SPDLOG_LEVEL_INFO 2
+ * SPDLOG_LEVEL_WARN 3
+ * SPDLOG_LEVEL_ERROR 4
+ * SPDLOG_LEVEL_CRITICAL 5
+ * SPDLOG_LEVEL_OFF 6
+ */
+	static constexpr ImU32 kTextColors[7] = {
+		0xffffffffu,
+		0xffffffffu,
+		0xffffffffu,
+		0xff00ffffu,
+		0xff0000ffu,
+		0xffffffffu,
+		0xffffffffu
+	};
+	const auto &logs_raw = m_log_sink->last_raw();
+	ImGui::BeginChild("scrolling", ImVec2(300, 200), false, ImGuiWindowFlags_HorizontalScrollbar);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+	for (const auto &log : logs_raw) {
+		ImGui::PushStyleColor(ImGuiCol_Text, kTextColors[log.level]);
+		ImGui::TextUnformatted(log.payload.begin(), log.payload.end());
+		ImGui::PopStyleColor();
+	}
+	ImGui::PopStyleVar();
+
+	if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+		ImGui::SetScrollHereY(1.0f);
+
+	ImGui::EndChild();
 }

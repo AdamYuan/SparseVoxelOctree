@@ -2,7 +2,7 @@
 #include "Config.hpp"
 
 #include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/ringbuffer_sink.h>
 
 constexpr const char *kHelpStr =
     "AdamYuan's GPU Sparse Voxel Octree (Driven by Vulkan)\n"
@@ -10,7 +10,7 @@ constexpr const char *kHelpStr =
     "\t-lvl [OCTREE LEVEL (%u <= lvl <= %u)]\n";
 
 int main(int argc, char **argv) {
-	spdlog::set_pattern("[%H:%M:%S.%e] [%n] [%^%l%$] [thread %t] %v");
+	spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] [thread %t] %v");
 
 	--argc;
 	++argv;

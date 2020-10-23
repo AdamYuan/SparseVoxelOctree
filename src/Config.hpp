@@ -12,6 +12,8 @@ constexpr float kCamAspectRatio = kWidth / (float)kHeight;
 
 constexpr uint32_t kFilenameBufSize = 512;
 
+constexpr uint32_t kLogLimit = 256;
+
 constexpr uint32_t kOctreeLevelMin = 1;
 constexpr uint32_t kOctreeLevelMax = 12;
 constexpr uint32_t kOctreeNodeNumMin = 1000000;

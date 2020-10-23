@@ -10,6 +10,8 @@
 #include <thread>
 #include <condition_variable>
 
+#include <spdlog/sinks/ringbuffer_sink.h>
+
 #include "Camera.hpp"
 #include "ImGuiRenderer.hpp"
 #include "Octree.hpp"
@@ -44,10 +46,9 @@ private:
 	std::shared_ptr<myvk::Instance> m_instance;
 	std::shared_ptr<myvk::Surface> m_surface;
 	std::shared_ptr<myvk::Device> m_device;
-	std::shared_ptr<myvk::Queue> m_graphics_compute_queue,
-		m_async_compute_queue;
+	std::shared_ptr<myvk::Queue> m_main_queue, m_async_queue;
 	std::shared_ptr<myvk::PresentQueue> m_present_queue;
-	std::shared_ptr<myvk::CommandPool> m_graphics_compute_command_pool;
+	std::shared_ptr<myvk::CommandPool> m_main_command_pool;
 
 	// frame objects
 	std::shared_ptr<myvk::Swapchain> m_swapchain;
@@ -78,6 +79,8 @@ private:
 	} m_ui_state{UIStates::kEmpty};
 	bool m_ui_display_flag{true};
 
+	std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> m_log_sink;
+
 	void create_window();
 
 	void initialize_vulkan();
@@ -93,6 +96,8 @@ private:
 	void ui_switch_state();
 
 	void ui_render_main();
+
+	void ui_log();
 
 	static void ui_push_disable();
 
