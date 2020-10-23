@@ -1,10 +1,21 @@
 #include "ImageBase.hpp"
+#include "Queue.hpp"
 
 namespace myvk {
+#define MAKE_QUEUE_FAMILY \
+uint32_t src_queue_family = VK_QUEUE_FAMILY_IGNORED, dst_queue_family = VK_QUEUE_FAMILY_IGNORED;\
+    if (src_queue && dst_queue && src_queue->GetFamilyIndex() != dst_queue->GetFamilyIndex()) {\
+    src_queue_family = src_queue->GetFamilyIndex();\
+    dst_queue_family = dst_queue->GetFamilyIndex();\
+}
+
 	std::vector<VkImageMemoryBarrier>
-	ImageBase::GetDstMemoryBarriers(const std::vector<VkBufferImageCopy> &regions, VkAccessFlags src_access_mask,
-									VkAccessFlags dst_access_mask, VkImageLayout old_layout,
-									VkImageLayout new_layout) const {
+	ImageBase::GetDstMemoryBarriers(const std::vector<VkBufferImageCopy> &regions,
+									VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+									VkImageLayout old_layout, VkImageLayout new_layout,
+									const std::shared_ptr<myvk::Queue> &src_queue,
+									const std::shared_ptr<myvk::Queue> &dst_queue) const {
+		MAKE_QUEUE_FAMILY
 		std::vector<VkImageMemoryBarrier> barriers(regions.size());
 
 		for (uint32_t i = 0; i < regions.size(); ++i) {
@@ -15,8 +26,8 @@ namespace myvk {
 			cur.newLayout = new_layout;
 			cur.srcAccessMask = src_access_mask;
 			cur.dstAccessMask = dst_access_mask;
-			cur.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			cur.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			cur.srcQueueFamilyIndex = src_queue_family;
+			cur.dstQueueFamilyIndex = dst_queue_family;
 			VkImageSubresourceRange &range = cur.subresourceRange;
 			range.aspectMask = regions[i].imageSubresource.aspectMask;
 			range.baseMipLevel = regions[i].imageSubresource.mipLevel;
@@ -28,9 +39,12 @@ namespace myvk {
 	}
 
 	std::vector<VkImageMemoryBarrier>
-	ImageBase::GetMemoryBarriers(const std::vector<VkImageSubresourceLayers> &regions, VkAccessFlags src_access_mask,
-								 VkAccessFlags dst_access_mask, VkImageLayout old_layout,
-								 VkImageLayout new_layout) const {
+	ImageBase::GetMemoryBarriers(const std::vector<VkImageSubresourceLayers> &regions,
+								 VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+								 VkImageLayout old_layout, VkImageLayout new_layout,
+								 const std::shared_ptr<myvk::Queue> &src_queue,
+								 const std::shared_ptr<myvk::Queue> &dst_queue) const {
+		MAKE_QUEUE_FAMILY
 		std::vector<VkImageMemoryBarrier> barriers(regions.size());
 		for (uint32_t i = 0; i < regions.size(); ++i) {
 			VkImageMemoryBarrier &cur = barriers[i];
@@ -40,8 +54,8 @@ namespace myvk {
 			cur.newLayout = new_layout;
 			cur.srcAccessMask = src_access_mask;
 			cur.dstAccessMask = dst_access_mask;
-			cur.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			cur.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			cur.srcQueueFamilyIndex = src_queue_family;
+			cur.dstQueueFamilyIndex = dst_queue_family;
 			cur.subresourceRange.aspectMask = regions[i].aspectMask;
 			cur.subresourceRange.baseMipLevel = regions[i].mipLevel;
 			cur.subresourceRange.baseArrayLayer = regions[i].baseArrayLayer;
@@ -52,9 +66,12 @@ namespace myvk {
 	}
 
 	std::vector<VkImageMemoryBarrier>
-	ImageBase::GetMemoryBarriers(const std::vector<VkImageSubresourceRange> &regions, VkAccessFlags src_access_mask,
-								 VkAccessFlags dst_access_mask, VkImageLayout old_layout,
-								 VkImageLayout new_layout) const {
+	ImageBase::GetMemoryBarriers(const std::vector<VkImageSubresourceRange> &regions,
+								 VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+								 VkImageLayout old_layout, VkImageLayout new_layout,
+								 const std::shared_ptr<myvk::Queue> &src_queue,
+								 const std::shared_ptr<myvk::Queue> &dst_queue) const {
+		MAKE_QUEUE_FAMILY
 		std::vector<VkImageMemoryBarrier> barriers(regions.size());
 		for (uint32_t i = 0; i < regions.size(); ++i) {
 			VkImageMemoryBarrier &cur = barriers[i];
@@ -64,16 +81,20 @@ namespace myvk {
 			cur.newLayout = new_layout;
 			cur.srcAccessMask = src_access_mask;
 			cur.dstAccessMask = dst_access_mask;
-			cur.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			cur.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			cur.srcQueueFamilyIndex = src_queue_family;
+			cur.dstQueueFamilyIndex = dst_queue_family;
 			cur.subresourceRange = regions[i];
 		}
 		return barriers;
 	}
 
-	VkImageMemoryBarrier ImageBase::GetMemoryBarrier(VkImageAspectFlags aspect_mask, VkAccessFlags src_access_mask,
-													 VkAccessFlags dst_access_mask, VkImageLayout old_layout,
-													 VkImageLayout new_layout) const {
+	VkImageMemoryBarrier
+	ImageBase::GetMemoryBarrier(VkImageAspectFlags aspect_mask,
+								VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+								VkImageLayout old_layout, VkImageLayout new_layout,
+								const std::shared_ptr<myvk::Queue> &src_queue,
+								const std::shared_ptr<myvk::Queue> &dst_queue) const {
+		MAKE_QUEUE_FAMILY
 		VkImageMemoryBarrier ret = {};
 		ret.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		ret.image = m_image;
@@ -81,15 +102,19 @@ namespace myvk {
 		ret.newLayout = new_layout;
 		ret.srcAccessMask = src_access_mask;
 		ret.dstAccessMask = dst_access_mask;
-		ret.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		ret.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ret.srcQueueFamilyIndex = src_queue_family;
+		ret.dstQueueFamilyIndex = dst_queue_family;
 		ret.subresourceRange = GetSubresourceRange(aspect_mask);
 		return ret;
 	}
 
-	VkImageMemoryBarrier ImageBase::GetDstMemoryBarrier(const VkBufferImageCopy &region, VkAccessFlags src_access_mask,
-														VkAccessFlags dst_access_mask, VkImageLayout old_layout,
-														VkImageLayout new_layout) const {
+	VkImageMemoryBarrier
+	ImageBase::GetDstMemoryBarrier(const VkBufferImageCopy &region,
+								   VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+								   VkImageLayout old_layout, VkImageLayout new_layout,
+								   const std::shared_ptr<myvk::Queue> &src_queue,
+								   const std::shared_ptr<myvk::Queue> &dst_queue) const {
+		MAKE_QUEUE_FAMILY
 		VkImageMemoryBarrier ret = {};
 		ret.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		ret.image = m_image;
@@ -97,8 +122,8 @@ namespace myvk {
 		ret.newLayout = new_layout;
 		ret.srcAccessMask = src_access_mask;
 		ret.dstAccessMask = dst_access_mask;
-		ret.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		ret.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ret.srcQueueFamilyIndex = src_queue_family;
+		ret.dstQueueFamilyIndex = dst_queue_family;
 		VkImageSubresourceRange &range = ret.subresourceRange;
 		range.aspectMask = region.imageSubresource.aspectMask;
 		range.baseMipLevel = region.imageSubresource.mipLevel;
@@ -109,9 +134,12 @@ namespace myvk {
 	}
 
 	VkImageMemoryBarrier
-	ImageBase::GetMemoryBarrier(const VkImageSubresourceLayers &region, VkAccessFlags src_access_mask,
-								VkAccessFlags dst_access_mask, VkImageLayout old_layout,
-								VkImageLayout new_layout) const {
+	ImageBase::GetMemoryBarrier(const VkImageSubresourceLayers &region,
+								VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+								VkImageLayout old_layout, VkImageLayout new_layout,
+								const std::shared_ptr<myvk::Queue> &src_queue,
+								const std::shared_ptr<myvk::Queue> &dst_queue) const {
+		MAKE_QUEUE_FAMILY
 		VkImageMemoryBarrier ret = {};
 		ret.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		ret.image = m_image;
@@ -119,8 +147,8 @@ namespace myvk {
 		ret.newLayout = new_layout;
 		ret.srcAccessMask = src_access_mask;
 		ret.dstAccessMask = dst_access_mask;
-		ret.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		ret.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ret.srcQueueFamilyIndex = src_queue_family;
+		ret.dstQueueFamilyIndex = dst_queue_family;
 		VkImageSubresourceRange &range = ret.subresourceRange;
 		range.aspectMask = region.aspectMask;
 		range.baseMipLevel = region.mipLevel;
@@ -131,9 +159,12 @@ namespace myvk {
 	}
 
 	VkImageMemoryBarrier
-	ImageBase::GetMemoryBarrier(const VkImageSubresourceRange &region, VkAccessFlags src_access_mask,
-								VkAccessFlags dst_access_mask, VkImageLayout old_layout,
-								VkImageLayout new_layout) const {
+	ImageBase::GetMemoryBarrier(const VkImageSubresourceRange &region,
+								VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+								VkImageLayout old_layout, VkImageLayout new_layout,
+								const std::shared_ptr<myvk::Queue> &src_queue,
+								const std::shared_ptr<myvk::Queue> &dst_queue) const {
+		MAKE_QUEUE_FAMILY
 		VkImageMemoryBarrier ret = {};
 		ret.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		ret.image = m_image;
@@ -141,8 +172,8 @@ namespace myvk {
 		ret.newLayout = new_layout;
 		ret.srcAccessMask = src_access_mask;
 		ret.dstAccessMask = dst_access_mask;
-		ret.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		ret.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		ret.srcQueueFamilyIndex = src_queue_family;
+		ret.dstQueueFamilyIndex = dst_queue_family;
 		ret.subresourceRange = region;
 		return ret;
 	}
