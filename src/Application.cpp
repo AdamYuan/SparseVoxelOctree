@@ -414,13 +414,46 @@ void Application::ui_regular_menubar() {
 		ImGui::EndMenu();
 	}
 
-	if (!m_octree.Empty())
-		ImGui::Text("Octree Level: %d, Size: %.1f/%.1f MB",
-					m_octree.GetLevel(),
-					m_octree.GetRange() / 1000000.0f,
-					m_octree.GetBufferPtr()->GetSize() / 1000000.0f);
-	ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-	ImGui::Text("%s", m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+
+	float indent_w = ImGui::GetWindowContentRegionWidth();
+
+	{
+		char buf[32];
+		sprintf(buf, "FPS: %.1f", ImGui::GetIO().Framerate);
+		indent_w -= ImGui::CalcTextSize(buf).x;
+		ImGui::SameLine(indent_w);
+		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
+		ImGui::Button(buf);
+		ImGui::PopStyleColor();
+	}
+
+	if (!m_octree.Empty()) {
+		char buf[128];
+		sprintf(buf, "Octree Level: %d", m_octree.GetLevel());
+		indent_w -= ImGui::CalcTextSize(buf).x + 8;
+		ImGui::SameLine(indent_w);
+		ImVec4 col1 = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
+		ImVec4 col2 = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+		ImGui::PushStyleColor(ImGuiCol_Button,
+							  {(col1.x + col2.x) * 0.5f,
+							   (col1.y + col2.y) * 0.5f,
+							   (col1.z + col2.z) * 0.5f,
+							   (col1.w + col2.w) * 0.5f});
+		ImGui::Button(buf);
+		ImGui::PopStyleColor();
+
+		sprintf(buf, "Octree Size: %.0f/%.0f MB",
+				m_octree.GetRange() / 1000000.0f,
+				m_octree.GetBufferPtr()->GetSize() / 1000000.0f);
+		indent_w -= ImGui::CalcTextSize(buf).x + 8;
+		ImGui::SameLine(indent_w);
+		ImGui::Button(buf);
+	}
+
+	ImGui::PopItemFlag();
+	ImGui::PopStyleVar();
 
 	/*if(ImGui::BeginMenu("Path Tracer"))
 	{
