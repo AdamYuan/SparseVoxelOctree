@@ -3,12 +3,43 @@
 #include "Config.hpp"
 #include "OctreeBuilder.hpp"
 #include "Voxelizer.hpp"
+#include "ImGuiHelper.hpp"
 #include <spdlog/spdlog.h>
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_internal.h>
 #include <tinyfiledialogs.h>
+
+static constexpr ImU32 kUiLogColors[7] = {
+	0xffffffffu,
+	0xffffffffu,
+	0xffffffffu,
+	0xff00ffffu,
+	0xff0000ffu,
+	0xffffffffu,
+	0xffffffffu
+};
+
+static constexpr const char *kUiLogLevelStrs[7] = {
+	"Trace",
+	"Debug",
+	"Info",
+	"Warn",
+	"Error",
+	"Critical",
+	"Off"
+};
+
+/*
+ * SPDLOG_LEVEL_TRACE 0
+ * SPDLOG_LEVEL_DEBUG 1
+ * SPDLOG_LEVEL_INFO 2
+ * SPDLOG_LEVEL_WARN 3
+ * SPDLOG_LEVEL_ERROR 4
+ * SPDLOG_LEVEL_CRITICAL 5
+ * SPDLOG_LEVEL_OFF 6
+ */
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
@@ -26,46 +57,6 @@ debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
 	return VK_FALSE;
 }
 
-namespace ImGui {
-	bool Spinner(const char *label, float radius, int thickness, const ImU32 &color) {
-		ImGuiWindow *window = GetCurrentWindow();
-		if (window->SkipItems)
-			return false;
-
-		ImGuiContext &g = *GImGui;
-		const ImGuiStyle &style = g.Style;
-		const ImGuiID id = window->GetID(label);
-
-		ImVec2 pos = window->DC.CursorPos;
-		ImVec2 size((radius) * 2, (radius + style.FramePadding.y) * 2);
-
-		const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
-		ItemSize(bb, style.FramePadding.y);
-		if (!ItemAdd(bb, id))
-			return false;
-
-		// Render
-		window->DrawList->PathClear();
-
-		int num_segments = 30;
-		int start = abs(ImSin(g.Time * 1.8f) * (num_segments - 5));
-
-		const float a_min = IM_PI * 2.0f * ((float) start) / (float) num_segments;
-		const float a_max = IM_PI * 2.0f * ((float) num_segments - 3) / (float) num_segments;
-
-		const ImVec2 centre = ImVec2(pos.x + radius, pos.y + radius + style.FramePadding.y);
-
-		for (int i = 0; i < num_segments; i++) {
-			const float a = a_min + ((float) i / (float) num_segments) * (a_max - a_min);
-			window->DrawList->PathLineTo(ImVec2(centre.x + ImCos(a + g.Time * 8) * radius,
-												centre.y + ImSin(a + g.Time * 8) * radius));
-		}
-
-		window->DrawList->PathStroke(color, false, thickness);
-		return true;
-	}
-}
-
 void Application::create_window() {
 	glfwInit();
 
@@ -78,7 +69,7 @@ void Application::create_window() {
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGui::StyleColorsCinder();
+	ImGui::StyleCinder();
 	ImGui_ImplGlfw_InitForVulkan(m_window, true);
 }
 
@@ -189,7 +180,7 @@ void Application::draw_frame() {
 }
 
 void Application::initialize_vulkan() {
-	m_instance = myvk::Instance::CreateWithGlfwExtensions(true, debug_callback);
+	m_instance = myvk::Instance::CreateWithGlfwExtensions(false, debug_callback);
 	if (!m_instance) {
 		spdlog::error("Failed to create instance!");
 		exit(EXIT_FAILURE);
@@ -274,6 +265,8 @@ Application::Application() {
 
 	create_window();
 	initialize_vulkan();
+	glfwSetWindowTitle(m_window, (std::string{kAppName} + " | " +
+								  m_device->GetPhysicalDevicePtr()->GetProperties().deviceName).c_str());
 	create_render_pass();
 	create_framebuffers();
 	m_camera.Initialize(m_device, kFrameCount);
@@ -332,11 +325,7 @@ void Application::ui_render_main() {
 		ImGui::OpenPopup("Loading");
 		ui_loading_modal();
 	}
-	if (m_ui_state != UIStates::kPathTracing) ui_regular_menubar();
-	else {
-
-	}
-	ui_info_overlay();
+	ui_menubar();
 }
 
 void Application::ui_push_disable() {
@@ -349,41 +338,18 @@ void Application::ui_pop_disable() {
 	ImGui::PopStyleVar();
 }
 
-void Application::ui_info_overlay() {
-	ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y),
-							ImGuiCond_Always, ImVec2(1.0f, 1.0f));
-	ImGui::PushStyleColor(
-		ImGuiCol_WindowBg,
-		ImVec4(0.0f, 0.0f, 0.0f, 0.4f)); // Transparent background
-	if (ImGui::Begin("INFO", nullptr,
-					 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-					 ImGuiWindowFlags_AlwaysAutoResize |
-					 ImGuiWindowFlags_NoMove |
-					 ImGuiWindowFlags_NoSavedSettings |
-					 ImGuiWindowFlags_NoBringToFrontOnFocus)) {
-		if (ImGui::TreeNodeEx("Log", ImGuiTreeNodeFlags_DefaultOpen)) {
-			ui_log();
-
-			ImGui::TreePop();
-		}
-
-		/*if(m_pathtracing_flag)
-		    ImGui::Text("SPP: %d", m_pathtracer.GetSPP());*/
-
-		ImGui::End();
-	}
-	ImGui::PopStyleColor();
-}
-
-void Application::ui_regular_menubar() {
+void Application::ui_menubar() {
 	bool open_load_scene_popup = false, open_export_exr_popup = false;
 
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::BeginMainMenuBar();
 
-	if (m_ui_state == UIStates::kLoading) ui_push_disable();
-	if (ImGui::Button("Load Scene"))
-		open_load_scene_popup = true;
-	if (m_ui_state == UIStates::kLoading) ui_pop_disable();
+	if (ImGui::BeginMenu("File")) {
+		if (ImGui::MenuItem("Load Scene", nullptr))
+			open_load_scene_popup = true;
+
+		ImGui::EndMenu();
+	}
 
 	/*if(m_octree && ImGui::Button("Start PT"))
 	{
@@ -400,7 +366,7 @@ void Application::ui_regular_menubar() {
 		ImGui::EndMenu();
 	}
 
-	if (ImGui::BeginMenu("Primary View")) {
+	if (ImGui::BeginMenu("View")) {
 		if (ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kDiffuse))
 			m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kDiffuse;
 		if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kNormal))
@@ -414,9 +380,24 @@ void Application::ui_regular_menubar() {
 		ImGui::EndMenu();
 	}
 
-	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+	if (ImGui::BeginMenu("Log")) {
+		ImGui::BeginChild("LogChild", {kWidth / 2.0f, kHeight / 2.0f}, false, ImGuiWindowFlags_HorizontalScrollbar);
 
+		const auto &logs_raw = m_log_sink->last_raw();
+
+		for (const auto &log : logs_raw) {
+			ImGui::PushStyleColor(ImGuiCol_Text, kUiLogColors[log.level]);
+			ImGui::TextUnformatted(log.payload.begin(), log.payload.end());
+			ImGui::PopStyleColor();
+		}
+
+		ImGui::EndChild();
+
+		ImGui::EndMenu();
+	}
+
+	//Status bar
+	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 	float indent_w = ImGui::GetWindowContentRegionWidth();
 
 	{
@@ -424,7 +405,7 @@ void Application::ui_regular_menubar() {
 		sprintf(buf, "FPS: %.1f", ImGui::GetIO().Framerate);
 		indent_w -= ImGui::CalcTextSize(buf).x;
 		ImGui::SameLine(indent_w);
-		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
+		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_TabUnfocusedActive));
 		ImGui::Button(buf);
 		ImGui::PopStyleColor();
 	}
@@ -434,13 +415,7 @@ void Application::ui_regular_menubar() {
 		sprintf(buf, "Octree Level: %d", m_octree.GetLevel());
 		indent_w -= ImGui::CalcTextSize(buf).x + 8;
 		ImGui::SameLine(indent_w);
-		ImVec4 col1 = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
-		ImVec4 col2 = ImGui::GetStyleColorVec4(ImGuiCol_Button);
-		ImGui::PushStyleColor(ImGuiCol_Button,
-							  {(col1.x + col2.x) * 0.5f,
-							   (col1.y + col2.y) * 0.5f,
-							   (col1.z + col2.z) * 0.5f,
-							   (col1.w + col2.w) * 0.5f});
+		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_TabUnfocused));
 		ImGui::Button(buf);
 		ImGui::PopStyleColor();
 
@@ -451,9 +426,7 @@ void Application::ui_regular_menubar() {
 		ImGui::SameLine(indent_w);
 		ImGui::Button(buf);
 	}
-
 	ImGui::PopItemFlag();
-	ImGui::PopStyleVar();
 
 	/*if(ImGui::BeginMenu("Path Tracer"))
 	{
@@ -484,6 +457,7 @@ void Application::ui_regular_menubar() {
 	}*/
 
 	ImGui::EndMainMenuBar();
+	ImGui::PopStyleVar();
 
 	if (open_load_scene_popup)
 		ImGui::OpenPopup("Load Scene");
@@ -700,40 +674,4 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 		}
 	}
 	m_loader_ready_to_join = true;
-}
-
-void Application::ui_log() {
-/*
- * SPDLOG_LEVEL_TRACE 0
- * SPDLOG_LEVEL_DEBUG 1
- * SPDLOG_LEVEL_INFO 2
- * SPDLOG_LEVEL_WARN 3
- * SPDLOG_LEVEL_ERROR 4
- * SPDLOG_LEVEL_CRITICAL 5
- * SPDLOG_LEVEL_OFF 6
- */
-	static constexpr ImU32 kTextColors[7] = {
-		0xffffffffu,
-		0xffffffffu,
-		0xffffffffu,
-		0xff00ffffu,
-		0xff0000ffu,
-		0xffffffffu,
-		0xffffffffu
-	};
-	const auto &logs_raw = m_log_sink->last_raw();
-	ImGui::BeginChild("scrolling", ImVec2(300, 200), false, ImGuiWindowFlags_HorizontalScrollbar);
-
-	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-	for (const auto &log : logs_raw) {
-		ImGui::PushStyleColor(ImGuiCol_Text, kTextColors[log.level]);
-		ImGui::TextUnformatted(log.payload.begin(), log.payload.end());
-		ImGui::PopStyleColor();
-	}
-	ImGui::PopStyleVar();
-
-	if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-		ImGui::SetScrollHereY(1.0f);
-
-	ImGui::EndChild();
 }

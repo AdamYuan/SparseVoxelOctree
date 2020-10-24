@@ -129,6 +129,8 @@ add_executable(VulkanSVO
 		src/Camera.hpp
 		src/ImGuiRenderer.cpp
 		src/ImGuiRenderer.hpp
+		src/ImGuiHelper.cpp
+		src/ImGuiHelper.hpp
 		src/Scene.cpp
 		src/Scene.hpp
 		src/Counter.cpp

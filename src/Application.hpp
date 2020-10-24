@@ -97,15 +97,11 @@ private:
 
 	void ui_render_main();
 
-	void ui_log();
-
 	static void ui_push_disable();
 
 	static void ui_pop_disable();
 
-	void ui_regular_menubar();
-
-	void ui_info_overlay();
+	void ui_menubar();
 
 	void ui_load_scene_modal();
 

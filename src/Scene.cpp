@@ -249,7 +249,7 @@ void Scene::load_textures(const std::shared_ptr<myvk::Queue> &graphics_queue,
 					int width, height, channels;
 					stbi_uc *data = stbi_load(texture_filenames[i].c_str(), &width, &height, &channels, 4);
 					if (data == nullptr) {
-						spdlog::critical("Unable to load texture {}", texture_filenames[i].c_str());
+						spdlog::error("Unable to load texture {}", texture_filenames[i].c_str());
 						continue;
 					}
 					uint32_t data_size = width * height * 4;
