@@ -209,11 +209,6 @@ void Application::initialize_vulkan() {
 				 (void *) m_main_queue->GetHandle(),
 				 (void *) m_async_queue->GetHandle());
 
-	if (m_async_queue->GetHandle() ==
-		m_main_queue->GetHandle()) {
-		spdlog::warn("No separate Compute Queue support, Path Tracer not available");
-	}
-
 	m_swapchain = myvk::Swapchain::Create(m_main_queue,
 										  m_present_queue, false);
 	spdlog::info("Swapchain image count: {}", m_swapchain->GetImageCount());
@@ -366,17 +361,25 @@ void Application::ui_menubar() {
 		static constexpr ImU32 kLogColors[7] = {
 			0xffffffffu,
 			0xffffffffu,
-			0xffffffffu,
+			0xff00bd00u,
 			0xff00ffffu,
 			0xff0000ffu,
-			0xffffffffu,
+			0xff0000ffu,
 			0xffffffffu
+		};
+
+		static constexpr const char *kLogLevelStrs[7] = {
+			"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "CRITICAL", "OFF"
 		};
 
 		for (const auto &log : logs_raw) {
 			ImGui::PushStyleColor(ImGuiCol_Text, kLogColors[log.level]);
-			ImGui::TextUnformatted(log.payload.begin(), log.payload.end());
+			ImGui::TextUnformatted(kLogLevelStrs[log.level]);
 			ImGui::PopStyleColor();
+
+			ImGui::SameLine();
+
+			ImGui::TextUnformatted(log.payload.begin(), log.payload.end());
 		}
 
 		ImGui::EndChild();
