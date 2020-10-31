@@ -11,35 +11,7 @@
 #include <imgui/imgui_internal.h>
 #include <tinyfiledialogs.h>
 
-static constexpr ImU32 kUiLogColors[7] = {
-	0xffffffffu,
-	0xffffffffu,
-	0xffffffffu,
-	0xff00ffffu,
-	0xff0000ffu,
-	0xffffffffu,
-	0xffffffffu
-};
-
-static constexpr const char *kUiLogLevelStrs[7] = {
-	"Trace",
-	"Debug",
-	"Info",
-	"Warn",
-	"Error",
-	"Critical",
-	"Off"
-};
-
-/*
- * SPDLOG_LEVEL_TRACE 0
- * SPDLOG_LEVEL_DEBUG 1
- * SPDLOG_LEVEL_INFO 2
- * SPDLOG_LEVEL_WARN 3
- * SPDLOG_LEVEL_ERROR 4
- * SPDLOG_LEVEL_CRITICAL 5
- * SPDLOG_LEVEL_OFF 6
- */
+#ifndef NDEBUG
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
@@ -56,6 +28,8 @@ debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
 	else spdlog::info("{}", callback_data->pMessage);
 	return VK_FALSE;
 }
+
+#endif
 
 void Application::create_window() {
 	glfwInit();
@@ -180,7 +154,11 @@ void Application::draw_frame() {
 }
 
 void Application::initialize_vulkan() {
-	m_instance = myvk::Instance::CreateWithGlfwExtensions(false, debug_callback);
+#ifdef NDEBUG
+	m_instance = myvk::Instance::CreateWithGlfwExtensions();
+#else
+	m_instance = myvk::Instance::CreateWithGlfwExtensions(true, debug_callback);
+#endif
 	if (!m_instance) {
 		spdlog::error("Failed to create instance!");
 		exit(EXIT_FAILURE);
@@ -385,8 +363,18 @@ void Application::ui_menubar() {
 
 		const auto &logs_raw = m_log_sink->last_raw();
 
+		static constexpr ImU32 kLogColors[7] = {
+			0xffffffffu,
+			0xffffffffu,
+			0xffffffffu,
+			0xff00ffffu,
+			0xff0000ffu,
+			0xffffffffu,
+			0xffffffffu
+		};
+
 		for (const auto &log : logs_raw) {
-			ImGui::PushStyleColor(ImGuiCol_Text, kUiLogColors[log.level]);
+			ImGui::PushStyleColor(ImGuiCol_Text, kLogColors[log.level]);
 			ImGui::TextUnformatted(log.payload.begin(), log.payload.end());
 			ImGui::PopStyleColor();
 		}

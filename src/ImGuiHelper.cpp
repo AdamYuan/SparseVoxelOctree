@@ -90,9 +90,9 @@ namespace ImGui {
 		colors[ImGuiCol_SeparatorActive] = colors[ImGuiCol_Separator];
 		colors[ImGuiCol_SeparatorHovered] = colors[ImGuiCol_Separator];
 
-		colors[ImGuiCol_Tab] = ImLerp(colors[ImGuiCol_Header], colors[ImGuiCol_TitleBgActive], 0.80f);
-		colors[ImGuiCol_TabHovered] = colors[ImGuiCol_HeaderHovered];
-		colors[ImGuiCol_TabActive] = ImLerp(colors[ImGuiCol_HeaderActive], colors[ImGuiCol_TitleBgActive], 0.60f);
+		colors[ImGuiCol_Tab] = colors[ImGuiCol_Button];
+		colors[ImGuiCol_TabHovered] = colors[ImGuiCol_ButtonHovered];
+		colors[ImGuiCol_TabActive] = colors[ImGuiCol_ButtonActive];
 		colors[ImGuiCol_TabUnfocused] = ImLerp(colors[ImGuiCol_Tab], colors[ImGuiCol_TitleBg], 0.80f);
 		colors[ImGuiCol_TabUnfocusedActive] = ImLerp(colors[ImGuiCol_TabActive], colors[ImGuiCol_TitleBg], 0.40f);
 	}

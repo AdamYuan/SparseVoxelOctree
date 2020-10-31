@@ -18,28 +18,31 @@ include_directories(
 add_subdirectory(dep/glfw)
 add_subdirectory(dep/spdlog)
 
-function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
-	add_custom_command(
-			OUTPUT ${OUTPUT_FILE}
-			COMMAND glslc ${INPUT_FILE} -o ${OUTPUT_FILE} -O -Os -mfmt=num
-			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-			DEPENDS ${INPUT_FILE}
-	)
-endfunction()
+find_program(GLSLC "glslc")
+IF(GLSLC)
+	function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
+		add_custom_command(
+				OUTPUT ${OUTPUT_FILE}
+				COMMAND glslc ${INPUT_FILE} -o ${OUTPUT_FILE} -O -Os -mfmt=num
+				WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+				DEPENDS ${INPUT_FILE}
+		)
+	endfunction()
 
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/quad.vert ${CMAKE_SOURCE_DIR}/shaders/quad_vert.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/quad.vert ${CMAKE_SOURCE_DIR}/shaders/quad_vert.u32)
 
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.vert ${CMAKE_SOURCE_DIR}/shaders/voxelizer_vert.u32)
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.frag ${CMAKE_SOURCE_DIR}/shaders/voxelizer_frag.u32)
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.geom ${CMAKE_SOURCE_DIR}/shaders/voxelizer_geom.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.vert ${CMAKE_SOURCE_DIR}/shaders/voxelizer_vert.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.frag ${CMAKE_SOURCE_DIR}/shaders/voxelizer_frag.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.geom ${CMAKE_SOURCE_DIR}/shaders/voxelizer_geom.u32)
 
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tag_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_tag_node_comp.u32)
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_init_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_init_node_comp.u32)
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node_comp.u32)
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg.comp ${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg_comp.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tag_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_tag_node_comp.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_init_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_init_node_comp.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node.comp ${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node_comp.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg.comp ${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg_comp.u32)
 
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer.frag ${CMAKE_SOURCE_DIR}/shaders/octree_tracer_frag.u32)
-add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer_beam.frag ${CMAKE_SOURCE_DIR}/shaders/octree_tracer_beam_frag.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer.frag ${CMAKE_SOURCE_DIR}/shaders/octree_tracer_frag.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer_beam.frag ${CMAKE_SOURCE_DIR}/shaders/octree_tracer_beam_frag.u32)
+ENDIF()
 
 add_executable(spirv_u32_packer src/spirv_u32_packer.cpp dep/tiny_obj_loader.cpp)
 
