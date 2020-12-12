@@ -30,6 +30,8 @@ namespace myvk {
 
 		std::mutex &GetMutex() { return m_mutex; }
 
+		const std::mutex &GetMutex() const { return m_mutex; }
+
 		VkResult WaitIdle() const;
 
 		friend class DeviceCreateInfo;
