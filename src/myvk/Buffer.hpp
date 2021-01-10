@@ -3,48 +3,47 @@
 
 #include "BufferBase.hpp"
 #include "Queue.hpp"
-#include <volk.h>
-#include <vk_mem_alloc.h>
 #include <memory>
+#include <vk_mem_alloc.h>
+#include <volk.h>
 
 namespace myvk {
-	class Buffer : public BufferBase {
-	private:
-		std::shared_ptr<Device> m_device_ptr;
+class Buffer : public BufferBase {
+private:
+	std::shared_ptr<Device> m_device_ptr;
 
-		VmaAllocation m_allocation{nullptr};
-	public:
-		static std::shared_ptr<Buffer>
-		Create(const std::shared_ptr<Device> &device, const VkBufferCreateInfo &create_info,
-			   VmaMemoryUsage memory_usage, const std::vector<std::shared_ptr<Queue>> &access_queues = {});
+	VmaAllocation m_allocation{nullptr};
 
-		static std::shared_ptr<Buffer>
-		Create(const std::shared_ptr<Device> &device, VkDeviceSize size, VmaMemoryUsage memory_usage,
-			   VkBufferUsageFlags buffer_usage, const std::vector<std::shared_ptr<Queue>> &access_queues = {});
+public:
+	static std::shared_ptr<Buffer> Create(const std::shared_ptr<Device> &device, const VkBufferCreateInfo &create_info,
+	                                      VmaMemoryUsage memory_usage,
+	                                      const std::vector<std::shared_ptr<Queue>> &access_queues = {});
 
-		static std::shared_ptr<Buffer> CreateStaging(const std::shared_ptr<Device> &device, VkDeviceSize size,
-													 const std::vector<std::shared_ptr<Queue>> &access_queues = {});
+	static std::shared_ptr<Buffer> Create(const std::shared_ptr<Device> &device, VkDeviceSize size,
+	                                      VmaMemoryUsage memory_usage, VkBufferUsageFlags buffer_usage,
+	                                      const std::vector<std::shared_ptr<Queue>> &access_queues = {});
 
-		void *Map() const;
+	static std::shared_ptr<Buffer> CreateStaging(const std::shared_ptr<Device> &device, VkDeviceSize size,
+	                                             const std::vector<std::shared_ptr<Queue>> &access_queues = {});
 
-		void Unmap() const;
+	void *Map() const;
 
-		template<typename T>
-		void UpdateData(const T *begin, const T *end, uint32_t byte_offset = 0) const {
-			std::copy(begin, end, (T *) ((uint8_t *) Map() + byte_offset));
-			Unmap();
-		}
+	void Unmap() const;
 
-		template<typename T>
-		void UpdateData(const T &data, uint32_t byte_offset = 0) const {
-			std::copy(&data, &data + 1, (T *) ((uint8_t *) Map() + byte_offset));
-			Unmap();
-		}
+	template <typename T> void UpdateData(const T *begin, const T *end, uint32_t byte_offset = 0) const {
+		std::copy(begin, end, (T *)((uint8_t *)Map() + byte_offset));
+		Unmap();
+	}
 
-		const std::shared_ptr<Device> &GetDevicePtr() const override { return m_device_ptr; }
+	template <typename T> void UpdateData(const T &data, uint32_t byte_offset = 0) const {
+		std::copy(&data, &data + 1, (T *)((uint8_t *)Map() + byte_offset));
+		Unmap();
+	}
 
-		~Buffer();
-	};
-}
+	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_device_ptr; }
+
+	~Buffer();
+};
+} // namespace myvk
 
 #endif

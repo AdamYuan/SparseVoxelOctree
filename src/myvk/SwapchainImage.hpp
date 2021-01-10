@@ -10,16 +10,16 @@
 #include <vector>
 
 namespace myvk {
-	class SwapchainImage : public ImageBase {
-	private:
-		std::shared_ptr<Swapchain> m_swapchain_ptr;
+class SwapchainImage : public ImageBase {
+private:
+	std::shared_ptr<Swapchain> m_swapchain_ptr;
 
-	public:
-		static std::vector<std::shared_ptr<SwapchainImage>> Create(const std::shared_ptr<Swapchain> &swapchain);
+public:
+	static std::vector<std::shared_ptr<SwapchainImage>> Create(const std::shared_ptr<Swapchain> &swapchain);
 
-		const std::shared_ptr<Device> &GetDevicePtr() const override { return m_swapchain_ptr->GetDevicePtr(); };
-		const std::shared_ptr<Swapchain> &GetSwapchainPtr() const { return m_swapchain_ptr; }
-	};
-}
+	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_swapchain_ptr->GetDevicePtr(); };
+	const std::shared_ptr<Swapchain> &GetSwapchainPtr() const { return m_swapchain_ptr; }
+};
+} // namespace myvk
 
 #endif

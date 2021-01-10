@@ -7,22 +7,21 @@
 #include <volk.h>
 
 namespace myvk {
-	class PipelineBase : public DeviceObjectBase {
-	protected:
-		std::shared_ptr<PipelineLayout> m_pipeline_layout_ptr;
-		VkPipeline m_pipeline{nullptr};
+class PipelineBase : public DeviceObjectBase {
+protected:
+	std::shared_ptr<PipelineLayout> m_pipeline_layout_ptr;
+	VkPipeline m_pipeline{nullptr};
 
-	public:
-		VkPipeline GetHandle() const { return m_pipeline; }
+public:
+	VkPipeline GetHandle() const { return m_pipeline; }
 
-		virtual VkPipelineBindPoint GetBindPoint() const = 0;
+	virtual VkPipelineBindPoint GetBindPoint() const = 0;
 
-		const std::shared_ptr<Device> &GetDevicePtr() const override { return m_pipeline_layout_ptr->GetDevicePtr(); }
-		const std::shared_ptr<PipelineLayout> &GetPipelineLayoutPtr() const { return m_pipeline_layout_ptr; }
+	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_pipeline_layout_ptr->GetDevicePtr(); }
+	const std::shared_ptr<PipelineLayout> &GetPipelineLayoutPtr() const { return m_pipeline_layout_ptr; }
 
-		~PipelineBase();
-	};
-}
-
+	~PipelineBase();
+};
+} // namespace myvk
 
 #endif

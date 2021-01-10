@@ -1,14 +1,14 @@
 #ifndef VOXELIZER_HPP
 #define VOXELIZER_HPP
 
-#include "Scene.hpp"
 #include "Counter.hpp"
+#include "Scene.hpp"
 
-#include "myvk/RenderPass.hpp"
-#include "myvk/Framebuffer.hpp"
-#include "myvk/GraphicsPipeline.hpp"
 #include "myvk/Buffer.hpp"
 #include "myvk/DescriptorSet.hpp"
+#include "myvk/Framebuffer.hpp"
+#include "myvk/GraphicsPipeline.hpp"
+#include "myvk/RenderPass.hpp"
 
 class Voxelizer {
 private:

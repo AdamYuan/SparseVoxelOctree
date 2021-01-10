@@ -1,13 +1,12 @@
 #include "Application.hpp"
 #include "Config.hpp"
 
-#include <spdlog/spdlog.h>
 #include <spdlog/sinks/ringbuffer_sink.h>
+#include <spdlog/spdlog.h>
 
-constexpr const char *kHelpStr =
-    "AdamYuan's GPU Sparse Voxel Octree (Driven by Vulkan)\n"
-    "\t-obj [WAVEFRONT OBJ FILENAME]\n"
-    "\t-lvl [OCTREE LEVEL (%u <= lvl <= %u)]\n";
+constexpr const char *kHelpStr = "AdamYuan's GPU Sparse Voxel Octree (Driven by Vulkan)\n"
+                                 "\t-obj [WAVEFRONT OBJ FILENAME]\n"
+                                 "\t-lvl [OCTREE LEVEL (%u <= lvl <= %u)]\n";
 
 int main(int argc, char **argv) {
 	spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] [thread %t] %v");
@@ -26,8 +25,7 @@ int main(int argc, char **argv) {
 			return EXIT_FAILURE;
 		}
 	}
-	if ((filename != nullptr) !=
-	    (kOctreeLevelMin <= octree_level && octree_level <= kOctreeLevelMax)) {
+	if ((filename != nullptr) != (kOctreeLevelMin <= octree_level && octree_level <= kOctreeLevelMax)) {
 		printf(kHelpStr, kOctreeLevelMin, kOctreeLevelMax);
 		return EXIT_FAILURE;
 	}

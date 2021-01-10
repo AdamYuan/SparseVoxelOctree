@@ -22,8 +22,9 @@ public:
 
 	const std::shared_ptr<myvk::Buffer> &GetBufferPtr() const { return m_buffer; }
 
-	const std::shared_ptr<myvk::DescriptorSetLayout> &
-	GetDescriptorSetLayoutPtr() const { return m_descriptor_set_layout; }
+	const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayoutPtr() const {
+		return m_descriptor_set_layout;
+	}
 
 	const std::shared_ptr<myvk::DescriptorSet> &GetDescriptorSetPtr() const { return m_descriptor_set; }
 
@@ -31,6 +32,5 @@ public:
 
 	VkDeviceSize GetRange() const { return m_range; }
 };
-
 
 #endif

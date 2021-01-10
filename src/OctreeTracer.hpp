@@ -1,12 +1,12 @@
 #ifndef OCTREE_TRACER_HPP
 #define OCTREE_TRACER_HPP
 
-#include "myvk/Buffer.hpp"
-#include "myvk/DescriptorSet.hpp"
-#include "myvk/GraphicsPipeline.hpp"
-#include "myvk/CommandBuffer.hpp"
 #include "Camera.hpp"
 #include "Octree.hpp"
+#include "myvk/Buffer.hpp"
+#include "myvk/CommandBuffer.hpp"
+#include "myvk/DescriptorSet.hpp"
+#include "myvk/GraphicsPipeline.hpp"
 #include "myvk/Image.hpp"
 
 class OctreeTracer {
@@ -50,14 +50,12 @@ private:
 	void create_beam_graphics_pipeline(const std::shared_ptr<myvk::Device> &device);
 
 public:
-	void
-	Initialize(const Octree &octree, const Camera &camera, const std::shared_ptr<myvk::RenderPass> &render_pass,
-			   uint32_t subpass, uint32_t frame_count);
+	void Initialize(const Octree &octree, const Camera &camera, const std::shared_ptr<myvk::RenderPass> &render_pass,
+	                uint32_t subpass, uint32_t frame_count);
 
 	void CmdBeamRenderPass(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame) const;
 
 	void CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame) const;
 };
-
 
 #endif

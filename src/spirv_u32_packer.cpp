@@ -1,8 +1,8 @@
 // Usage: ./spirv_u32_packer [OUTPUT HPP FILE] [INPUT FILE #1] [IDENTIFIER #1] [INPUT
 // FILE #2] [IDENTIFIER #2] ...
 
-#include <cstring>
 #include <cctype>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -33,7 +33,8 @@ inline void print_file(const char *filename, const char *identifier) {
 int main(int argc, const char **argv) {
 	--argc, ++argv;
 	if (argc < 1 || argc % 2 == 0) {
-		printf("Usage: ./byte_packer [OUTPUT HPP FILE] [INPUT FILE #1] [IDENTIFIER #1] [INPUT FILE #2] [IDENTIFIER #2] ...\n");
+		printf("Usage: ./byte_packer [OUTPUT HPP FILE] [INPUT FILE #1] [IDENTIFIER #1] [INPUT FILE #2] [IDENTIFIER #2] "
+		       "...\n");
 		return EXIT_FAILURE;
 	}
 	freopen(argv[0], "w", stdout);

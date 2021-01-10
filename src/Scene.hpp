@@ -2,16 +2,16 @@
 #define SCENE_HPP
 
 #include "myvk/Buffer.hpp"
+#include "myvk/CommandBuffer.hpp"
+#include "myvk/DescriptorPool.hpp"
+#include "myvk/DescriptorSet.hpp"
+#include "myvk/DescriptorSetLayout.hpp"
 #include "myvk/Image.hpp"
 #include "myvk/ImageView.hpp"
 #include "myvk/Sampler.hpp"
-#include "myvk/DescriptorPool.hpp"
-#include "myvk/DescriptorSetLayout.hpp"
-#include "myvk/DescriptorSet.hpp"
-#include "myvk/CommandBuffer.hpp"
 
-#include <glm/glm.hpp>
 #include <array>
+#include <glm/glm.hpp>
 #include <string>
 
 class Scene {
@@ -40,13 +40,12 @@ private:
 	std::vector<DrawCmd> m_draw_commands;
 
 	static bool load_meshes(const char *filename, const char *base_dir, std::vector<Mesh> *meshes,
-							std::vector<std::string> *texture_filenames);
+	                        std::vector<std::string> *texture_filenames);
 
-	void
-	load_buffers_and_draw_cmd(const std::shared_ptr<myvk::Queue> &graphics_queue, const std::vector<Mesh> &meshes);
+	void load_buffers_and_draw_cmd(const std::shared_ptr<myvk::Queue> &graphics_queue, const std::vector<Mesh> &meshes);
 
 	void load_textures(const std::shared_ptr<myvk::Queue> &graphics_queue,
-					   const std::vector<std::string> &texture_filenames);
+	                   const std::vector<std::string> &texture_filenames);
 
 	void process_texture_errors();
 
@@ -65,11 +64,13 @@ public:
 
 	const std::shared_ptr<myvk::DescriptorSet> &GetDescriptorSetPtr() const { return m_descriptor_set; }
 
-	const std::shared_ptr<myvk::DescriptorSetLayout> &
-	GetDescriptorSetLayoutPtr() const { return m_descriptor_set_layout; }
+	const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayoutPtr() const {
+		return m_descriptor_set_layout;
+	}
 
 	void CmdDraw(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
-				 const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout, uint32_t push_constants_offset = 0) const;
+	             const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout,
+	             uint32_t push_constants_offset = 0) const;
 };
 
 #endif

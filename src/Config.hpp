@@ -18,7 +18,7 @@ constexpr uint32_t kOctreeLevelMin = 1;
 constexpr uint32_t kOctreeLevelMax = 12;
 constexpr uint32_t kOctreeNodeNumMin = 1000000;
 constexpr uint32_t kOctreeNodeNumMax = 500000000;
-constexpr uint32_t kBeamSize = 8; //for beam optimization
+constexpr uint32_t kBeamSize = 8; // for beam optimization
 constexpr uint32_t kBeamWidth = (kWidth + (kBeamSize - 1)) / kBeamSize + 1;
 constexpr uint32_t kBeamHeight = (kHeight + (kBeamSize - 1)) / kBeamSize + 1;
 

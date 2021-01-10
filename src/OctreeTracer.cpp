@@ -1,13 +1,12 @@
-#include "OctreeTracer.hpp"
-#include "myvk/ShaderModule.hpp"
-#include "QuadSpirv.hpp"
-#include "OctreeTracerSpirv.hpp"
 #include "Config.hpp"
+#include "OctreeTracer.hpp"
+#include "OctreeTracerSpirv.hpp"
+#include "QuadSpirv.hpp"
+#include "myvk/ShaderModule.hpp"
 
 void OctreeTracer::create_descriptor_pool(const std::shared_ptr<myvk::Device> &device, uint32_t frame_count) {
-	m_descriptor_pool = myvk::DescriptorPool::Create(device, frame_count, {
-		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frame_count}
-	});
+	m_descriptor_pool =
+	    myvk::DescriptorPool::Create(device, frame_count, {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frame_count}});
 }
 
 void OctreeTracer::create_layouts(const std::shared_ptr<myvk::Device> &device) {
@@ -21,44 +20,39 @@ void OctreeTracer::create_layouts(const std::shared_ptr<myvk::Device> &device) {
 		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {beam_image_binding});
 	}
 	m_main_pipeline_layout = myvk::PipelineLayout::Create(
-		device,
-		{m_octree->GetDescriptorSetLayoutPtr(), m_camera->GetDescriptorSetLayout(), m_descriptor_set_layout},
-		{{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 5 * sizeof(uint32_t)}});
+	    device, {m_octree->GetDescriptorSetLayoutPtr(), m_camera->GetDescriptorSetLayout(), m_descriptor_set_layout},
+	    {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 5 * sizeof(uint32_t)}});
 	m_beam_pipeline_layout = myvk::PipelineLayout::Create(
-		device,
-		{m_octree->GetDescriptorSetLayoutPtr(), m_camera->GetDescriptorSetLayout()},
-		{{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 3 * sizeof(uint32_t) + sizeof(float)}});
+	    device, {m_octree->GetDescriptorSetLayoutPtr(), m_camera->GetDescriptorSetLayout()},
+	    {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 3 * sizeof(uint32_t) + sizeof(float)}});
 }
 
-void
-OctreeTracer::create_frame_resources(const std::shared_ptr<myvk::Device> &device, uint32_t frame_count) {
+void OctreeTracer::create_frame_resources(const std::shared_ptr<myvk::Device> &device, uint32_t frame_count) {
 	m_frame_resources.resize(frame_count);
 
 	for (auto &i : m_frame_resources) {
 		i.m_beam_image = myvk::Image::CreateTexture2D(device, {kBeamWidth, kBeamHeight}, 1, VK_FORMAT_R32_SFLOAT,
-													  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+		                                              VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 		i.m_beam_image_view = myvk::ImageView::Create(i.m_beam_image, VK_IMAGE_VIEW_TYPE_2D);
 		i.m_beam_sampler = myvk::Sampler::Create(device, VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-		i.m_beam_framebuffer = myvk::Framebuffer::Create(m_beam_render_pass, {i.m_beam_image_view},
-														 {kBeamWidth, kBeamHeight});
+		i.m_beam_framebuffer =
+		    myvk::Framebuffer::Create(m_beam_render_pass, {i.m_beam_image_view}, {kBeamWidth, kBeamHeight});
 		i.m_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
 		i.m_descriptor_set->UpdateCombinedImageSampler(i.m_beam_sampler, i.m_beam_image_view, 0);
 	}
 }
 
-void
-OctreeTracer::create_main_graphics_pipeline(const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass) {
+void OctreeTracer::create_main_graphics_pipeline(const std::shared_ptr<myvk::RenderPass> &render_pass,
+                                                 uint32_t subpass) {
 	std::shared_ptr<myvk::Device> device = render_pass->GetDevicePtr();
 
 	std::shared_ptr<myvk::ShaderModule> vert_shader_module, frag_shader_module;
 	vert_shader_module = myvk::ShaderModule::Create(device, kQuadVertSpv, sizeof(kQuadVertSpv));
-	frag_shader_module = myvk::ShaderModule::Create(device, kOctreeTracerFragSpv,
-													sizeof(kOctreeTracerFragSpv));
+	frag_shader_module = myvk::ShaderModule::Create(device, kOctreeTracerFragSpv, sizeof(kOctreeTracerFragSpv));
 
 	VkPipelineShaderStageCreateInfo shader_stages[] = {
-		vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
-		frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)
-	};
+	    vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
+	    frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)};
 
 	VkPipelineVertexInputStateCreateInfo vertex_input = {};
 	vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -71,8 +65,8 @@ OctreeTracer::create_main_graphics_pipeline(const std::shared_ptr<myvk::RenderPa
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float) kWidth;
-	viewport.height = (float) kHeight;
+	viewport.width = (float)kWidth;
+	viewport.height = (float)kHeight;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
@@ -109,7 +103,7 @@ OctreeTracer::create_main_graphics_pipeline(const std::shared_ptr<myvk::RenderPa
 	VkPipelineColorBlendAttachmentState color_blend_attachment = {};
 	color_blend_attachment.blendEnable = VK_FALSE;
 	color_blend_attachment.colorWriteMask =
-		VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT;
+	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT;
 
 	VkPipelineColorBlendStateCreateInfo color_blend = {};
 	color_blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -180,9 +174,8 @@ void OctreeTracer::create_beam_graphics_pipeline(const std::shared_ptr<myvk::Dev
 	frag_shader_module = myvk::ShaderModule::Create(device, kOctreeTracerBeamFragSpv, sizeof(kOctreeTracerBeamFragSpv));
 
 	VkPipelineShaderStageCreateInfo shader_stages[] = {
-		vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
-		frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)
-	};
+	    vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
+	    frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)};
 
 	VkPipelineVertexInputStateCreateInfo vertex_input = {};
 	vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -195,8 +188,8 @@ void OctreeTracer::create_beam_graphics_pipeline(const std::shared_ptr<myvk::Dev
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float) kBeamWidth;
-	viewport.height = (float) kBeamHeight;
+	viewport.width = (float)kBeamWidth;
+	viewport.height = (float)kBeamHeight;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
@@ -233,7 +226,7 @@ void OctreeTracer::create_beam_graphics_pipeline(const std::shared_ptr<myvk::Dev
 	VkPipelineColorBlendAttachmentState color_blend_attachment = {};
 	color_blend_attachment.blendEnable = VK_FALSE;
 	color_blend_attachment.colorWriteMask =
-		VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT;
+	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT;
 
 	VkPipelineColorBlendStateCreateInfo color_blend = {};
 	color_blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -254,14 +247,13 @@ void OctreeTracer::create_beam_graphics_pipeline(const std::shared_ptr<myvk::Dev
 	pipeline_info.pDynamicState = nullptr;
 	pipeline_info.subpass = 0;
 
-	m_beam_graphics_pipeline = myvk::GraphicsPipeline::Create(m_beam_pipeline_layout, m_beam_render_pass,
-															  pipeline_info);
+	m_beam_graphics_pipeline =
+	    myvk::GraphicsPipeline::Create(m_beam_pipeline_layout, m_beam_render_pass, pipeline_info);
 }
 
-void
-OctreeTracer::Initialize(const Octree &octree, const Camera &camera,
-						 const std::shared_ptr<myvk::RenderPass> &render_pass,
-						 uint32_t subpass, uint32_t frame_count) {
+void OctreeTracer::Initialize(const Octree &octree, const Camera &camera,
+                              const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass,
+                              uint32_t frame_count) {
 	m_octree = &octree;
 	m_camera = &camera;
 	std::shared_ptr<myvk::Device> device = render_pass->GetDevicePtr();
@@ -275,34 +267,33 @@ OctreeTracer::Initialize(const Octree &octree, const Camera &camera,
 }
 
 void OctreeTracer::CmdBeamRenderPass(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
-									 uint32_t current_frame) const {
-	if (!m_beam_enable) return;
+                                     uint32_t current_frame) const {
+	if (!m_beam_enable)
+		return;
 	const auto &cur = m_frame_resources[current_frame];
 	command_buffer->CmdBeginRenderPass(m_beam_render_pass, cur.m_beam_framebuffer, {{{0.0f, 0.0f, 0.0f, 1.0f}}});
 	command_buffer->CmdBindPipeline(m_beam_graphics_pipeline);
 	command_buffer->CmdBindDescriptorSets(
-		{m_octree->GetDescriptorSetPtr(), m_camera->GetFrameDescriptorSet(current_frame)}, m_beam_graphics_pipeline);
+	    {m_octree->GetDescriptorSetPtr(), m_camera->GetFrameDescriptorSet(current_frame)}, m_beam_graphics_pipeline);
 	uint32_t uint_push_constants[] = {kWidth, kHeight, kBeamSize};
 	command_buffer->CmdPushConstants(m_beam_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-									 sizeof(uint_push_constants),
-									 uint_push_constants);
+	                                 sizeof(uint_push_constants), uint_push_constants);
 	float origin_size = exp2f(1.0f - m_octree->GetLevel());
 	command_buffer->CmdPushConstants(m_beam_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(uint_push_constants),
-									 sizeof(float), &origin_size);
+	                                 sizeof(float), &origin_size);
 	command_buffer->CmdDraw(3, 1, 0, 0);
 	command_buffer->CmdEndRenderPass();
 }
 
-void
-OctreeTracer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
-							  uint32_t current_frame) const {
+void OctreeTracer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
+                                   uint32_t current_frame) const {
 	const auto &cur = m_frame_resources[current_frame];
 	command_buffer->CmdBindPipeline(m_main_graphics_pipeline);
 	command_buffer->CmdBindDescriptorSets(
-		{m_octree->GetDescriptorSetPtr(), m_camera->GetFrameDescriptorSet(current_frame), cur.m_descriptor_set},
-		m_main_graphics_pipeline);
-	uint32_t push_constants[] = {kWidth, kHeight, (uint32_t) m_view_type, m_beam_enable, kBeamSize};
+	    {m_octree->GetDescriptorSetPtr(), m_camera->GetFrameDescriptorSet(current_frame), cur.m_descriptor_set},
+	    m_main_graphics_pipeline);
+	uint32_t push_constants[] = {kWidth, kHeight, (uint32_t)m_view_type, m_beam_enable, kBeamSize};
 	command_buffer->CmdPushConstants(m_main_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push_constants),
-									 push_constants);
+	                                 push_constants);
 	command_buffer->CmdDraw(3, 1, 0, 0);
 }

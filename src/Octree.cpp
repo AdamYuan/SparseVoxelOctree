@@ -10,9 +10,7 @@ void Octree::Initialize(const std::shared_ptr<myvk::Device> &device) {
 
 		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {octree_binding});
 	}
-	m_descriptor_pool = myvk::DescriptorPool::Create(device, 1, {
-		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1}
-	});
+	m_descriptor_pool = myvk::DescriptorPool::Create(device, 1, {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1}});
 	m_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
 }
 

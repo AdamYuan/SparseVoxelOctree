@@ -3,26 +3,25 @@
 
 #include "DeviceObjectBase.hpp"
 
-#include <volk.h>
 #include <memory>
+#include <volk.h>
 
 namespace myvk {
-	class DescriptorSetLayout : public DeviceObjectBase {
-	private:
-		std::shared_ptr<Device> m_device_ptr;
-		VkDescriptorSetLayout m_descriptor_set_layout{nullptr};
+class DescriptorSetLayout : public DeviceObjectBase {
+private:
+	std::shared_ptr<Device> m_device_ptr;
+	VkDescriptorSetLayout m_descriptor_set_layout{nullptr};
 
-	public:
-		static std::shared_ptr<DescriptorSetLayout>
-		Create(const std::shared_ptr<Device> &device, const std::vector<VkDescriptorSetLayoutBinding> &bindings);
+public:
+	static std::shared_ptr<DescriptorSetLayout> Create(const std::shared_ptr<Device> &device,
+	                                                   const std::vector<VkDescriptorSetLayoutBinding> &bindings);
 
-		VkDescriptorSetLayout GetHandle() const { return m_descriptor_set_layout; }
+	VkDescriptorSetLayout GetHandle() const { return m_descriptor_set_layout; }
 
-		const std::shared_ptr<Device> &GetDevicePtr() const override { return m_device_ptr; }
+	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_device_ptr; }
 
-		~DescriptorSetLayout();
-	};
-}
-
+	~DescriptorSetLayout();
+};
+} // namespace myvk
 
 #endif

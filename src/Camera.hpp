@@ -1,10 +1,10 @@
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
 
-#include <cinttypes>
-#include <glm/glm.hpp>
 #include "myvk/Buffer.hpp"
 #include "myvk/DescriptorSet.hpp"
+#include <cinttypes>
+#include <glm/glm.hpp>
 
 #define PIF 3.14159265358979323846f
 

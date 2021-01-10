@@ -6,22 +6,22 @@
 #include <volk.h>
 
 namespace myvk {
-	constexpr const char *kValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
+constexpr const char *kValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
 
-	class Instance {
-		private:
-			VkInstance m_instance{nullptr};
-			VkDebugUtilsMessengerEXT m_debug_messenger{nullptr};
+class Instance {
+private:
+	VkInstance m_instance{nullptr};
+	VkDebugUtilsMessengerEXT m_debug_messenger{nullptr};
 
-		public:
-			static std::shared_ptr<Instance> CreateWithGlfwExtensions(
-				bool use_validation_layer = false,
-				PFN_vkDebugUtilsMessengerCallbackEXT debug_callback = nullptr);
+public:
+	static std::shared_ptr<Instance>
+	CreateWithGlfwExtensions(bool use_validation_layer = false,
+	                         PFN_vkDebugUtilsMessengerCallbackEXT debug_callback = nullptr);
 
-			VkInstance GetHandle() const { return m_instance; }
+	VkInstance GetHandle() const { return m_instance; }
 
-			~Instance();
-	};
+	~Instance();
+};
 } // namespace myvk
 
 #endif

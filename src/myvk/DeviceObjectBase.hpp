@@ -4,10 +4,10 @@
 #include "Device.hpp"
 
 namespace myvk {
-	class DeviceObjectBase {
-	public:
-		virtual const std::shared_ptr<Device> &GetDevicePtr() const = 0;
-	};
-}
+class DeviceObjectBase {
+public:
+	virtual const std::shared_ptr<Device> &GetDevicePtr() const = 0;
+};
+} // namespace myvk
 
 #endif

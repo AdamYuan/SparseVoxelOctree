@@ -5,10 +5,10 @@
 #include <volk.h>
 
 #include <array>
-#include <memory>
-#include <vector>
-#include <thread>
 #include <condition_variable>
+#include <memory>
+#include <thread>
+#include <vector>
 
 #include <spdlog/sinks/ringbuffer_sink.h>
 
@@ -17,13 +17,13 @@
 #include "Octree.hpp"
 #include "OctreeTracer.hpp"
 #include "Scene.hpp"
-#include "myvk/FrameManager.hpp"
 #include "myvk/Buffer.hpp"
 #include "myvk/CommandBuffer.hpp"
 #include "myvk/CommandPool.hpp"
 #include "myvk/DescriptorPool.hpp"
 #include "myvk/DescriptorSet.hpp"
 #include "myvk/Device.hpp"
+#include "myvk/FrameManager.hpp"
 #include "myvk/Framebuffer.hpp"
 #include "myvk/GraphicsPipeline.hpp"
 #include "myvk/Image.hpp"
@@ -74,9 +74,7 @@ private:
 	std::condition_variable m_loader_condition_variable;
 
 	// ui flags
-	enum class UIStates {
-		kEmpty, kOctreeTracer, kPathTracing, kLoading
-	} m_ui_state{UIStates::kEmpty};
+	enum class UIStates { kEmpty, kOctreeTracer, kPathTracing, kLoading } m_ui_state{UIStates::kEmpty};
 	bool m_ui_display_flag{true};
 
 	std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> m_log_sink;
@@ -109,16 +107,13 @@ private:
 
 	void ui_loading_modal();
 
-	static bool ui_file_open(const char *label, const char *btn, char *buf,
-							 size_t buf_size, const char *title, int filter_num,
-							 const char *const *filter_patterns);
+	static bool ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
+	                         int filter_num, const char *const *filter_patterns);
 
-	static bool ui_file_save(const char *label, const char *btn, char *buf,
-							 size_t buf_size, const char *title, int filter_num,
-							 const char *const *filter_patterns);
+	static bool ui_file_save(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
+	                         int filter_num, const char *const *filter_patterns);
 
-	static void glfw_key_callback(GLFWwindow *window, int key, int, int action,
-								  int);
+	static void glfw_key_callback(GLFWwindow *window, int key, int, int action, int);
 
 public:
 	Application();

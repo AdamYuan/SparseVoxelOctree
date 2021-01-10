@@ -5,18 +5,19 @@
 #include <map>
 
 namespace myvk {
-	class ObjectTracker {
-	private:
-		std::multimap<std::shared_ptr<Fence>, std::vector<std::shared_ptr<DeviceObjectBase>>> m_tracker;
-	public:
-		void Track(const std::shared_ptr<Fence> &fence, const std::vector<std::shared_ptr<DeviceObjectBase>> &objects);
+class ObjectTracker {
+private:
+	std::multimap<std::shared_ptr<Fence>, std::vector<std::shared_ptr<DeviceObjectBase>>> m_tracker;
 
-		void Update();
+public:
+	void Track(const std::shared_ptr<Fence> &fence, const std::vector<std::shared_ptr<DeviceObjectBase>> &objects);
 
-		void Join();
+	void Update();
 
-		~ObjectTracker();
-	};
-}
+	void Join();
+
+	~ObjectTracker();
+};
+} // namespace myvk
 
 #endif

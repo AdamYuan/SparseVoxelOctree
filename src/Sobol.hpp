@@ -1,10 +1,10 @@
 #ifndef SOBOL_HPP
 #define SOBOL_HPP
 
-#include <vector>
 #include "myvk/Buffer.hpp"
 #include "myvk/CommandBuffer.hpp"
 #include "myvk/ComputePipeline.hpp"
+#include <vector>
 
 class Sobol {
 private:
@@ -22,7 +22,7 @@ public:
 	void Reset(const std::shared_ptr<myvk::CommandPool> &command_pool, uint32_t dimension);
 
 	void CmdNext(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
-				 const std::shared_ptr<myvk::DescriptorSet> &index_descriptor_set);
+	             const std::shared_ptr<myvk::DescriptorSet> &index_descriptor_set);
 
 	const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayout() const { return m_descriptor_set_layout; }
 

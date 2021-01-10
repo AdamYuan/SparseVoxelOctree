@@ -1,9 +1,9 @@
 #include "Application.hpp"
 
 #include "Config.hpp"
+#include "ImGuiHelper.hpp"
 #include "OctreeBuilder.hpp"
 #include "Voxelizer.hpp"
-#include "ImGuiHelper.hpp"
 #include <spdlog/spdlog.h>
 
 #include <imgui/imgui.h>
@@ -13,19 +13,17 @@
 
 #ifndef NDEBUG
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL
-debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
-			   VkDebugUtilsMessageTypeFlagsEXT message_type,
-			   const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
-			   void *user_data) {
-	if (message_severity >= VkDebugUtilsMessageSeverityFlagBitsEXT::
-	VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
+                                                     VkDebugUtilsMessageTypeFlagsEXT message_type,
+                                                     const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
+                                                     void *user_data) {
+	if (message_severity >= VkDebugUtilsMessageSeverityFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 		spdlog::error("{}", callback_data->pMessage);
 	else if (message_severity >=
-			 VkDebugUtilsMessageSeverityFlagBitsEXT::
-			 VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+	         VkDebugUtilsMessageSeverityFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
 		spdlog::warn("{}", callback_data->pMessage);
-	else spdlog::info("{}", callback_data->pMessage);
+	else
+		spdlog::info("{}", callback_data->pMessage);
 	return VK_FALSE;
 }
 
@@ -83,25 +81,17 @@ void Application::create_render_pass() {
 	std::vector<VkSubpassDependency> subpass_dependencies(2);
 	subpass_dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 	subpass_dependencies[0].dstSubpass = 0;
-	subpass_dependencies[0].srcStageMask =
-		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpass_dependencies[0].dstStageMask =
-		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subpass_dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subpass_dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	subpass_dependencies[0].srcAccessMask = 0;
-	subpass_dependencies[0].dstAccessMask =
-		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	subpass_dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 	subpass_dependencies[1].srcSubpass = 0;
 	subpass_dependencies[1].dstSubpass = 1;
-	subpass_dependencies[1].srcStageMask =
-		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpass_dependencies[1].dstStageMask =
-		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpass_dependencies[1].srcAccessMask =
-		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	subpass_dependencies[1].dstAccessMask =
-		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	subpass_dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subpass_dependencies[1].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subpass_dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	subpass_dependencies[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 	render_pass_info.dependencyCount = subpass_dependencies.size();
 	render_pass_info.pDependencies = subpass_dependencies.data();
@@ -112,31 +102,26 @@ void Application::create_render_pass() {
 void Application::create_framebuffers() {
 	m_framebuffers.resize(m_swapchain->GetImageCount());
 	for (uint32_t i = 0; i < m_swapchain->GetImageCount(); ++i) {
-		m_framebuffers[i] = myvk::Framebuffer::Create(
-			m_render_pass, {m_swapchain_image_views[i]},
-			m_swapchain->GetExtent());
+		m_framebuffers[i] =
+		    myvk::Framebuffer::Create(m_render_pass, {m_swapchain_image_views[i]}, m_swapchain->GetExtent());
 	}
 }
 
 void Application::draw_frame() {
 	m_frame_manager.BeforeAcquire();
 	uint32_t image_index;
-	m_swapchain->AcquireNextImage(
-		&image_index, m_frame_manager.GetAcquireDoneSemaphorePtr(), nullptr);
+	m_swapchain->AcquireNextImage(&image_index, m_frame_manager.GetAcquireDoneSemaphorePtr(), nullptr);
 	m_frame_manager.AfterAcquire(image_index);
 
 	uint32_t current_frame = m_frame_manager.GetCurrentFrame();
 	m_camera.UpdateFrameUniformBuffer(current_frame);
-	const std::shared_ptr<myvk::CommandBuffer> &command_buffer =
-		m_frame_command_buffers[current_frame];
+	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_command_buffers[current_frame];
 
 	command_buffer->Reset();
 	command_buffer->Begin();
 	if (!m_octree.Empty())
 		m_octree_tracer.CmdBeamRenderPass(command_buffer, current_frame);
-	command_buffer->CmdBeginRenderPass(m_render_pass,
-									   m_framebuffers[image_index],
-									   {{{0.0f, 0.0f, 0.0f, 1.0f}}});
+	command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffers[image_index], {{{0.0f, 0.0f, 0.0f, 1.0f}}});
 	if (!m_octree.Empty())
 		m_octree_tracer.CmdDrawPipeline(command_buffer, current_frame);
 	command_buffer->CmdNextSubpass();
@@ -145,12 +130,10 @@ void Application::draw_frame() {
 	command_buffer->End();
 
 	m_frame_manager.BeforeSubmit();
-	command_buffer->Submit({{m_frame_manager.GetAcquireDoneSemaphorePtr(),
-								VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT}},
-						   {m_frame_manager.GetRenderDoneSemaphorePtr()},
-						   m_frame_manager.GetFrameFencePtr());
-	m_swapchain->Present(image_index,
-						 {m_frame_manager.GetRenderDoneSemaphorePtr()});
+	command_buffer->Submit(
+	    {{m_frame_manager.GetAcquireDoneSemaphorePtr(), VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT}},
+	    {m_frame_manager.GetRenderDoneSemaphorePtr()}, m_frame_manager.GetFrameFencePtr());
+	m_swapchain->Present(image_index, {m_frame_manager.GetRenderDoneSemaphorePtr()});
 }
 
 void Application::initialize_vulkan() {
@@ -164,8 +147,7 @@ void Application::initialize_vulkan() {
 		exit(EXIT_FAILURE);
 	}
 
-	std::vector<std::shared_ptr<myvk::PhysicalDevice>> physical_devices =
-		myvk::PhysicalDevice::Fetch(m_instance);
+	std::vector<std::shared_ptr<myvk::PhysicalDevice>> physical_devices = myvk::PhysicalDevice::Fetch(m_instance);
 	if (physical_devices.empty()) {
 		spdlog::error("Failed to find physical device with vulkan support!");
 		exit(EXIT_FAILURE);
@@ -180,14 +162,10 @@ void Application::initialize_vulkan() {
 	// DEVICE CREATION
 	{
 		std::vector<myvk::QueueRequirement> queue_requirements = {
-			myvk::QueueRequirement(VK_QUEUE_GRAPHICS_BIT,
-								   &m_main_queue, m_surface,
-								   &m_present_queue),
-			myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT,
-								   &m_async_queue)};
+		    myvk::QueueRequirement(VK_QUEUE_GRAPHICS_BIT, &m_main_queue, m_surface, &m_present_queue),
+		    myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT, &m_async_queue)};
 		myvk::DeviceCreateInfo device_create_info;
-		device_create_info.Initialize(physical_devices[0], queue_requirements,
-									  {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
+		device_create_info.Initialize(physical_devices[0], queue_requirements, {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
 		if (!device_create_info.QueueSupport()) {
 			spdlog::error("Failed to find queues!");
 			exit(EXIT_FAILURE);
@@ -204,27 +182,22 @@ void Application::initialize_vulkan() {
 	}
 
 	spdlog::info("Physical Device: {}", m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
-	spdlog::info("Present Queue: {}, Main Graphics Queue: {}, Async Compute|Graphics Queue: {}",
-				 (void *) m_present_queue->GetHandle(),
-				 (void *) m_main_queue->GetHandle(),
-				 (void *) m_async_queue->GetHandle());
+	spdlog::info("Present Queue: {}, Main Graphics Queue: {}, Async "
+	             "Compute|Graphics Queue: {}",
+	             (void *)m_present_queue->GetHandle(), (void *)m_main_queue->GetHandle(),
+	             (void *)m_async_queue->GetHandle());
 
-	m_swapchain = myvk::Swapchain::Create(m_main_queue,
-										  m_present_queue, false);
+	m_swapchain = myvk::Swapchain::Create(m_main_queue, m_present_queue, false);
 	spdlog::info("Swapchain image count: {}", m_swapchain->GetImageCount());
 
 	m_swapchain_images = myvk::SwapchainImage::Create(m_swapchain);
 	m_swapchain_image_views.resize(m_swapchain->GetImageCount());
 	for (uint32_t i = 0; i < m_swapchain->GetImageCount(); ++i)
-		m_swapchain_image_views[i] =
-			myvk::ImageView::Create(m_swapchain_images[i]);
+		m_swapchain_image_views[i] = myvk::ImageView::Create(m_swapchain_images[i]);
 
-	m_main_command_pool = myvk::CommandPool::Create(
-		m_main_queue,
-		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	m_main_command_pool = myvk::CommandPool::Create(m_main_queue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-	m_frame_command_buffers = myvk::CommandBuffer::CreateMultiple(
-		m_main_command_pool, kFrameCount);
+	m_frame_command_buffers = myvk::CommandBuffer::CreateMultiple(m_main_command_pool, kFrameCount);
 }
 
 Application::Application() {
@@ -238,22 +211,22 @@ Application::Application() {
 
 	create_window();
 	initialize_vulkan();
-	glfwSetWindowTitle(m_window, (std::string{kAppName} + " | " +
-								  m_device->GetPhysicalDevicePtr()->GetProperties().deviceName).c_str());
+	glfwSetWindowTitle(
+	    m_window,
+	    (std::string{kAppName} + " | " + m_device->GetPhysicalDevicePtr()->GetProperties().deviceName).c_str());
 	create_render_pass();
 	create_framebuffers();
 	m_camera.Initialize(m_device, kFrameCount);
 	m_camera.m_position = glm::vec3(1.5);
 	m_frame_manager.Initialize(m_swapchain, kFrameCount);
 	m_octree.Initialize(m_device);
-	m_octree_tracer.Initialize(m_octree, m_camera, m_render_pass, 0,
-							   kFrameCount);
-	m_imgui_renderer.Initialize(m_main_command_pool, m_render_pass,
-								1, kFrameCount);
+	m_octree_tracer.Initialize(m_octree, m_camera, m_render_pass, 0, kFrameCount);
+	m_imgui_renderer.Initialize(m_main_command_pool, m_render_pass, 1, kFrameCount);
 }
 
 void Application::LoadScene(const char *filename, uint32_t octree_level) {
-	if (m_loader_thread.joinable()) return;
+	if (m_loader_thread.joinable())
+		return;
 	m_loader_thread = std::thread(&Application::loader_thread, this, filename, octree_level);
 }
 
@@ -289,8 +262,10 @@ void Application::ui_switch_state() {
 			m_loader_thread.join();
 			m_loader_ready_to_join = false;
 		}
-	} else if (m_octree.Empty()) m_ui_state = UIStates::kEmpty;
-	else m_ui_state = UIStates::kOctreeTracer;
+	} else if (m_octree.Empty())
+		m_ui_state = UIStates::kEmpty;
+	else
+		m_ui_state = UIStates::kOctreeTracer;
 }
 
 void Application::ui_render_main() {
@@ -326,8 +301,8 @@ void Application::ui_menubar() {
 
 	/*if(m_octree && ImGui::Button("Start PT"))
 	{
-		m_pathtracing_flag = true;
-		m_pathtracer.Prepare(m_camera, *m_octree, m_octree_tracer);
+	    m_pathtracing_flag = true;
+	    m_pathtracer.Prepare(m_camera, *m_octree, m_octree_tracer);
 	}*/
 
 	if (ImGui::BeginMenu("Camera")) {
@@ -344,12 +319,10 @@ void Application::ui_menubar() {
 			m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kDiffuse;
 		if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kNormal))
 			m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kNormal;
-		if (ImGui::MenuItem("Iterations", nullptr,
-							m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kIteration))
+		if (ImGui::MenuItem("Iterations", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kIteration))
 			m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kIteration;
 
-		ImGui::Checkbox("Beam Optimization",
-						&m_octree_tracer.m_beam_enable);
+		ImGui::Checkbox("Beam Optimization", &m_octree_tracer.m_beam_enable);
 		ImGui::EndMenu();
 	}
 
@@ -358,19 +331,10 @@ void Application::ui_menubar() {
 
 		const auto &logs_raw = m_log_sink->last_raw();
 
-		static constexpr ImU32 kLogColors[7] = {
-			0xffffffffu,
-			0xffffffffu,
-			0xff00bd00u,
-			0xff00ffffu,
-			0xff0000ffu,
-			0xff0000ffu,
-			0xffffffffu
-		};
+		static constexpr ImU32 kLogColors[7] = {0xffffffffu, 0xffffffffu, 0xff00bd00u, 0xff00ffffu,
+		                                        0xff0000ffu, 0xff0000ffu, 0xffffffffu};
 
-		static constexpr const char *kLogLevelStrs[7] = {
-			"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "CRITICAL", "OFF"
-		};
+		static constexpr const char *kLogLevelStrs[7] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "CRITICAL", "OFF"};
 
 		for (const auto &log : logs_raw) {
 			ImGui::PushStyleColor(ImGuiCol_Text, kLogColors[log.level]);
@@ -387,7 +351,7 @@ void Application::ui_menubar() {
 		ImGui::EndMenu();
 	}
 
-	//Status bar
+	// Status bar
 	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 	float indent_w = ImGui::GetWindowContentRegionWidth();
 
@@ -410,9 +374,8 @@ void Application::ui_menubar() {
 		ImGui::Button(buf);
 		ImGui::PopStyleColor();
 
-		sprintf(buf, "Octree Size: %.0f/%.0f MB",
-				m_octree.GetRange() / 1000000.0f,
-				m_octree.GetBufferPtr()->GetSize() / 1000000.0f);
+		sprintf(buf, "Octree Size: %.0f/%.0f MB", m_octree.GetRange() / 1000000.0f,
+		        m_octree.GetBufferPtr()->GetSize() / 1000000.0f);
 		indent_w -= ImGui::CalcTextSize(buf).x + 8;
 		ImGui::SameLine(indent_w);
 		ImGui::Button(buf);
@@ -421,8 +384,8 @@ void Application::ui_menubar() {
 
 	/*if(ImGui::BeginMenu("Path Tracer"))
 	{
-		ImGui::DragInt("Bounce", &m_pathtracer.m_bounce, 1, 2, kMaxBounce);
-		ImGui::DragFloat3("Sun Radiance", &m_pathtracer.m_sun_radiance[0],
+	    ImGui::DragInt("Bounce", &m_pathtracer.m_bounce, 1, 2, kMaxBounce);
+	    ImGui::DragFloat3("Sun Radiance", &m_pathtracer.m_sun_radiance[0],
 	0.1f, 0.0f, 20.0f); ImGui::EndMenu();
 	}*/
 	/*else if(m_octree)
@@ -459,16 +422,13 @@ void Application::ui_menubar() {
 	ui_export_exr_modal();
 }
 
-bool Application::ui_file_open(const char *label, const char *btn, char *buf,
-							   size_t buf_size, const char *title,
-							   int filter_num,
-							   const char *const *filter_patterns) {
+bool Application::ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
+                               int filter_num, const char *const *filter_patterns) {
 	bool ret = ImGui::InputText(label, buf, buf_size);
 	ImGui::SameLine();
 
 	if (ImGui::Button(btn)) {
-		const char *filename = tinyfd_openFileDialog(
-			title, "", filter_num, filter_patterns, nullptr, false);
+		const char *filename = tinyfd_openFileDialog(title, "", filter_num, filter_patterns, nullptr, false);
 		if (filename)
 			strcpy(buf, filename);
 		ret = true;
@@ -476,16 +436,13 @@ bool Application::ui_file_open(const char *label, const char *btn, char *buf,
 	return ret;
 }
 
-bool Application::ui_file_save(const char *label, const char *btn, char *buf,
-							   size_t buf_size, const char *title,
-							   int filter_num,
-							   const char *const *filter_patterns) {
+bool Application::ui_file_save(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
+                               int filter_num, const char *const *filter_patterns) {
 	bool ret = ImGui::InputText(label, buf, buf_size);
 	ImGui::SameLine();
 
 	if (ImGui::Button(btn)) {
-		const char *filename = tinyfd_saveFileDialog(title, "", filter_num,
-													 filter_patterns, nullptr);
+		const char *filename = tinyfd_saveFileDialog(title, "", filter_num, filter_patterns, nullptr);
 		if (filename)
 			strcpy(buf, filename);
 		ret = true;
@@ -495,16 +452,14 @@ bool Application::ui_file_save(const char *label, const char *btn, char *buf,
 
 void Application::ui_load_scene_modal() {
 	if (ImGui::BeginPopupModal("Load Scene", nullptr,
-							   ImGuiWindowFlags_AlwaysAutoResize |
-							   ImGuiWindowFlags_NoTitleBar |
-							   ImGuiWindowFlags_NoMove)) {
+	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
+	                               ImGuiWindowFlags_NoMove)) {
 		static char name_buf[kFilenameBufSize];
 		static int octree_leve = 10;
 
 		constexpr const char *kFilter[] = {"*.obj"};
 
-		ui_file_open("OBJ Filename", "...##5", name_buf, kFilenameBufSize,
-					 "OBJ Filename", 1, kFilter);
+		ui_file_open("OBJ Filename", "...##5", name_buf, kFilenameBufSize, "OBJ Filename", 1, kFilter);
 		ImGui::DragInt("Octree Level", &octree_leve, 1, 2, 12);
 
 		if (ImGui::Button("Load", ImVec2(256, 0))) {
@@ -522,9 +477,8 @@ void Application::ui_load_scene_modal() {
 
 void Application::ui_loading_modal() {
 	if (ImGui::BeginPopupModal("Loading", nullptr,
-							   ImGuiWindowFlags_AlwaysAutoResize |
-							   ImGuiWindowFlags_NoTitleBar |
-							   ImGuiWindowFlags_NoMove)) {
+	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
+	                               ImGuiWindowFlags_NoMove)) {
 		ImGui::Spinner("##spinner", 12, 6, ImGui::GetColorU32(ImGuiCol_ButtonHovered));
 		ImGui::SameLine();
 		ImGui::Text("Loading ...");
@@ -569,12 +523,10 @@ void Application::ui_export_exr_modal() {
 	}*/
 }
 
-void Application::glfw_key_callback(GLFWwindow *window, int key, int,
-									int action, int) {
-	auto *app = (Application *) glfwGetWindowUserPointer(window);
+void Application::glfw_key_callback(GLFWwindow *window, int key, int, int action, int) {
+	auto *app = (Application *)glfwGetWindowUserPointer(window);
 	if (!ImGui::GetCurrentContext()->NavWindow ||
-		(ImGui::GetCurrentContext()->NavWindow->Flags &
-		 ImGuiWindowFlags_NoBringToFrontOnFocus)) {
+	    (ImGui::GetCurrentContext()->NavWindow->Flags & ImGuiWindowFlags_NoBringToFrontOnFocus)) {
 		if (action == GLFW_PRESS && key == GLFW_KEY_X)
 			app->m_ui_display_flag ^= 1u;
 	}
@@ -582,8 +534,7 @@ void Application::glfw_key_callback(GLFWwindow *window, int key, int,
 
 void Application::loader_thread(const char *filename, uint32_t octree_level) {
 	Scene scene;
-	std::shared_ptr<myvk::CommandPool> command_pool =
-		myvk::CommandPool::Create(m_async_queue);
+	std::shared_ptr<myvk::CommandPool> command_pool = myvk::CommandPool::Create(m_async_queue);
 	if (scene.Initialize(m_async_queue, filename)) {
 		Voxelizer voxelizer;
 		voxelizer.Initialize(scene, command_pool, octree_level);
@@ -601,24 +552,21 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 		voxelizer.CmdVoxelize(command_buffer);
 		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 1);
 
-		command_buffer->CmdPipelineBarrier(
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {},
-			{voxelizer.GetVoxelFragmentListPtr()->GetMemoryBarrier(
-				VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT)},
-			{});
+		command_buffer->CmdPipelineBarrier(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		                                   {},
+		                                   {voxelizer.GetVoxelFragmentListPtr()->GetMemoryBarrier(
+		                                       VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT)},
+		                                   {});
 
 		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, query_pool, 2);
 		builder.CmdBuild(command_buffer);
 		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 3);
 
 		if (m_main_queue->GetFamilyIndex() != m_async_queue->GetFamilyIndex()) {
-			//TODO: Test queue ownership transfer
+			// TODO: Test queue ownership transfer
 			command_buffer->CmdPipelineBarrier(
-				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-				VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
-				{builder.GetOctree()->GetMemoryBarrier(0, 0, m_async_queue, m_main_queue)},
-				{});
+			    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
+			    {builder.GetOctree()->GetMemoryBarrier(0, 0, m_async_queue, m_main_queue)}, {});
 		}
 
 		command_buffer->End();
@@ -628,31 +576,29 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 		command_buffer->Submit({}, {}, fence);
 		fence->Wait();
 
-		//time measurement
+		// time measurement
 		uint64_t timestamps[4];
 		query_pool->GetResults64(timestamps, VK_QUERY_RESULT_WAIT_BIT);
-		spdlog::info("Voxelize and Octree building FINISHED in {} ms (Voxelize {} ms, Octree building {} ms)",
-					 double(timestamps[3] - timestamps[0]) * 0.000001,
-					 double(timestamps[1] - timestamps[0]) * 0.000001,
-					 double(timestamps[3] - timestamps[2]) * 0.000001);
+		spdlog::info("Voxelize and Octree building FINISHED in {} ms (Voxelize "
+		             "{} ms, Octree building {} ms)",
+		             double(timestamps[3] - timestamps[0]) * 0.000001, double(timestamps[1] - timestamps[0]) * 0.000001,
+		             double(timestamps[3] - timestamps[2]) * 0.000001);
 
-		//join to main thread and update octree
+		// join to main thread and update octree
 		m_loader_ready_to_join = true;
 		{
 			std::unique_lock<std::mutex> lock{m_loader_mutex};
 			m_loader_condition_variable.wait(lock);
 
 			if (m_main_queue->GetFamilyIndex() != m_async_queue->GetFamilyIndex()) {
-				//TODO: Test queue ownership transfer
+				// TODO: Test queue ownership transfer
 				command_buffer = myvk::CommandBuffer::Create(m_main_command_pool);
 				fence->Reset();
 				command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 				// transfer ownership
 				command_buffer->CmdPipelineBarrier(
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-					VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
-					{builder.GetOctree()->GetMemoryBarrier(0, 0, m_async_queue, m_main_queue)},
-					{});
+				    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
+				    {builder.GetOctree()->GetMemoryBarrier(0, 0, m_async_queue, m_main_queue)}, {});
 				command_buffer->End();
 
 				command_buffer->Submit({}, {}, fence);

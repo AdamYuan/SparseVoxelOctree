@@ -3,50 +3,52 @@
 
 #include "DeviceObjectBase.hpp"
 #include <cstdint>
-#include <vector>
 #include <memory>
+#include <vector>
 #include <volk.h>
 
 namespace myvk {
-	class Fence : public DeviceObjectBase {
-	private:
-		std::shared_ptr<Device> m_device_ptr;
-		VkFence m_fence{nullptr};
-	public:
-		static std::shared_ptr<Fence> Create(const std::shared_ptr<Device> &device, VkFenceCreateFlags flags = 0);
+class Fence : public DeviceObjectBase {
+private:
+	std::shared_ptr<Device> m_device_ptr;
+	VkFence m_fence{nullptr};
 
-		bool Signaled() const;
+public:
+	static std::shared_ptr<Fence> Create(const std::shared_ptr<Device> &device, VkFenceCreateFlags flags = 0);
 
-		VkFence GetHandle() const { return m_fence; }
+	bool Signaled() const;
 
-		const std::shared_ptr<Device> &GetDevicePtr() const override { return m_device_ptr; }
+	VkFence GetHandle() const { return m_fence; }
 
-		VkResult Wait(uint64_t timeout = UINT64_MAX) const;
+	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_device_ptr; }
 
-		VkResult Reset() const;
+	VkResult Wait(uint64_t timeout = UINT64_MAX) const;
 
-		~Fence();
-	};
+	VkResult Reset() const;
 
-	class FenceGroup {
-	private:
-		VkDevice m_device{};
-		std::vector<VkFence> m_fences;
-	public:
-		explicit FenceGroup(const std::vector<std::shared_ptr<Fence>> &fences);
+	~Fence();
+};
 
-		FenceGroup(const std::initializer_list<std::shared_ptr<Fence>> &fences);
+class FenceGroup {
+private:
+	VkDevice m_device{};
+	std::vector<VkFence> m_fences;
 
-		void Initialize(const std::vector<std::shared_ptr<Fence>> &fences);
+public:
+	explicit FenceGroup(const std::vector<std::shared_ptr<Fence>> &fences);
 
-		uint32_t GetCount() const { return m_fences.size(); }
+	FenceGroup(const std::initializer_list<std::shared_ptr<Fence>> &fences);
 
-		const VkFence *GetFencesPtr() const { return m_fences.data(); }
+	void Initialize(const std::vector<std::shared_ptr<Fence>> &fences);
 
-		VkResult Wait(VkBool32 wait_all = VK_TRUE, uint64_t timeout = UINT64_MAX) const;
+	uint32_t GetCount() const { return m_fences.size(); }
 
-		VkResult Reset() const;
-	};
-}
+	const VkFence *GetFencesPtr() const { return m_fences.data(); }
+
+	VkResult Wait(VkBool32 wait_all = VK_TRUE, uint64_t timeout = UINT64_MAX) const;
+
+	VkResult Reset() const;
+};
+} // namespace myvk
 
 #endif

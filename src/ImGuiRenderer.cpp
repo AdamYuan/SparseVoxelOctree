@@ -1,13 +1,13 @@
 #include "ImGuiRenderer.hpp"
-#include "myvk/CommandBuffer.hpp"
 #include "myvk/Buffer.hpp"
+#include "myvk/CommandBuffer.hpp"
 #include "myvk/ShaderModule.hpp"
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
 void ImGuiRenderer::Initialize(const std::shared_ptr<myvk::CommandPool> &command_pool,
-							   const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass,
-							   uint32_t frame_count) {
+                               const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass,
+                               uint32_t frame_count) {
 	create_font_texture(command_pool);
 	create_descriptor(render_pass->GetDevicePtr());
 	create_pipeline(render_pass, subpass);
@@ -21,15 +21,15 @@ void ImGuiRenderer::create_font_texture(const std::shared_ptr<myvk::CommandPool>
 	ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&data, &width, &height);
 	uint32_t data_size = width * height;
 
-	m_font_texture = myvk::Image::CreateTexture2D(command_pool->GetDevicePtr(),
-												  {(uint32_t) width, (uint32_t) height}, 1, VK_FORMAT_R8_UNORM,
-												  VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-	ImGui::GetIO().Fonts->SetTexID((ImTextureID) (intptr_t) m_font_texture->GetHandle());
+	m_font_texture =
+	    myvk::Image::CreateTexture2D(command_pool->GetDevicePtr(), {(uint32_t)width, (uint32_t)height}, 1,
+	                                 VK_FORMAT_R8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+	ImGui::GetIO().Fonts->SetTexID((ImTextureID)(intptr_t)m_font_texture->GetHandle());
 
 	{
 		std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(command_pool->GetDevicePtr());
-		std::shared_ptr<myvk::Buffer> staging_buffer = myvk::Buffer::CreateStaging(
-			command_pool->GetDevicePtr(), data_size);
+		std::shared_ptr<myvk::Buffer> staging_buffer =
+		    myvk::Buffer::CreateStaging(command_pool->GetDevicePtr(), data_size);
 		staging_buffer->UpdateData(data, data + data_size);
 
 		std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
@@ -44,21 +44,18 @@ void ImGuiRenderer::create_font_texture(const std::shared_ptr<myvk::CommandPool>
 		region.imageSubresource.baseArrayLayer = 0;
 		region.imageSubresource.layerCount = 1;
 		region.imageOffset = {0, 0, 0};
-		region.imageExtent = {(uint32_t) width, (uint32_t) height, 1};
+		region.imageExtent = {(uint32_t)width, (uint32_t)height, 1};
 
-		command_buffer->CmdPipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
-										   m_font_texture->GetDstMemoryBarriers({region},
-																				0, VK_ACCESS_TRANSFER_WRITE_BIT,
-																				VK_IMAGE_LAYOUT_UNDEFINED,
-																				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+		command_buffer->CmdPipelineBarrier(
+		    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
+		    m_font_texture->GetDstMemoryBarriers({region}, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+		                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
 		command_buffer->CmdCopy(staging_buffer, m_font_texture, {region});
-		command_buffer->CmdPipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {},
-										   {},
-										   m_font_texture->GetDstMemoryBarriers({region},
-																				VK_ACCESS_TRANSFER_WRITE_BIT,
-																				VK_ACCESS_SHADER_READ_BIT,
-																				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-																				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		command_buffer->CmdPipelineBarrier(
+		    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {}, {},
+		    m_font_texture->GetDstMemoryBarriers({region}, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+		                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 
 		command_buffer->End();
 
@@ -67,9 +64,9 @@ void ImGuiRenderer::create_font_texture(const std::shared_ptr<myvk::CommandPool>
 	}
 
 	m_font_texture_view = myvk::ImageView::Create(m_font_texture, VK_IMAGE_VIEW_TYPE_2D, m_font_texture->GetFormat(),
-												  VK_IMAGE_ASPECT_COLOR_BIT);
-	m_font_texture_sampler = myvk::Sampler::Create(command_pool->GetDevicePtr(), VK_FILTER_LINEAR,
-												   VK_SAMPLER_ADDRESS_MODE_REPEAT);
+	                                              VK_IMAGE_ASPECT_COLOR_BIT);
+	m_font_texture_sampler =
+	    myvk::Sampler::Create(command_pool->GetDevicePtr(), VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 }
 
 void ImGuiRenderer::create_descriptor(const std::shared_ptr<myvk::Device> &device) {
@@ -82,9 +79,7 @@ void ImGuiRenderer::create_descriptor(const std::shared_ptr<myvk::Device> &devic
 
 		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {layout_binding});
 	}
-	m_descriptor_pool = myvk::DescriptorPool::Create(device, 1, {
-		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1}
-	});
+	m_descriptor_pool = myvk::DescriptorPool::Create(device, 1, {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1}});
 	m_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
 	m_descriptor_set->UpdateCombinedImageSampler(m_font_texture_sampler, m_font_texture_view, 0);
 }
@@ -110,71 +105,35 @@ void main() {
 }
 */
 constexpr uint32_t kShaderVertSpv[] = {
-	0x07230203, 0x00010000, 0x000d0008, 0x0000002e,
-	0x00000000, 0x00020011, 0x00000001, 0x0006000b,
-	0x00000001, 0x4c534c47, 0x6474732e, 0x3035342e,
-	0x00000000, 0x0003000e, 0x00000000, 0x00000001,
-	0x000a000f, 0x00000000, 0x00000004, 0x6e69616d,
-	0x00000000, 0x0000000b, 0x0000000f, 0x00000015,
-	0x0000001b, 0x0000001c, 0x00040047, 0x0000000b,
-	0x0000001e, 0x00000000, 0x00040047, 0x0000000f,
-	0x0000001e, 0x00000002, 0x00040047, 0x00000015,
-	0x0000001e, 0x00000001, 0x00050048, 0x00000019,
-	0x00000000, 0x0000000b, 0x00000000, 0x00030047,
-	0x00000019, 0x00000002, 0x00040047, 0x0000001c,
-	0x0000001e, 0x00000000, 0x00050048, 0x0000001e,
-	0x00000000, 0x00000023, 0x00000000, 0x00050048,
-	0x0000001e, 0x00000001, 0x00000023, 0x00000008,
-	0x00030047, 0x0000001e, 0x00000002, 0x00020013,
-	0x00000002, 0x00030021, 0x00000003, 0x00000002,
-	0x00030016, 0x00000006, 0x00000020, 0x00040017,
-	0x00000007, 0x00000006, 0x00000004, 0x00040017,
-	0x00000008, 0x00000006, 0x00000002, 0x0004001e,
-	0x00000009, 0x00000007, 0x00000008, 0x00040020,
-	0x0000000a, 0x00000003, 0x00000009, 0x0004003b,
-	0x0000000a, 0x0000000b, 0x00000003, 0x00040015,
-	0x0000000c, 0x00000020, 0x00000001, 0x0004002b,
-	0x0000000c, 0x0000000d, 0x00000000, 0x00040020,
-	0x0000000e, 0x00000001, 0x00000007, 0x0004003b,
-	0x0000000e, 0x0000000f, 0x00000001, 0x00040020,
-	0x00000011, 0x00000003, 0x00000007, 0x0004002b,
-	0x0000000c, 0x00000013, 0x00000001, 0x00040020,
-	0x00000014, 0x00000001, 0x00000008, 0x0004003b,
-	0x00000014, 0x00000015, 0x00000001, 0x00040020,
-	0x00000017, 0x00000003, 0x00000008, 0x0003001e,
-	0x00000019, 0x00000007, 0x00040020, 0x0000001a,
-	0x00000003, 0x00000019, 0x0004003b, 0x0000001a,
-	0x0000001b, 0x00000003, 0x0004003b, 0x00000014,
-	0x0000001c, 0x00000001, 0x0004001e, 0x0000001e,
-	0x00000008, 0x00000008, 0x00040020, 0x0000001f,
-	0x00000009, 0x0000001e, 0x0004003b, 0x0000001f,
-	0x00000020, 0x00000009, 0x00040020, 0x00000021,
-	0x00000009, 0x00000008, 0x0004002b, 0x00000006,
-	0x00000028, 0x00000000, 0x0004002b, 0x00000006,
-	0x00000029, 0x3f800000, 0x00050036, 0x00000002,
-	0x00000004, 0x00000000, 0x00000003, 0x000200f8,
-	0x00000005, 0x0004003d, 0x00000007, 0x00000010,
-	0x0000000f, 0x00050041, 0x00000011, 0x00000012,
-	0x0000000b, 0x0000000d, 0x0003003e, 0x00000012,
-	0x00000010, 0x0004003d, 0x00000008, 0x00000016,
-	0x00000015, 0x00050041, 0x00000017, 0x00000018,
-	0x0000000b, 0x00000013, 0x0003003e, 0x00000018,
-	0x00000016, 0x0004003d, 0x00000008, 0x0000001d,
-	0x0000001c, 0x00050041, 0x00000021, 0x00000022,
-	0x00000020, 0x0000000d, 0x0004003d, 0x00000008,
-	0x00000023, 0x00000022, 0x00050085, 0x00000008,
-	0x00000024, 0x0000001d, 0x00000023, 0x00050041,
-	0x00000021, 0x00000025, 0x00000020, 0x00000013,
-	0x0004003d, 0x00000008, 0x00000026, 0x00000025,
-	0x00050081, 0x00000008, 0x00000027, 0x00000024,
-	0x00000026, 0x00050051, 0x00000006, 0x0000002a,
-	0x00000027, 0x00000000, 0x00050051, 0x00000006,
-	0x0000002b, 0x00000027, 0x00000001, 0x00070050,
-	0x00000007, 0x0000002c, 0x0000002a, 0x0000002b,
-	0x00000028, 0x00000029, 0x00050041, 0x00000011,
-	0x0000002d, 0x0000001b, 0x0000000d, 0x0003003e,
-	0x0000002d, 0x0000002c, 0x000100fd, 0x00010038
-};
+    0x07230203, 0x00010000, 0x000d0008, 0x0000002e, 0x00000000, 0x00020011, 0x00000001, 0x0006000b, 0x00000001,
+    0x4c534c47, 0x6474732e, 0x3035342e, 0x00000000, 0x0003000e, 0x00000000, 0x00000001, 0x000a000f, 0x00000000,
+    0x00000004, 0x6e69616d, 0x00000000, 0x0000000b, 0x0000000f, 0x00000015, 0x0000001b, 0x0000001c, 0x00040047,
+    0x0000000b, 0x0000001e, 0x00000000, 0x00040047, 0x0000000f, 0x0000001e, 0x00000002, 0x00040047, 0x00000015,
+    0x0000001e, 0x00000001, 0x00050048, 0x00000019, 0x00000000, 0x0000000b, 0x00000000, 0x00030047, 0x00000019,
+    0x00000002, 0x00040047, 0x0000001c, 0x0000001e, 0x00000000, 0x00050048, 0x0000001e, 0x00000000, 0x00000023,
+    0x00000000, 0x00050048, 0x0000001e, 0x00000001, 0x00000023, 0x00000008, 0x00030047, 0x0000001e, 0x00000002,
+    0x00020013, 0x00000002, 0x00030021, 0x00000003, 0x00000002, 0x00030016, 0x00000006, 0x00000020, 0x00040017,
+    0x00000007, 0x00000006, 0x00000004, 0x00040017, 0x00000008, 0x00000006, 0x00000002, 0x0004001e, 0x00000009,
+    0x00000007, 0x00000008, 0x00040020, 0x0000000a, 0x00000003, 0x00000009, 0x0004003b, 0x0000000a, 0x0000000b,
+    0x00000003, 0x00040015, 0x0000000c, 0x00000020, 0x00000001, 0x0004002b, 0x0000000c, 0x0000000d, 0x00000000,
+    0x00040020, 0x0000000e, 0x00000001, 0x00000007, 0x0004003b, 0x0000000e, 0x0000000f, 0x00000001, 0x00040020,
+    0x00000011, 0x00000003, 0x00000007, 0x0004002b, 0x0000000c, 0x00000013, 0x00000001, 0x00040020, 0x00000014,
+    0x00000001, 0x00000008, 0x0004003b, 0x00000014, 0x00000015, 0x00000001, 0x00040020, 0x00000017, 0x00000003,
+    0x00000008, 0x0003001e, 0x00000019, 0x00000007, 0x00040020, 0x0000001a, 0x00000003, 0x00000019, 0x0004003b,
+    0x0000001a, 0x0000001b, 0x00000003, 0x0004003b, 0x00000014, 0x0000001c, 0x00000001, 0x0004001e, 0x0000001e,
+    0x00000008, 0x00000008, 0x00040020, 0x0000001f, 0x00000009, 0x0000001e, 0x0004003b, 0x0000001f, 0x00000020,
+    0x00000009, 0x00040020, 0x00000021, 0x00000009, 0x00000008, 0x0004002b, 0x00000006, 0x00000028, 0x00000000,
+    0x0004002b, 0x00000006, 0x00000029, 0x3f800000, 0x00050036, 0x00000002, 0x00000004, 0x00000000, 0x00000003,
+    0x000200f8, 0x00000005, 0x0004003d, 0x00000007, 0x00000010, 0x0000000f, 0x00050041, 0x00000011, 0x00000012,
+    0x0000000b, 0x0000000d, 0x0003003e, 0x00000012, 0x00000010, 0x0004003d, 0x00000008, 0x00000016, 0x00000015,
+    0x00050041, 0x00000017, 0x00000018, 0x0000000b, 0x00000013, 0x0003003e, 0x00000018, 0x00000016, 0x0004003d,
+    0x00000008, 0x0000001d, 0x0000001c, 0x00050041, 0x00000021, 0x00000022, 0x00000020, 0x0000000d, 0x0004003d,
+    0x00000008, 0x00000023, 0x00000022, 0x00050085, 0x00000008, 0x00000024, 0x0000001d, 0x00000023, 0x00050041,
+    0x00000021, 0x00000025, 0x00000020, 0x00000013, 0x0004003d, 0x00000008, 0x00000026, 0x00000025, 0x00050081,
+    0x00000008, 0x00000027, 0x00000024, 0x00000026, 0x00050051, 0x00000006, 0x0000002a, 0x00000027, 0x00000000,
+    0x00050051, 0x00000006, 0x0000002b, 0x00000027, 0x00000001, 0x00070050, 0x00000007, 0x0000002c, 0x0000002a,
+    0x0000002b, 0x00000028, 0x00000029, 0x00050041, 0x00000011, 0x0000002d, 0x0000001b, 0x0000000d, 0x0003003e,
+    0x0000002d, 0x0000002c, 0x000100fd, 0x00010038};
 
 /*
 #version 450 core
@@ -186,52 +145,26 @@ void main() {
 }
 */
 constexpr uint32_t kShaderFragSpv[] = {
-	0x07230203, 0x00010000, 0x000d0008, 0x00000023,
-	0x00000000, 0x00020011, 0x00000001, 0x0006000b,
-	0x00000001, 0x4c534c47, 0x6474732e, 0x3035342e,
-	0x00000000, 0x0003000e, 0x00000000, 0x00000001,
-	0x0007000f, 0x00000004, 0x00000004, 0x6e69616d,
-	0x00000000, 0x00000009, 0x0000000d, 0x00030010,
-	0x00000004, 0x00000007, 0x00040047, 0x00000009,
-	0x0000001e, 0x00000000, 0x00040047, 0x0000000d,
-	0x0000001e, 0x00000000, 0x00040047, 0x00000017,
-	0x00000022, 0x00000000, 0x00040047, 0x00000017,
-	0x00000021, 0x00000000, 0x00020013, 0x00000002,
-	0x00030021, 0x00000003, 0x00000002, 0x00030016,
-	0x00000006, 0x00000020, 0x00040017, 0x00000007,
-	0x00000006, 0x00000004, 0x00040020, 0x00000008,
-	0x00000003, 0x00000007, 0x0004003b, 0x00000008,
-	0x00000009, 0x00000003, 0x00040017, 0x0000000a,
-	0x00000006, 0x00000002, 0x0004001e, 0x0000000b,
-	0x00000007, 0x0000000a, 0x00040020, 0x0000000c,
-	0x00000001, 0x0000000b, 0x0004003b, 0x0000000c,
-	0x0000000d, 0x00000001, 0x00040015, 0x0000000e,
-	0x00000020, 0x00000001, 0x0004002b, 0x0000000e,
-	0x0000000f, 0x00000000, 0x00040020, 0x00000010,
-	0x00000001, 0x00000007, 0x0004002b, 0x00000006,
-	0x00000013, 0x3f800000, 0x00090019, 0x00000014,
-	0x00000006, 0x00000001, 0x00000000, 0x00000000,
-	0x00000000, 0x00000001, 0x00000000, 0x0003001b,
-	0x00000015, 0x00000014, 0x00040020, 0x00000016,
-	0x00000000, 0x00000015, 0x0004003b, 0x00000016,
-	0x00000017, 0x00000000, 0x0004002b, 0x0000000e,
-	0x00000019, 0x00000001, 0x00040020, 0x0000001a,
-	0x00000001, 0x0000000a, 0x00050036, 0x00000002,
-	0x00000004, 0x00000000, 0x00000003, 0x000200f8,
-	0x00000005, 0x00050041, 0x00000010, 0x00000011,
-	0x0000000d, 0x0000000f, 0x0004003d, 0x00000007,
-	0x00000012, 0x00000011, 0x0004003d, 0x00000015,
-	0x00000018, 0x00000017, 0x00050041, 0x0000001a,
-	0x0000001b, 0x0000000d, 0x00000019, 0x0004003d,
-	0x0000000a, 0x0000001c, 0x0000001b, 0x00050057,
-	0x00000007, 0x0000001d, 0x00000018, 0x0000001c,
-	0x00050051, 0x00000006, 0x00000020, 0x0000001d,
-	0x00000000, 0x00070050, 0x00000007, 0x00000021,
-	0x00000013, 0x00000013, 0x00000013, 0x00000020,
-	0x00050085, 0x00000007, 0x00000022, 0x00000012,
-	0x00000021, 0x0003003e, 0x00000009, 0x00000022,
-	0x000100fd, 0x00010038
-};
+    0x07230203, 0x00010000, 0x000d0008, 0x00000023, 0x00000000, 0x00020011, 0x00000001, 0x0006000b, 0x00000001,
+    0x4c534c47, 0x6474732e, 0x3035342e, 0x00000000, 0x0003000e, 0x00000000, 0x00000001, 0x0007000f, 0x00000004,
+    0x00000004, 0x6e69616d, 0x00000000, 0x00000009, 0x0000000d, 0x00030010, 0x00000004, 0x00000007, 0x00040047,
+    0x00000009, 0x0000001e, 0x00000000, 0x00040047, 0x0000000d, 0x0000001e, 0x00000000, 0x00040047, 0x00000017,
+    0x00000022, 0x00000000, 0x00040047, 0x00000017, 0x00000021, 0x00000000, 0x00020013, 0x00000002, 0x00030021,
+    0x00000003, 0x00000002, 0x00030016, 0x00000006, 0x00000020, 0x00040017, 0x00000007, 0x00000006, 0x00000004,
+    0x00040020, 0x00000008, 0x00000003, 0x00000007, 0x0004003b, 0x00000008, 0x00000009, 0x00000003, 0x00040017,
+    0x0000000a, 0x00000006, 0x00000002, 0x0004001e, 0x0000000b, 0x00000007, 0x0000000a, 0x00040020, 0x0000000c,
+    0x00000001, 0x0000000b, 0x0004003b, 0x0000000c, 0x0000000d, 0x00000001, 0x00040015, 0x0000000e, 0x00000020,
+    0x00000001, 0x0004002b, 0x0000000e, 0x0000000f, 0x00000000, 0x00040020, 0x00000010, 0x00000001, 0x00000007,
+    0x0004002b, 0x00000006, 0x00000013, 0x3f800000, 0x00090019, 0x00000014, 0x00000006, 0x00000001, 0x00000000,
+    0x00000000, 0x00000000, 0x00000001, 0x00000000, 0x0003001b, 0x00000015, 0x00000014, 0x00040020, 0x00000016,
+    0x00000000, 0x00000015, 0x0004003b, 0x00000016, 0x00000017, 0x00000000, 0x0004002b, 0x0000000e, 0x00000019,
+    0x00000001, 0x00040020, 0x0000001a, 0x00000001, 0x0000000a, 0x00050036, 0x00000002, 0x00000004, 0x00000000,
+    0x00000003, 0x000200f8, 0x00000005, 0x00050041, 0x00000010, 0x00000011, 0x0000000d, 0x0000000f, 0x0004003d,
+    0x00000007, 0x00000012, 0x00000011, 0x0004003d, 0x00000015, 0x00000018, 0x00000017, 0x00050041, 0x0000001a,
+    0x0000001b, 0x0000000d, 0x00000019, 0x0004003d, 0x0000000a, 0x0000001c, 0x0000001b, 0x00050057, 0x00000007,
+    0x0000001d, 0x00000018, 0x0000001c, 0x00050051, 0x00000006, 0x00000020, 0x0000001d, 0x00000000, 0x00070050,
+    0x00000007, 0x00000021, 0x00000013, 0x00000013, 0x00000013, 0x00000020, 0x00050085, 0x00000007, 0x00000022,
+    0x00000012, 0x00000021, 0x0003003e, 0x00000009, 0x00000022, 0x000100fd, 0x00010038};
 
 void ImGuiRenderer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass) {
 	const std::shared_ptr<myvk::Device> &device = render_pass->GetDevicePtr();
@@ -249,9 +182,8 @@ void ImGuiRenderer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &ren
 		frag_shader_module = myvk::ShaderModule::Create(device, kShaderFragSpv, sizeof(kShaderFragSpv));
 
 		VkPipelineShaderStageCreateInfo shader_stages[] = {
-			vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
-			frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)
-		};
+		    vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
+		    frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)};
 
 		VkVertexInputBindingDescription binding_desc[1] = {};
 		binding_desc[0].stride = sizeof(ImDrawVert);
@@ -286,7 +218,7 @@ void ImGuiRenderer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &ren
 		VkDynamicState dynamic_states[2] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
 		VkPipelineDynamicStateCreateInfo dynamic_state = {};
 		dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-		dynamic_state.dynamicStateCount = (uint32_t) IM_ARRAYSIZE(dynamic_states);
+		dynamic_state.dynamicStateCount = (uint32_t)IM_ARRAYSIZE(dynamic_states);
 		dynamic_state.pDynamicStates = dynamic_states;
 
 		VkPipelineViewportStateCreateInfo viewport_state = {};
@@ -322,8 +254,7 @@ void ImGuiRenderer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &ren
 		color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 		color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
 		color_blend_attachment.colorWriteMask =
-			VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
-			VK_COLOR_COMPONENT_A_BIT;
+		    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
 		VkPipelineColorBlendStateCreateInfo color_blending = {};
 		color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -348,14 +279,14 @@ void ImGuiRenderer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &ren
 	}
 }
 
-void
-ImGuiRenderer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame) {
+void ImGuiRenderer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
+                                    uint32_t current_frame) {
 	const std::shared_ptr<myvk::Device> &device = command_buffer->GetDevicePtr();
 
 	ImDrawData *draw_data = ImGui::GetDrawData();
 
-	int fb_width = (int) (draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
-	int fb_height = (int) (draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
+	int fb_width = (int)(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
+	int fb_height = (int)(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 	if (fb_width <= 0 || fb_height <= 0 || draw_data->TotalVtxCount == 0)
 		return;
 
@@ -367,13 +298,13 @@ ImGuiRenderer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &comma
 		VkDeviceSize index_size = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
 		if (!vertex_buffer || vertex_buffer->GetSize() < vertex_size || vertex_buffer->GetSize() > vertex_size * 4)
 			vertex_buffer = myvk::Buffer::Create(device, vertex_size * 2, VMA_MEMORY_USAGE_CPU_TO_GPU,
-												 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+			                                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		if (!index_buffer || index_buffer->GetSize() < index_size || index_buffer->GetSize() > index_size * 4)
 			index_buffer = myvk::Buffer::Create(device, index_size * 2, VMA_MEMORY_USAGE_CPU_TO_GPU,
-												VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+			                                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 
-		auto *vertex_map = (ImDrawVert *) vertex_buffer->Map();
-		auto *index_map = (ImDrawIdx *) index_buffer->Map();
+		auto *vertex_map = (ImDrawVert *)vertex_buffer->Map();
+		auto *index_map = (ImDrawIdx *)index_buffer->Map();
 
 		for (int i = 0; i < draw_data->CmdListsCount; ++i) {
 			const ImDrawList *cmd_list = draw_data->CmdLists[i];
@@ -403,7 +334,8 @@ ImGuiRenderer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &comma
 			const ImDrawCmd *pcmd = &cmd_list->CmdBuffer[cmd_i];
 			if (pcmd->UserCallback) {
 				// User callback, registered via ImDrawList::AddCallback()
-				// (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
+				// (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer
+				// to reset render state.)
 				if (pcmd->UserCallback == ImDrawCallback_ResetRenderState)
 					setup_render_state(command_buffer, fb_width, fb_height, current_frame);
 				else
@@ -416,8 +348,8 @@ ImGuiRenderer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &comma
 				clip_rect.z = (pcmd->ClipRect.z - clip_off.x) * clip_scale.x;
 				clip_rect.w = (pcmd->ClipRect.w - clip_off.y) * clip_scale.y;
 
-				if (clip_rect.x < (float) fb_width && clip_rect.y < (float) fb_height && clip_rect.z >= 0.0f &&
-					clip_rect.w >= 0.0f) {
+				if (clip_rect.x < (float)fb_width && clip_rect.y < (float)fb_height && clip_rect.z >= 0.0f &&
+				    clip_rect.w >= 0.0f) {
 					// Negative offsets are illegal for vkCmdSetScissor
 					if (clip_rect.x < 0.0f)
 						clip_rect.x = 0.0f;
@@ -426,13 +358,13 @@ ImGuiRenderer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &comma
 
 					// Apply scissor/clipping rectangle
 					VkRect2D scissor;
-					scissor.offset.x = (int32_t) clip_rect.x;
-					scissor.offset.y = (int32_t) clip_rect.y;
-					scissor.extent.width = (uint32_t) (clip_rect.z - clip_rect.x);
-					scissor.extent.height = (uint32_t) (clip_rect.w - clip_rect.y);
+					scissor.offset.x = (int32_t)clip_rect.x;
+					scissor.offset.y = (int32_t)clip_rect.y;
+					scissor.extent.width = (uint32_t)(clip_rect.z - clip_rect.x);
+					scissor.extent.height = (uint32_t)(clip_rect.w - clip_rect.y);
 					command_buffer->CmdSetScissor({scissor});
 					command_buffer->CmdDrawIndexed(pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset,
-												   pcmd->VtxOffset + global_vtx_offset, 0);
+					                               pcmd->VtxOffset + global_vtx_offset, 0);
 				}
 			}
 		}
@@ -441,10 +373,8 @@ ImGuiRenderer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &comma
 	}
 }
 
-void
-ImGuiRenderer::setup_render_state(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, int fb_width,
-								  int fb_height,
-								  uint32_t current_frame) const {
+void ImGuiRenderer::setup_render_state(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, int fb_width,
+                                       int fb_height, uint32_t current_frame) const {
 	ImDrawData *draw_data = ImGui::GetDrawData();
 
 	{
@@ -452,7 +382,7 @@ ImGuiRenderer::setup_render_state(const std::shared_ptr<myvk::CommandBuffer> &co
 		command_buffer->CmdBindDescriptorSets({m_descriptor_set}, m_pipeline, {});
 		command_buffer->CmdBindVertexBuffer(m_vertex_buffers[current_frame], 0);
 		command_buffer->CmdBindIndexBuffer(m_index_buffers[current_frame], 0,
-										   sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+		                                   sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
 	}
 
 	// Setup viewport:
@@ -460,28 +390,22 @@ ImGuiRenderer::setup_render_state(const std::shared_ptr<myvk::CommandBuffer> &co
 		VkViewport viewport;
 		viewport.x = 0;
 		viewport.y = 0;
-		viewport.width = (float) fb_width;
-		viewport.height = (float) fb_height;
+		viewport.width = (float)fb_width;
+		viewport.height = (float)fb_height;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 		command_buffer->CmdSetViewport({viewport});
 	}
 
 	// Setup scale and translation:
-	// Our visible imgui space lies from draw_data->DisplayPps (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayPos is (0,0) for single viewport apps.
+	// Our visible imgui space lies from draw_data->DisplayPps (top left) to
+	// draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayPos is (0,0) for single viewport apps.
 	{
-		float scale[] = {
-			2.0f / draw_data->DisplaySize.x,
-			2.0f / draw_data->DisplaySize.y
-		};
-		float translate[] = {
-			-1.0f - draw_data->DisplayPos.x * scale[0],
-			-1.0f - draw_data->DisplayPos.y * scale[1]
-		};
+		float scale[] = {2.0f / draw_data->DisplaySize.x, 2.0f / draw_data->DisplaySize.y};
+		float translate[] = {-1.0f - draw_data->DisplayPos.x * scale[0], -1.0f - draw_data->DisplayPos.y * scale[1]};
 		command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(float) * 0,
-										 sizeof(scale), scale);
+		                                 sizeof(scale), scale);
 		command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(float) * 2,
-										 sizeof(translate), translate);
+		                                 sizeof(translate), translate);
 	}
 }
-

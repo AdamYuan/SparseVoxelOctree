@@ -1,10 +1,10 @@
-#include <spdlog/spdlog.h>
 #include "Voxelizer.hpp"
-#include "myvk/ShaderModule.hpp"
 #include "VoxelizerSpirv.hpp"
+#include "myvk/ShaderModule.hpp"
+#include <spdlog/spdlog.h>
 
 void Voxelizer::Initialize(const Scene &scene, const std::shared_ptr<myvk::CommandPool> &command_pool,
-						   uint32_t octree_level) {
+                           uint32_t octree_level) {
 	m_voxel_resolution = 1u << octree_level;
 	m_scene = &scene;
 
@@ -18,9 +18,7 @@ void Voxelizer::Initialize(const Scene &scene, const std::shared_ptr<myvk::Comma
 }
 
 void Voxelizer::create_descriptors(const std::shared_ptr<myvk::Device> &device) {
-	m_descriptor_pool = myvk::DescriptorPool::Create(device, 1, {
-		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2}
-	});
+	m_descriptor_pool = myvk::DescriptorPool::Create(device, 1, {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2}});
 	{
 		VkDescriptorSetLayoutBinding atomic_counter_binding = {};
 		atomic_counter_binding.binding = 0;
@@ -35,8 +33,7 @@ void Voxelizer::create_descriptors(const std::shared_ptr<myvk::Device> &device) 
 		fragment_list_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 		m_descriptor_set_layout =
-			myvk::DescriptorSetLayout::Create(device,
-											  {atomic_counter_binding, fragment_list_binding});
+		    myvk::DescriptorSetLayout::Create(device, {atomic_counter_binding, fragment_list_binding});
 	}
 	m_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
 	m_descriptor_set->UpdateStorageBuffer(m_atomic_counter.GetBufferPtr(), 0);
@@ -63,9 +60,8 @@ void Voxelizer::create_render_pass(const std::shared_ptr<myvk::Device> &device) 
 
 void Voxelizer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 	m_pipeline_layout =
-		myvk::PipelineLayout::Create(device,
-									 {m_descriptor_set_layout, m_scene->GetDescriptorSetLayoutPtr()},
-									 {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t) * 4}});
+	    myvk::PipelineLayout::Create(device, {m_descriptor_set_layout, m_scene->GetDescriptorSetLayoutPtr()},
+	                                 {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t) * 4}});
 
 	std::shared_ptr<myvk::ShaderModule> vert_shader_module, geom_shader_module, frag_shader_module;
 	vert_shader_module = myvk::ShaderModule::Create(device, kVoxelizerVertSpv, sizeof(kVoxelizerVertSpv));
@@ -73,10 +69,9 @@ void Voxelizer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 	frag_shader_module = myvk::ShaderModule::Create(device, kVoxelizerFragSpv, sizeof(kVoxelizerFragSpv));
 
 	VkPipelineShaderStageCreateInfo shader_stages[] = {
-		vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
-		geom_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT),
-		frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)
-	};
+	    vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
+	    geom_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT),
+	    frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)};
 	uint32_t specialization_texture_num = std::max(m_scene->GetTextureCount(), 1u);
 	VkSpecializationMapEntry frag_spec_entry = {0, 0, sizeof(uint32_t)};
 	VkSpecializationInfo frag_spec_info = {1, &frag_spec_entry, sizeof(uint32_t), &specialization_texture_num};
@@ -155,11 +150,10 @@ void Voxelizer::count_and_create_fragment_list(const std::shared_ptr<myvk::Comma
 		command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffer, {});
 		{
 			command_buffer->CmdBindPipeline(m_pipeline);
-			command_buffer->CmdBindDescriptorSets({m_descriptor_set, m_scene->GetDescriptorSetPtr()},
-												  m_pipeline, {});
+			command_buffer->CmdBindDescriptorSets({m_descriptor_set, m_scene->GetDescriptorSetPtr()}, m_pipeline, {});
 			uint32_t push_constants[] = {m_voxel_resolution, 1};
 			command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 2 * sizeof(uint32_t),
-											 push_constants);
+			                                 push_constants);
 			m_scene->CmdDraw(command_buffer, m_pipeline_layout, sizeof(uint32_t) * 2);
 		}
 		command_buffer->CmdEndRenderPass();
@@ -172,25 +166,24 @@ void Voxelizer::count_and_create_fragment_list(const std::shared_ptr<myvk::Comma
 	m_voxel_fragment_count = m_atomic_counter.Read(command_pool);
 	m_atomic_counter.Reset(command_pool, 0);
 
-	m_voxel_fragment_list = myvk::Buffer::Create(command_pool->GetDevicePtr(),
-												 m_voxel_fragment_count * sizeof(uint32_t) * 2,
-												 VMA_MEMORY_USAGE_GPU_ONLY, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	m_voxel_fragment_list =
+	    myvk::Buffer::Create(command_pool->GetDevicePtr(), m_voxel_fragment_count * sizeof(uint32_t) * 2,
+	                         VMA_MEMORY_USAGE_GPU_ONLY, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 	m_descriptor_set->UpdateStorageBuffer(m_voxel_fragment_list, 1);
 
 	spdlog::info("Voxel fragment list created with {} voxels ({} MB)", m_voxel_fragment_count,
-				m_voxel_fragment_list->GetSize() / 1000000.0);
+	             m_voxel_fragment_list->GetSize() / 1000000.0);
 }
 
 void Voxelizer::CmdVoxelize(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
 	command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffer, {});
 	{
 		command_buffer->CmdBindPipeline(m_pipeline);
-		command_buffer->CmdBindDescriptorSets({m_descriptor_set, m_scene->GetDescriptorSetPtr()},
-											  m_pipeline, {});
+		command_buffer->CmdBindDescriptorSets({m_descriptor_set, m_scene->GetDescriptorSetPtr()}, m_pipeline, {});
 
 		uint32_t push_constants[] = {m_voxel_resolution, 0};
 		command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 2 * sizeof(uint32_t),
-										 push_constants);
+		                                 push_constants);
 		m_scene->CmdDraw(command_buffer, m_pipeline_layout, sizeof(uint32_t) * 2);
 	}
 	command_buffer->CmdEndRenderPass();

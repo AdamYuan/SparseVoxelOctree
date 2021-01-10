@@ -8,7 +8,7 @@
 
 void Camera::Initialize(const std::shared_ptr<myvk::Device> &device, uint32_t frame_count) {
 	m_descriptor_pool =
-		myvk::DescriptorPool::Create(device, frame_count, {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frame_count}});
+	    myvk::DescriptorPool::Create(device, frame_count, {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frame_count}});
 	{
 		VkDescriptorSetLayoutBinding camera_binding = {};
 		camera_binding.binding = 0;
@@ -19,15 +19,14 @@ void Camera::Initialize(const std::shared_ptr<myvk::Device> &device, uint32_t fr
 		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {camera_binding});
 	}
 
-	m_descriptor_sets =
-		myvk::DescriptorSet::CreateMultiple(m_descriptor_pool,
-											std::vector<std::shared_ptr<myvk::DescriptorSetLayout>>(frame_count,
-																									m_descriptor_set_layout));
+	m_descriptor_sets = myvk::DescriptorSet::CreateMultiple(
+	    m_descriptor_pool,
+	    std::vector<std::shared_ptr<myvk::DescriptorSetLayout>>(frame_count, m_descriptor_set_layout));
 	m_uniform_buffers.resize(frame_count);
 
 	for (uint32_t i = 0; i < frame_count; ++i) {
 		m_uniform_buffers[i] = myvk::Buffer::Create(device, sizeof(UniformData), VMA_MEMORY_USAGE_CPU_TO_GPU,
-													VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		                                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 		m_descriptor_sets[i]->UpdateUniformBuffer(m_uniform_buffers[i], 0);
 	}
 }
@@ -41,8 +40,8 @@ void Camera::Control(GLFWwindow *window, float delta) {
 	glm::dvec2 cur_pos;
 	glfwGetCursorPos(window, &cur_pos.x, &cur_pos.y);
 
-	if (!ImGui::GetCurrentContext()->NavWindow
-		|| (ImGui::GetCurrentContext()->NavWindow->Flags & ImGuiWindowFlags_NoBringToFrontOnFocus)) {
+	if (!ImGui::GetCurrentContext()->NavWindow ||
+	    (ImGui::GetCurrentContext()->NavWindow->Flags & ImGuiWindowFlags_NoBringToFrontOnFocus)) {
 		float speed = delta * m_speed;
 		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 			move_forward(speed, 0.0f);
@@ -56,7 +55,6 @@ void Camera::Control(GLFWwindow *window, float delta) {
 			m_position.y += speed;
 		if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
 			m_position.y -= speed;
-
 
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT)) {
 			glfwGetCursorPos(window, &cur_pos.x, &cur_pos.y);
@@ -88,4 +86,3 @@ Camera::UniformData Camera::fetch_uniform_data() const {
 void Camera::UpdateFrameUniformBuffer(uint32_t current_frame) const {
 	m_uniform_buffers[current_frame]->UpdateData(fetch_uniform_data());
 }
-

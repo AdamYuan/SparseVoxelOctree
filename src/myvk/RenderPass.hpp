@@ -6,20 +6,21 @@
 #include <volk.h>
 
 namespace myvk {
-	class RenderPass : public DeviceObjectBase {
-	private:
-		std::shared_ptr<Device> m_device_ptr;
-		VkRenderPass m_render_pass{nullptr};
-	public:
-		static std::shared_ptr<RenderPass>
-		Create(const std::shared_ptr<Device> &device, const VkRenderPassCreateInfo &create_info);
+class RenderPass : public DeviceObjectBase {
+private:
+	std::shared_ptr<Device> m_device_ptr;
+	VkRenderPass m_render_pass{nullptr};
 
-		VkRenderPass GetHandle() const { return m_render_pass; }
+public:
+	static std::shared_ptr<RenderPass> Create(const std::shared_ptr<Device> &device,
+	                                          const VkRenderPassCreateInfo &create_info);
 
-		const std::shared_ptr<Device> &GetDevicePtr() const override { return m_device_ptr; }
+	VkRenderPass GetHandle() const { return m_render_pass; }
 
-		~RenderPass();
-	};
-}
+	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_device_ptr; }
+
+	~RenderPass();
+};
+} // namespace myvk
 
 #endif

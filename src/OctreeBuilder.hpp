@@ -1,20 +1,20 @@
 #ifndef OCTREE_BUILDER_HPP
 #define OCTREE_BUILDER_HPP
 
-#include "Voxelizer.hpp"
 #include "Counter.hpp"
+#include "Voxelizer.hpp"
 
-#include "myvk/RenderPass.hpp"
-#include "myvk/Framebuffer.hpp"
-#include "myvk/ComputePipeline.hpp"
 #include "myvk/Buffer.hpp"
+#include "myvk/ComputePipeline.hpp"
 #include "myvk/DescriptorSet.hpp"
-
+#include "myvk/Framebuffer.hpp"
+#include "myvk/RenderPass.hpp"
 
 class OctreeBuilder {
 private:
 	std::shared_ptr<myvk::PipelineLayout> m_pipeline_layout;
-	std::shared_ptr<myvk::ComputePipeline> m_tag_node_pipeline, m_init_node_pipeline, m_alloc_node_pipeline, m_modify_arg_pipeline;
+	std::shared_ptr<myvk::ComputePipeline> m_tag_node_pipeline, m_init_node_pipeline, m_alloc_node_pipeline,
+	    m_modify_arg_pipeline;
 
 	Counter m_atomic_counter;
 
@@ -36,11 +36,10 @@ private:
 
 public:
 	void Initialize(const Voxelizer &voxelizer, const std::shared_ptr<myvk::CommandPool> &command_pool,
-					uint32_t octree_level);
+	                uint32_t octree_level);
 	void CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
 	VkDeviceSize GetOctreeRange(const std::shared_ptr<myvk::CommandPool> &command_pool) const;
 	const std::shared_ptr<myvk::Buffer> &GetOctree() const { return m_octree_buffer; }
 };
-
 
 #endif
