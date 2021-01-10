@@ -58,7 +58,7 @@ SPDLOG_INLINE void stdout_sink_base<ConsoleMutex>::log(const details::log_msg &m
 #else
     ::fwrite(formatted.data(), sizeof(char), formatted.size(), file_);
     ::fflush(file_); // flush every line to terminal
-#endif // WIN32
+#endif // WIN32    
 }
 
 template<typename ConsoleMutex>

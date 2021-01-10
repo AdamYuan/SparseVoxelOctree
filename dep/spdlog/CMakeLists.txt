@@ -36,6 +36,18 @@ if(CMAKE_SYSTEM_NAME MATCHES "CYGWIN" OR CMAKE_SYSTEM_NAME MATCHES "MSYS")
     set(CMAKE_CXX_EXTENSIONS ON)
 endif()
 
+# ---------------------------------------------------------------------------------------
+# Set SPDLOG_MASTER_PROJECT to ON if we are building spdlog
+# ---------------------------------------------------------------------------------------
+# Check if spdlog is being used directly or via add_subdirectory, but allow overriding
+if(NOT DEFINED SPDLOG_MASTER_PROJECT)
+    if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+        set(SPDLOG_MASTER_PROJECT ON)
+    else()
+        set(SPDLOG_MASTER_PROJECT OFF)
+    endif()
+endif()
+
 option(SPDLOG_BUILD_ALL "Build all artifacts" OFF)
 
 # build shared option
@@ -45,7 +57,7 @@ option(SPDLOG_BUILD_SHARED "Build shared library" OFF)
 option(SPDLOG_ENABLE_PCH "Build static or shared library using precompiled header to speed up compilation time" OFF)
 
 # example options
-option(SPDLOG_BUILD_EXAMPLE "Build example" OFF)
+option(SPDLOG_BUILD_EXAMPLE "Build example" ${SPDLOG_MASTER_PROJECT})
 option(SPDLOG_BUILD_EXAMPLE_HO "Build header only example" OFF)
 
 # testing options

@@ -41,7 +41,7 @@ protected:
     FILE *file_;
     std::unique_ptr<spdlog::formatter> formatter_;
 #ifdef _WIN32
-    HANDLE handle_;
+    HANDLE handle_;    
 #endif // WIN32
 };
 
