@@ -2252,6 +2252,8 @@ bool ImGui::DragBehavior(ImGuiID id, ImGuiDataType data_type, void* p_v, float v
 // Read code of e.g. DragFloat(), DragInt() etc. or examples in 'Demo->Widgets->Data Types' to understand how to use this function directly.
 bool ImGui::DragScalar(const char* label, ImGuiDataType data_type, void* p_data, float v_speed, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags)
 {
+	// MODIFY: Always clamp
+    flags |= ImGuiSliderFlags_AlwaysClamp;
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
