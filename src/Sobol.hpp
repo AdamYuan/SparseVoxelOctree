@@ -19,14 +19,13 @@ private:
 public:
 	void Initialize(const std::shared_ptr<myvk::Device> &device);
 
-	void Reset(const std::shared_ptr<myvk::CommandPool> &command_pool, uint32_t dimension);
-
-	void CmdNext(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
-	             const std::shared_ptr<myvk::DescriptorSet> &index_descriptor_set);
+	void CmdNext(const std::shared_ptr<myvk::CommandBuffer> &command_buffer);
 
 	const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayout() const { return m_descriptor_set_layout; }
 
 	const std::shared_ptr<myvk::DescriptorSet> &GetDescriptorSet() const { return m_descriptor_set; }
+
+	void Reset(uint32_t dimension);
 
 	uint32_t GetDimension() const { return m_dimension; }
 };

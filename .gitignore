@@ -1,3 +1,5 @@
 # Project exclude paths
-/cmake-build-debug/
-/cmake-build-release/
+Release/**
+Debug/**
+.cache/**
+compile_commands.json
