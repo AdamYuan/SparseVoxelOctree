@@ -117,6 +117,7 @@ add_executable(VulkanSVO
 		dep/imgui/imgui_draw.cpp
 		dep/imgui/imgui_impl_glfw.cpp
 		dep/imgui/imgui_widgets.cpp
+		dep/imgui/imgui_tables.cpp
 
 		dep/meshoptimizer/src/indexgenerator.cpp
 		dep/meshoptimizer/src/vcacheoptimizer.cpp

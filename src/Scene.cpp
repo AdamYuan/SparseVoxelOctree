@@ -39,8 +39,8 @@ bool Scene::load_meshes(const char *filename, const char *base_dir, std::vector<
 	std::vector<tinyobj::material_t> materials;
 	std::vector<tinyobj::shape_t> shapes;
 
-	std::string load_outputs;
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &load_outputs, filename, base_dir)) {
+	std::string load_warnings, load_errors;
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &load_warnings, &load_errors, filename, base_dir)) {
 		spdlog::error("Failed to load {}", filename);
 		return false;
 	}
@@ -48,8 +48,12 @@ bool Scene::load_meshes(const char *filename, const char *base_dir, std::vector<
 		spdlog::error("No material found");
 		return false;
 	}
-	if (!load_outputs.empty()) {
-		spdlog::warn("{}", load_outputs.c_str());
+	if (!load_errors.empty()) {
+		spdlog::error("{}", load_errors.c_str());
+		return false;
+	}
+	if (!load_warnings.empty()) {
+		spdlog::warn("{}", load_warnings.c_str());
 	}
 
 	meshes->clear();
