@@ -163,7 +163,9 @@ void Application::initialize_vulkan() {
 	{
 		std::vector<myvk::QueueRequirement> queue_requirements = {
 		    myvk::QueueRequirement(VK_QUEUE_GRAPHICS_BIT, &m_main_queue, m_surface, &m_present_queue),
-		    myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT, &m_async_queue)};
+		    myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT, &m_loader_queue),
+		    myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT, &m_path_tracer_queue),
+		};
 		myvk::DeviceCreateInfo device_create_info;
 		device_create_info.Initialize(physical_devices[0], queue_requirements, {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
 		if (!device_create_info.QueueSupport()) {
@@ -182,10 +184,12 @@ void Application::initialize_vulkan() {
 	}
 
 	spdlog::info("Physical Device: {}", m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
-	spdlog::info("Present Queue: {}, Main Graphics Queue: {}, Async "
-	             "Compute|Graphics Queue: {}",
-	             (void *)m_present_queue->GetHandle(), (void *)m_main_queue->GetHandle(),
-	             (void *)m_async_queue->GetHandle());
+	spdlog::info("Present Queue: ({}){}, Main Queue: ({}){}, Loader Queue: ({}){}, PathTracer Queue: ({}){}",
+	             m_present_queue->GetFamilyIndex(), (void *)m_present_queue->GetHandle(),        // present queue
+	             m_main_queue->GetFamilyIndex(), (void *)m_main_queue->GetHandle(),              // main queue
+	             m_loader_queue->GetFamilyIndex(), (void *)m_loader_queue->GetHandle(),          // loader queue
+	             m_path_tracer_queue->GetFamilyIndex(), (void *)m_path_tracer_queue->GetHandle() // path tracer queue
+	);
 
 	m_swapchain = myvk::Swapchain::Create(m_main_queue, m_present_queue, false);
 	spdlog::info("Swapchain image count: {}", m_swapchain->GetImageCount());
@@ -534,8 +538,8 @@ void Application::glfw_key_callback(GLFWwindow *window, int key, int, int action
 
 void Application::loader_thread(const char *filename, uint32_t octree_level) {
 	Scene scene;
-	std::shared_ptr<myvk::CommandPool> command_pool = myvk::CommandPool::Create(m_async_queue);
-	if (scene.Initialize(m_async_queue, filename)) {
+	std::shared_ptr<myvk::CommandPool> command_pool = myvk::CommandPool::Create(m_loader_queue);
+	if (scene.Initialize(m_loader_queue, filename)) {
 		Voxelizer voxelizer;
 		voxelizer.Initialize(scene, command_pool, octree_level);
 		OctreeBuilder builder;
@@ -562,11 +566,11 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 		builder.CmdBuild(command_buffer);
 		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 3);
 
-		if (m_main_queue->GetFamilyIndex() != m_async_queue->GetFamilyIndex()) {
+		if (m_main_queue->GetFamilyIndex() != m_loader_queue->GetFamilyIndex()) {
 			// TODO: Test queue ownership transfer
 			command_buffer->CmdPipelineBarrier(
 			    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
-			    {builder.GetOctree()->GetMemoryBarrier(0, 0, m_async_queue, m_main_queue)}, {});
+			    {builder.GetOctree()->GetMemoryBarrier(0, 0, m_loader_queue, m_main_queue)}, {});
 		}
 
 		command_buffer->End();
@@ -590,7 +594,7 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 			std::unique_lock<std::mutex> lock{m_loader_mutex};
 			m_loader_condition_variable.wait(lock);
 
-			if (m_main_queue->GetFamilyIndex() != m_async_queue->GetFamilyIndex()) {
+			if (m_main_queue->GetFamilyIndex() != m_loader_queue->GetFamilyIndex()) {
 				// TODO: Test queue ownership transfer
 				command_buffer = myvk::CommandBuffer::Create(m_main_command_pool);
 				fence->Reset();
@@ -598,7 +602,7 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 				// transfer ownership
 				command_buffer->CmdPipelineBarrier(
 				    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
-				    {builder.GetOctree()->GetMemoryBarrier(0, 0, m_async_queue, m_main_queue)}, {});
+				    {builder.GetOctree()->GetMemoryBarrier(0, 0, m_loader_queue, m_main_queue)}, {});
 				command_buffer->End();
 
 				command_buffer->Submit({}, {}, fence);

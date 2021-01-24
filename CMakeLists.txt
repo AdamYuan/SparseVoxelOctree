@@ -109,6 +109,8 @@ add_executable(VulkanSVO
 	src/Octree.hpp
 	src/Sobol.cpp
 	src/Sobol.hpp
+	src/PathTracer.cpp
+	src/PathTracer.hpp
 
 	# MYVK
 	src/myvk/DeviceObjectBase.hpp

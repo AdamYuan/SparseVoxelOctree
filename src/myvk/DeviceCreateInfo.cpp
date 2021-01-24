@@ -75,6 +75,9 @@ void DeviceCreateInfo::Initialize(const std::shared_ptr<PhysicalDevice> &physica
 	if (vqsCreateQuery(&create_info, &m_query) != VK_SUCCESS) {
 		m_query = nullptr;
 	}
+	if (vqsPerformQuery(m_query) != VK_SUCCESS) {
+		m_query = nullptr;
+	}
 }
 
 void DeviceCreateInfo::enumerate_device_queue_create_infos(std::vector<VkDeviceQueueCreateInfo> *out_create_infos,
