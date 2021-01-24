@@ -1,12 +1,16 @@
-//
-// version 1.0.0 (2021-01-24)
-//
-
+// vk_queue_selector - v1.0.3 - https://github.com/AdamYuan/
 //
 // Use this in *one* source file
 //   #define VQS_IMPLEMENTATION
 //   #include "vk_queue_selector.h"
 //
+// version 1.0.3 (2021-01-24) separate vqs__BinaryGraph from VqsQuery_T
+//         1.0.2 (2021-01-24) name private struct and func with "vqs__" prefix
+//         1.0.1 (2021-01-24) move all graph-related things to vqsPerformQuery
+//                            fix leaks and memory errors
+//         1.0.0 (2021-01-24)
+//
+
 #ifndef VK_QUEUE_SELECTOR_H
 #define VK_QUEUE_SELECTOR_H
 
@@ -79,38 +83,44 @@ VQS_API void vqsEnumerateDeviceQueueCreateInfos(VqsQuery query, uint32_t *pDevic
 #define VQS_STATIC_VULKAN_FUNCTIONS 1
 #endif
 
-struct Node;
-typedef struct Edge {
-	struct Node *to;
-	struct Edge *next, *rev;
+struct vqs__Node;
+
+typedef struct vqs__Edge {
+	struct vqs__Node *to;
+	struct vqs__Edge *next, *rev;
 	int32_t cap, cost;
-} Edge;
-typedef struct Node {
-	Edge *head, *path;
+} vqs__Edge;
+
+typedef struct vqs__Node {
+	vqs__Edge *head, *path;
 	int32_t dist, flow;
 	bool inQueue;
-} Node;
+} vqs__Node;
+
+typedef struct vqs__BinaryGraph {
+	vqs__Node *nodes, *pLeftNodes, *pRightNodes, *pSNode, *pTNode, **spfaQueue;
+	vqs__Edge *edges, *pInteriorEdges, *pLeftEdges, *pRightEdges;
+	int32_t *minInteriorCosts;                 // the min interior edge cost for each left nodes
+	uint32_t leftCount, rightCount, nodeCount; // leftCount = queueFamilyCount, rightCount = queueRequirementCount
+	uint32_t interiorEdgeCount, edgeCount;
+} vqs__BinaryGraph;
 
 struct VqsQuery_T {
+	// BASICS
 	VkPhysicalDevice physicalDevice;
 	VqsVulkanFunctions vulkanFunctions;
 	VkQueueFamilyProperties *queueFamilyProperties;
 	VqsQueueRequirements *queueRequirements;
-	// BINARY GRAPH
-	Node *nodes, *pLeftNodes, *pRightNodes, *pSNode, *pTNode, **spfaQueue;
-	Edge *edges, *pInteriorEdges, *pLeftEdges, *pRightEdges;
-	int32_t *minInteriorCosts; // the min interior edge cost for each left nodes
-	union {
-		uint32_t leftCount, queueFamilyCount;
-	};
-	union {
-		uint32_t rightCount, queueRequirementCount;
-	};
-	uint32_t interiorEdgeCount, nodeCount, edgeCount;
+	uint32_t queueFamilyCount, queueRequirementCount;
 	// RESULTS
 	uint32_t *resultQueueFamilyIndices, *resultPresentQueueFamilyIndices, *queueFamilyCounters;
 };
 
+#define VQS_FREE(x)                                                                                                    \
+	{                                                                                                                  \
+		free(x);                                                                                                       \
+		(x) = NULL;                                                                                                    \
+	}
 #define VQS_ALLOC(x, type, count)                                                                                      \
 	{ (x) = (type *)calloc(count, sizeof(type)); }
 #define VQS_ALLOC_VK(x, type, count)                                                                                   \
@@ -119,13 +129,8 @@ struct VqsQuery_T {
 		if (x == NULL)                                                                                                 \
 			return VK_ERROR_OUT_OF_HOST_MEMORY;                                                                        \
 	}
-#define VQS_FREE(x)                                                                                                    \
-	{                                                                                                                  \
-		free(x);                                                                                                       \
-		(x) = NULL;                                                                                                    \
-	}
 
-uint32_t queueFlagDist(uint32_t l, uint32_t r, float f) {
+static uint32_t vqs__queueFlagDist(uint32_t l, uint32_t r, float f) {
 	const uint32_t kMask = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
 	uint32_t i = (l ^ r) & kMask;
 	// popcount
@@ -137,7 +142,8 @@ uint32_t queueFlagDist(uint32_t l, uint32_t r, float f) {
 	return (uint32_t)ret;
 }
 
-void addEdge(Edge *edge, Edge *edgeRev, Node *from, Node *to, int32_t cap, int32_t cost) {
+static void vqs__addEdge(vqs__Edge *edge, vqs__Edge *edgeRev, vqs__Node *from, vqs__Node *to, int32_t cap,
+                         int32_t cost) {
 	edge->to = to;
 	edge->next = from->head;
 	edge->rev = edgeRev;
@@ -154,7 +160,88 @@ void addEdge(Edge *edge, Edge *edgeRev, Node *from, Node *to, int32_t cap, int32
 	to->head = edgeRev;
 }
 
-uint32_t queryBuildInteriorEdges(VqsQuery query, bool buildEdge) {
+////////////////////////////////
+// vqs__BinaryGraph functions //
+////////////////////////////////
+static bool vqs__graphSpfa(vqs__BinaryGraph *graph) {
+	for (uint32_t i = 0; i < graph->nodeCount; ++i) {
+		graph->nodes[i].dist = INT32_MAX;
+		graph->nodes[i].flow = INT32_MAX;
+		graph->nodes[i].inQueue = false;
+		graph->nodes[i].path = NULL;
+	}
+
+	uint32_t queTop = 0, queTail = 0;
+	const uint32_t kQueSize = graph->nodeCount;
+#define QUE_PUSH(x) graph->spfaQueue[(queTop++) % kQueSize] = (x)
+#define QUE_POP graph->spfaQueue[(queTail++) % kQueSize]
+	graph->pSNode->inQueue = true;
+	graph->pSNode->dist = 0;
+	QUE_PUSH(graph->pSNode);
+
+	while (queTop != queTail) {
+		vqs__Node *cur = QUE_POP;
+		cur->inQueue = false;
+
+		for (vqs__Edge *e = cur->head; e; e = e->next) {
+			if (e->cap > 0 && e->to->dist > cur->dist + e->cost) {
+				e->to->dist = cur->dist + e->cost;
+				e->to->path = e;
+				e->to->flow = (cur->flow < e->cap) ? cur->flow : e->cap; // min
+
+				if (!e->to->inQueue) {
+					e->to->inQueue = true;
+					QUE_PUSH(e->to);
+				}
+			}
+		}
+	}
+#undef QUE_PUSH
+#undef QUE_POP
+
+	return graph->pTNode->path;
+}
+
+static int32_t vqs__graphMcmfWithLimits(vqs__BinaryGraph *graph, int32_t flow, uint32_t *leftFlowLimits) {
+	for (;;) {
+		{
+			bool full = true;
+			int32_t minCost = INT32_MAX;
+			for (uint32_t i = 0; i < graph->leftCount; ++i) { // append flow
+				if (leftFlowLimits[i] > 0) {
+					full = false;
+					++graph->pLeftEdges[i * 2u].cap;
+					if (graph->minInteriorCosts[i] < minCost)
+						minCost = graph->minInteriorCosts[i];
+					--leftFlowLimits[i];
+				}
+			}
+			for (uint32_t i = 0; i < graph->interiorEdgeCount; i += 2) { // cancel negative rings
+				vqs__Edge *e = graph->pInteriorEdges + i;
+				if (e->cost > minCost)
+					e->rev->cap = 0;
+			}
+			if (full)
+				return flow;
+		}
+
+		while (vqs__graphSpfa(graph)) {
+			int32_t x = graph->pTNode->flow;
+			flow += x;
+
+			vqs__Node *cur = graph->pTNode;
+			while (cur != graph->pSNode) {
+				cur->path->cap -= x;
+				cur->path->rev->cap += x;
+				cur = cur->path->rev->to;
+			}
+		}
+		if (flow == graph->rightCount)
+			return flow;
+	}
+}
+
+static uint32_t vqs__graphBuildInteriorEdges(vqs__BinaryGraph *graph, const VqsQuery query, bool buildEdge) {
 	uint32_t counter = 0;
 
 	for (uint32_t j = 0; j < query->queueRequirementCount; ++j) {
@@ -176,18 +263,18 @@ uint32_t queryBuildInteriorEdges(VqsQuery query, bool buildEdge) {
 
 				if (presentSupport && (flags & requiredFlags) == requiredFlags) {
 					if (buildEdge) {
-						addEdge(query->pInteriorEdges + counter, query->pInteriorEdges + counter + 1,
-						        query->pLeftNodes + i, query->pRightNodes + j, 1,
-						        queueFlagDist(flags, requiredFlags, priority));
+						vqs__addEdge(graph->pInteriorEdges + counter, graph->pInteriorEdges + counter + 1,
+						             graph->pLeftNodes + i, graph->pRightNodes + j, 1,
+						             vqs__queueFlagDist(flags, requiredFlags, priority));
 					}
 					counter += 2u;
 				}
 			} else {
 				if ((flags & requiredFlags) == requiredFlags) {
 					if (buildEdge) {
-						addEdge(query->pInteriorEdges + counter, query->pInteriorEdges + counter + 1,
-						        query->pLeftNodes + i, query->pRightNodes + j, 1,
-						        queueFlagDist(flags, requiredFlags, priority));
+						vqs__addEdge(graph->pInteriorEdges + counter, graph->pInteriorEdges + counter + 1,
+						             graph->pLeftNodes + i, graph->pRightNodes + j, 1,
+						             vqs__queueFlagDist(flags, requiredFlags, priority));
 					}
 					counter += 2u;
 				}
@@ -197,96 +284,161 @@ uint32_t queryBuildInteriorEdges(VqsQuery query, bool buildEdge) {
 	return counter;
 }
 
-bool querySpfa(VqsQuery query) {
-	for (uint32_t i = 0; i < query->nodeCount; ++i) {
-		query->nodes[i].dist = INT32_MAX;
-		query->nodes[i].flow = INT32_MAX;
-		query->nodes[i].inQueue = false;
-		query->nodes[i].path = NULL;
-	}
+static VkResult vqs__graphMainAlgorithm(vqs__BinaryGraph *graph, const VqsQuery query) {
+	// RUN MAIN ALGORITHM
+	uint32_t *leftFlowLimits = NULL;
+	VQS_ALLOC_VK(leftFlowLimits, uint32_t, graph->leftCount);
 
-	uint32_t queTop = 0, queTail = 0;
-	const uint32_t kQueSize = query->nodeCount;
-#define QUE_PUSH(x) query->spfaQueue[(queTop++) % kQueSize] = (x)
-#define QUE_POP query->spfaQueue[(queTail++) % kQueSize]
-	query->pSNode->inQueue = true;
-	query->pSNode->dist = 0;
-	QUE_PUSH(query->pSNode);
+	for (uint32_t i = 0; i < graph->leftCount; ++i)
+		leftFlowLimits[i] = query->queueFamilyProperties[i].queueCount;
 
-	while (queTop != queTail) {
-		Node *cur = QUE_POP;
-		cur->inQueue = false;
-		// printf("node: %u, dist: %d\n", cur - query->nodes, cur->dist);
+	int32_t flow = 0;
+	flow = vqs__graphMcmfWithLimits(graph, flow, leftFlowLimits);
+	if (flow < graph->rightCount) {
+		for (uint32_t i = 0; i < graph->leftCount; ++i) {
+			uint32_t queueCount = query->queueFamilyProperties[i].queueCount;
+			leftFlowLimits[i] = graph->rightCount > queueCount ? graph->rightCount - queueCount : 0u;
+		}
+		flow = vqs__graphMcmfWithLimits(graph, flow, leftFlowLimits);
 
-		for (Edge *e = cur->head; e; e = e->next) {
-			if (e->cap > 0 && e->to->dist > cur->dist + e->cost) {
-				e->to->dist = cur->dist + e->cost;
-				e->to->path = e;
-				e->to->flow = (cur->flow < e->cap) ? cur->flow : e->cap; // min
-
-				if (!e->to->inQueue) {
-					e->to->inQueue = true;
-					QUE_PUSH(e->to);
-				}
-			}
+		if (flow < graph->rightCount) {
+			VQS_FREE(leftFlowLimits);
+			return VK_ERROR_UNKNOWN;
 		}
 	}
-#undef QUE_PUSH
-#undef QUE_POP
-
-	return query->pTNode->path;
+	VQS_FREE(leftFlowLimits);
+	return VK_SUCCESS;
 }
 
-int32_t queryMcmfWithLimits(VqsQuery query, int32_t flow, uint32_t *leftFlowLimits) {
-	for (;;) {
-		bool full = true;
+static VkResult vqs__graphInit(vqs__BinaryGraph *graph, const VqsQuery query) {
+	// Set leftCount and rightCount
+	graph->leftCount = query->queueFamilyCount;
+	graph->rightCount = query->queueRequirementCount;
 
-		{
-			int32_t minCost = INT32_MAX;
-			for (uint32_t i = 0; i < query->leftCount; ++i) { // append flow
-				if (leftFlowLimits[i] > 0) {
-					full = false;
-					++query->pLeftEdges[i * 2u].cap;
-					if (query->minInteriorCosts[i] < minCost)
-						minCost = query->minInteriorCosts[i];
-					--leftFlowLimits[i];
+	// ALLOC GRAPH
+	graph->nodeCount = graph->leftCount + graph->rightCount + 2u;
+	VQS_ALLOC_VK(graph->nodes, vqs__Node, graph->nodeCount);
+
+	graph->interiorEdgeCount = vqs__graphBuildInteriorEdges(graph, query, false);
+	graph->edgeCount = graph->interiorEdgeCount + (graph->leftCount + graph->rightCount) * 2u;
+	VQS_ALLOC_VK(graph->edges, vqs__Edge, graph->edgeCount);
+
+	// not needed since calloc is used
+	/*for (uint32_t i = 0; i < query->nodeCount; ++i) {
+	    query->nodes[i].head = NULL;
+	}*/
+	graph->pSNode = graph->nodes;
+	graph->pTNode = graph->pSNode + 1;
+	graph->pLeftNodes = graph->pTNode + 1;
+	graph->pRightNodes = graph->pLeftNodes + graph->leftCount;
+
+	graph->pLeftEdges = graph->edges;
+	graph->pRightEdges = graph->pLeftEdges + graph->leftCount * 2u;
+	graph->pInteriorEdges = graph->pRightEdges + graph->rightCount * 2u;
+
+	// BUILD GRAPH
+	for (uint32_t i = 0; i < graph->leftCount; ++i) { // S -> LEFT NODES
+		vqs__addEdge(graph->pLeftEdges + (i * 2), graph->pLeftEdges + (i * 2 + 1), graph->pSNode, graph->pLeftNodes + i,
+		             0, 0);
+	}
+	for (uint32_t i = 0; i < graph->rightCount; ++i) { // RIGHT NODES -> T
+		vqs__addEdge(graph->pRightEdges + (i * 2), graph->pRightEdges + (i * 2 + 1), graph->pRightNodes + i,
+		             graph->pTNode, 1, 0);
+	}
+	vqs__graphBuildInteriorEdges(graph, query, true);
+
+	// SET MIN INTERIOR COSTS (for negative ring canceling)
+	VQS_ALLOC_VK(graph->minInteriorCosts, int32_t, graph->leftCount);
+	for (uint32_t i = 0; i < graph->leftCount; ++i) {
+		graph->minInteriorCosts[i] = INT32_MAX;
+	}
+
+	for (uint32_t i = 0; i < graph->interiorEdgeCount; i += 2) {
+		vqs__Edge *e = graph->pInteriorEdges + i;
+		int32_t *target = graph->minInteriorCosts + (e->rev->to - graph->pLeftNodes);
+		if (e->cost < *target)
+			*target = e->cost;
+	}
+
+	// ALLOC SPFA QUEUE
+	VQS_ALLOC_VK(graph->spfaQueue, vqs__Node *, graph->nodeCount);
+
+	return VK_SUCCESS;
+}
+
+static void vqs__graphFree(vqs__BinaryGraph *graph) {
+	VQS_FREE(graph->nodes);
+	VQS_FREE(graph->edges);
+	VQS_FREE(graph->minInteriorCosts);
+	VQS_FREE(graph->spfaQueue);
+}
+
+//////////////////////////
+// VqsQuery_T functions //
+//////////////////////////
+static VkResult vqs__queryPreprocessPresentQueues(VqsQuery query) {
+	// FIND PRESENT QUEUES
+	for (uint32_t j = 0; j < query->queueRequirementCount; ++j) {
+		VkQueueFlags requiredFlags = query->queueRequirements[j].requiredFlags;
+		VkSurfaceKHR requiredPresentQueueSurface = query->queueRequirements[j].requiredPresentQueueSurface;
+		query->resultPresentQueueFamilyIndices[j] = UINT32_MAX;
+
+		if (requiredPresentQueueSurface) { // require present queue
+			bool existQueueWithPresentSupport = false;
+			for (uint32_t i = 0; i < query->queueFamilyCount; ++i) {
+				if (query->queueFamilyProperties[i].queueCount == 0)
+					continue; // skip empty queue families
+				VkQueueFlags flags = query->queueFamilyProperties[i].queueFlags;
+				VkBool32 presentSupport;
+				if (query->vulkanFunctions.vkGetPhysicalDeviceSurfaceSupportKHR(
+				        query->physicalDevice, i, requiredPresentQueueSurface, &presentSupport) != VK_SUCCESS)
+					presentSupport = VK_FALSE;
+
+				if (presentSupport) {
+					existQueueWithPresentSupport = true;
+					query->resultPresentQueueFamilyIndices[j] = i;
+
+					if ((flags & requiredFlags) == requiredFlags) {
+						// exist queue family that both support present and meet
+						// requiredFlags leave presentQueueFamilyIndex as
+						// UINT32_MAX
+						query->resultPresentQueueFamilyIndices[j] = UINT32_MAX;
+						break;
+					}
 				}
 			}
-			for (uint32_t i = 0; i < query->interiorEdgeCount; i += 2) { // cancel negative rings
-				Edge *e = query->pInteriorEdges + i;
-				if (e->cost > minCost)
-					e->rev->cap = 0;
-			}
-		}
-		if (full)
-			return flow;
 
-		/*printf("DATA:\n");
-		printf("%u %u %ld %ld\n", query->nodeCount, query->edgeCount / 2, query->pSNode - query->nodes + 1,
-		       query->pTNode - query->nodes + 1);
-		for (uint32_t i = 0; i < query->edgeCount; i += 2) {
-		    printf("%ld %ld %u %u\n", query->edges[i].rev->to - query->nodes + 1, query->edges[i].to - query->nodes + 1,
-		           query->edges[i].cap, query->edges[i].cost);
+			if (!existQueueWithPresentSupport)
+				return VK_ERROR_UNKNOWN;
 		}
-		printf("\n");*/
+	}
+	return VK_SUCCESS;
+}
 
-		while (querySpfa(query)) {
-			int32_t x = query->pTNode->flow;
-			flow += x;
-
-			Node *cur = query->pTNode;
-			while (cur != query->pSNode) {
-				cur->path->cap -= x;
-				cur->path->rev->cap += x;
-				cur = cur->path->rev->to;
-			}
+static VkResult vqs__queryFetchResults(VqsQuery query, const vqs__BinaryGraph *graph) {
+	// FETCH RESULTS
+	for (uint32_t i = 0; i < graph->interiorEdgeCount; i += 2) {
+		vqs__Edge *e = graph->pInteriorEdges + i;
+		if (e->cap == 0) {
+			query->resultQueueFamilyIndices[e->to - graph->pRightNodes] = e->rev->to - graph->pLeftNodes;
 		}
-		if (flow == query->rightCount)
-			return flow;
+	}
+
+	return VK_SUCCESS;
+}
+
+static void vqs__querySetQueueFamilyCounters(VqsQuery query) {
+	for (uint32_t i = 0; i < query->queueFamilyCount; ++i) {
+		query->queueFamilyCounters[i] = 0u;
+	}
+	for (uint32_t i = 0; i < query->queueRequirementCount; ++i) {
+		++query->queueFamilyCounters[query->resultQueueFamilyIndices[i]];
+		if (query->resultPresentQueueFamilyIndices[i] != UINT32_MAX)
+			++query->queueFamilyCounters[query->resultPresentQueueFamilyIndices[i]];
 	}
 }
 
-VkResult queryInit(VqsQuery query, const VqsQueryCreateInfo *pCreateInfo) {
+static VkResult vqs__queryInit(VqsQuery query, const VqsQueryCreateInfo *pCreateInfo) {
 	// SET PHYSICAL DEVICE
 	query->physicalDevice = pCreateInfo->physicalDevice;
 
@@ -329,151 +481,7 @@ VkResult queryInit(VqsQuery query, const VqsQueryCreateInfo *pCreateInfo) {
 	return VK_SUCCESS;
 }
 
-VkResult queryPreprocessPresentQueues(VqsQuery query) {
-	// FIND PRESENT QUEUES
-	for (uint32_t j = 0; j < query->queueRequirementCount; ++j) {
-		VkQueueFlags requiredFlags = query->queueRequirements[j].requiredFlags;
-		VkSurfaceKHR requiredPresentQueueSurface = query->queueRequirements[j].requiredPresentQueueSurface;
-		query->resultPresentQueueFamilyIndices[j] = UINT32_MAX;
-
-		if (requiredPresentQueueSurface) { // require present queue
-			bool existQueueWithPresentSupport = false;
-			for (uint32_t i = 0; i < query->leftCount; ++i) {
-				if (query->queueFamilyProperties[i].queueCount == 0)
-					continue; // skip empty queue families
-				VkQueueFlags flags = query->queueFamilyProperties[i].queueFlags;
-				VkBool32 presentSupport;
-				if (query->vulkanFunctions.vkGetPhysicalDeviceSurfaceSupportKHR(
-				        query->physicalDevice, i, requiredPresentQueueSurface, &presentSupport) != VK_SUCCESS)
-					presentSupport = VK_FALSE;
-
-				if (presentSupport) {
-					existQueueWithPresentSupport = true;
-					query->resultPresentQueueFamilyIndices[j] = i;
-
-					if ((flags & requiredFlags) == requiredFlags) {
-						// exist queue family that both support present and meet
-						// requiredFlags leave presentQueueFamilyIndex as
-						// UINT32_MAX
-						query->resultPresentQueueFamilyIndices[j] = UINT32_MAX;
-						break;
-					}
-				}
-			}
-
-			if (!existQueueWithPresentSupport)
-				return VK_ERROR_UNKNOWN;
-		}
-	}
-	return VK_SUCCESS;
-}
-
-VkResult queryBuildGraph(VqsQuery query) {
-	// ALLOC GRAPH
-	query->nodeCount = query->leftCount + query->rightCount + 2u;
-	VQS_ALLOC_VK(query->nodes, Node, query->nodeCount);
-
-	query->interiorEdgeCount = queryBuildInteriorEdges(query, false);
-	query->edgeCount = query->interiorEdgeCount + (query->leftCount + query->rightCount) * 2u;
-	VQS_ALLOC_VK(query->edges, Edge, query->edgeCount);
-
-	// not needed since calloc is used
-	/*for (uint32_t i = 0; i < query->nodeCount; ++i) {
-	    query->nodes[i].head = NULL;
-	}*/
-	query->pSNode = query->nodes;
-	query->pTNode = query->pSNode + 1;
-	query->pLeftNodes = query->pTNode + 1;
-	query->pRightNodes = query->pLeftNodes + query->leftCount;
-
-	query->pLeftEdges = query->edges;
-	query->pRightEdges = query->pLeftEdges + query->leftCount * 2u;
-	query->pInteriorEdges = query->pRightEdges + query->rightCount * 2u;
-
-	// BUILD GRAPH
-	for (uint32_t i = 0; i < query->leftCount; ++i) { // S -> LEFT NODES
-		addEdge(query->pLeftEdges + (i * 2), query->pLeftEdges + (i * 2 + 1), query->pSNode, query->pLeftNodes + i, 0,
-		        0);
-	}
-	for (uint32_t i = 0; i < query->rightCount; ++i) { // RIGHT NODES -> T
-		addEdge(query->pRightEdges + (i * 2), query->pRightEdges + (i * 2 + 1), query->pRightNodes + i, query->pTNode,
-		        1, 0);
-	}
-	queryBuildInteriorEdges(query, true);
-
-	// SET MIN INTERIOR COSTS (for negative ring canceling)
-	VQS_ALLOC_VK(query->minInteriorCosts, int32_t, query->leftCount);
-	for (uint32_t i = 0; i < query->leftCount; ++i) {
-		query->minInteriorCosts[i] = INT32_MAX;
-	}
-
-	for (uint32_t i = 0; i < query->interiorEdgeCount; i += 2) {
-		Edge *e = query->pInteriorEdges + i;
-		int32_t *target = query->minInteriorCosts + (e->rev->to - query->pLeftNodes);
-		if (e->cost < *target)
-			*target = e->cost;
-	}
-
-	// ALLOC SPFA QUEUE
-	VQS_ALLOC_VK(query->spfaQueue, Node *, query->nodeCount);
-
-	return VK_SUCCESS;
-}
-
-VkResult queryMainAlgorithm(VqsQuery query) {
-	// RUN MAIN ALGORITHM
-	uint32_t *leftFlowLimits;
-	VQS_ALLOC_VK(leftFlowLimits, uint32_t, query->leftCount);
-
-	for (uint32_t i = 0; i < query->leftCount; ++i)
-		leftFlowLimits[i] = query->queueFamilyProperties[i].queueCount;
-
-	int32_t flow = 0;
-	flow = queryMcmfWithLimits(query, flow, leftFlowLimits);
-	if (flow < query->rightCount) {
-		for (uint32_t i = 0; i < query->leftCount; ++i) {
-			uint32_t queueCount = query->queueFamilyProperties[i].queueCount;
-			leftFlowLimits[i] = query->rightCount > queueCount ? query->rightCount - queueCount : 0u;
-		}
-		flow = queryMcmfWithLimits(query, flow, leftFlowLimits);
-
-		if (flow < query->rightCount) {
-			VQS_FREE(leftFlowLimits);
-			return VK_ERROR_UNKNOWN;
-		}
-	}
-	VQS_FREE(leftFlowLimits);
-	return VK_SUCCESS;
-}
-
-VkResult queryFetchResults(VqsQuery query) {
-	// FETCH RESULTS
-	for (uint32_t i = 0; i < query->interiorEdgeCount; i += 2) {
-		Edge *e = query->pInteriorEdges + i;
-		if (e->cap == 0) {
-			query->resultQueueFamilyIndices[e->to - query->pRightNodes] = e->rev->to - query->pLeftNodes;
-		}
-	}
-
-	return VK_SUCCESS;
-}
-
-void querySetQueueFamilyCounters(VqsQuery query) {
-	for (uint32_t i = 0; i < query->queueFamilyCount; ++i) {
-		query->queueFamilyCounters[i] = 0u;
-	}
-	for (uint32_t i = 0; i < query->queueRequirementCount; ++i) {
-		++query->queueFamilyCounters[query->resultQueueFamilyIndices[i]];
-		if (query->resultPresentQueueFamilyIndices[i] != UINT32_MAX)
-			++query->queueFamilyCounters[query->resultPresentQueueFamilyIndices[i]];
-	}
-}
-
-void queryFree(VqsQuery query) {
-	VQS_FREE(query->nodes);
-	VQS_FREE(query->edges);
-	VQS_FREE(query->minInteriorCosts);
-	VQS_FREE(query->spfaQueue);
+static void vqs__queryFree(VqsQuery query) {
 	VQS_FREE(query->resultQueueFamilyIndices);
 	VQS_FREE(query->resultPresentQueueFamilyIndices);
 	VQS_FREE(query->queueFamilyCounters);
@@ -481,6 +489,9 @@ void queryFree(VqsQuery query) {
 	VQS_FREE(query->queueRequirements);
 }
 
+/////////////////////
+// API definitions //
+/////////////////////
 VkResult vqsCreateQuery(const VqsQueryCreateInfo *pCreateInfo, VqsQuery *pQuery) {
 	VQS_ALLOC_VK(*pQuery, struct VqsQuery_T, 1);
 
@@ -492,37 +503,43 @@ VkResult vqsCreateQuery(const VqsQueryCreateInfo *pCreateInfo, VqsQuery *pQuery)
 			return result;                                                                                             \
 		}                                                                                                              \
 	}
-	TRY_STMT(queryInit(*pQuery, pCreateInfo));
-	TRY_STMT(queryPreprocessPresentQueues(*pQuery));
-	TRY_STMT(queryBuildGraph(*pQuery));
+	TRY_STMT(vqs__queryInit(*pQuery, pCreateInfo));
+	TRY_STMT(vqs__queryPreprocessPresentQueues(*pQuery));
+#undef TRY_STMT
 
 	return VK_SUCCESS;
-#undef TRY_STMT
 }
 
 VkResult vqsPerformQuery(VqsQuery query) {
+	vqs__BinaryGraph *graph = NULL;
+	VQS_ALLOC_VK(graph, vqs__BinaryGraph, 1);
+
 #define TRY_STMT(stmt)                                                                                                 \
 	{                                                                                                                  \
 		VkResult result = stmt;                                                                                        \
 		if (result != VK_SUCCESS)                                                                                      \
 			return result;                                                                                             \
 	}
-	TRY_STMT(queryMainAlgorithm(query));
-	TRY_STMT(queryFetchResults(query));
+	TRY_STMT(vqs__graphInit(graph, query));
+	TRY_STMT(vqs__graphMainAlgorithm(graph, query));
+	TRY_STMT(vqs__queryFetchResults(query, graph));
+#undef TRY_STMT
+
+	vqs__graphFree(graph);
+	VQS_FREE(graph);
 
 	return VK_SUCCESS;
-#undef TRY_STMT
 }
 
 void vqsDestroyQuery(VqsQuery query) {
 	if (query != VK_NULL_HANDLE) {
-		queryFree(query);
+		vqs__queryFree(query);
 		VQS_FREE(query);
 	}
 }
 
 void vqsGetQueueSelections(VqsQuery query, VqsQueueSelection *pQueueSelections) {
-	querySetQueueFamilyCounters(query);
+	vqs__querySetQueueFamilyCounters(query);
 	for (uint32_t i = 0; i < query->queueRequirementCount; ++i) {
 		uint32_t family;
 		family = query->resultQueueFamilyIndices[i];
@@ -548,9 +565,9 @@ void vqsGetQueueSelections(VqsQuery query, VqsQueueSelection *pQueueSelections) 
 void vqsEnumerateDeviceQueueCreateInfos(VqsQuery query, uint32_t *pDeviceQueueCreateInfoCount,
                                         VkDeviceQueueCreateInfo *pDeviceQueueCreateInfos, uint32_t *pQueuePriorityCount,
                                         float *pQueuePriorities) {
-	querySetQueueFamilyCounters(query);
+	vqs__querySetQueueFamilyCounters(query);
 
-	float **familyPriorityOffsets;
+	float **familyPriorityOffsets = NULL;
 	if (pQueuePriorities) {
 		VQS_ALLOC(familyPriorityOffsets, float *, query->queueFamilyCount);
 		if (familyPriorityOffsets == NULL)
@@ -606,8 +623,7 @@ void vqsEnumerateDeviceQueueCreateInfos(VqsQuery query, uint32_t *pDeviceQueueCr
 			}
 		}
 
-		if (familyPriorityOffsets)
-			VQS_FREE(familyPriorityOffsets);
+		VQS_FREE(familyPriorityOffsets);
 	}
 
 	if (pDeviceQueueCreateInfoCount)
