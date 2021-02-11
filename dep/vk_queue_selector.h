@@ -1,10 +1,15 @@
-// vk_queue_selector - v1.0.3 - https://github.com/AdamYuan/
+// vk_queue_selector - v1.1.1 - https://github.com/AdamYuan/
 //
 // Use this in *one* source file
 //   #define VQS_IMPLEMENTATION
 //   #include "vk_queue_selector.h"
 //
-// version 1.0.3 (2021-01-24) separate vqs__BinaryGraph from VqsQuery_T
+// version 1.1.1 (2021-01-29) modify edge cost calculation to better handle
+//                            priority
+//         1.1.0 (2021-01-29) ensure the correctness by running dinic at first
+//                            and mcmf at last
+//
+//         1.0.3 (2021-01-24) separate vqs__BinaryGraph from VqsQuery_T
 //         1.0.2 (2021-01-24) name private struct and func with "vqs__" prefix
 //         1.0.1 (2021-01-24) move all graph-related things to vqsPerformQuery
 //                            fix leaks and memory errors
@@ -92,15 +97,14 @@ typedef struct vqs__Edge {
 } vqs__Edge;
 
 typedef struct vqs__Node {
-	vqs__Edge *head, *path;
-	int32_t dist, flow;
+	vqs__Edge *head, *path, *curEdge; // curEdge for dinic
+	int32_t dist, flow, level;        // dist for spfa, level for dinic
 	bool inQueue;
 } vqs__Node;
 
 typedef struct vqs__BinaryGraph {
-	vqs__Node *nodes, *pLeftNodes, *pRightNodes, *pSNode, *pTNode, **spfaQueue;
+	vqs__Node *nodes, *pLeftNodes, *pRightNodes, *pSNode, *pTNode, **queue;
 	vqs__Edge *edges, *pInteriorEdges, *pLeftEdges, *pRightEdges;
-	int32_t *minInteriorCosts;                 // the min interior edge cost for each left nodes
 	uint32_t leftCount, rightCount, nodeCount; // leftCount = queueFamilyCount, rightCount = queueRequirementCount
 	uint32_t interiorEdgeCount, edgeCount;
 } vqs__BinaryGraph;
@@ -116,19 +120,27 @@ struct VqsQuery_T {
 	uint32_t *resultQueueFamilyIndices, *resultPresentQueueFamilyIndices, *queueFamilyCounters;
 };
 
-#define VQS_FREE(x)                                                                                                    \
-	{                                                                                                                  \
-		free(x);                                                                                                       \
-		(x) = NULL;                                                                                                    \
+#define VQS_FREE(x) \
+	{ \
+		free(x); \
+		(x) = NULL; \
 	}
-#define VQS_ALLOC(x, type, count)                                                                                      \
+#define VQS_ALLOC(x, type, count) \
 	{ (x) = (type *)calloc(count, sizeof(type)); }
-#define VQS_ALLOC_VK(x, type, count)                                                                                   \
-	{                                                                                                                  \
-		VQS_ALLOC(x, type, count);                                                                                     \
-		if (x == NULL)                                                                                                 \
-			return VK_ERROR_OUT_OF_HOST_MEMORY;                                                                        \
+#define VQS_ALLOC_VK(x, type, count) \
+	{ \
+		VQS_ALLOC(x, type, count); \
+		if (x == NULL) \
+			return VK_ERROR_OUT_OF_HOST_MEMORY; \
 	}
+
+static uint32_t vqs__u32_min(uint32_t a, uint32_t b) { return a < b ? a : b; }
+
+static int32_t vqs__i32_min(int32_t a, int32_t b) { return a < b ? a : b; }
+
+static float vqs__f32_min(float a, float b) { return a < b ? a : b; }
+
+static float vqs__f32_max(float a, float b) { return a > b ? a : b; }
 
 static uint32_t vqs__queueFlagDist(uint32_t l, uint32_t r, float f) {
 	const uint32_t kMask = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
@@ -138,7 +150,9 @@ static uint32_t vqs__queueFlagDist(uint32_t l, uint32_t r, float f) {
 	i = (i & 0x33333333u) + ((i >> 2u) & 0x33333333u);
 	i = (((i + (i >> 4u)) & 0x0F0F0F0Fu) * 0x01010101u) >> 24u;
 	// multiplied by f
-	int32_t ret = (i + 1) * f * 100.0f;
+	f = vqs__f32_min(f, 1.0f);
+	f = vqs__f32_max(f, 0.0f);
+	int32_t ret = f * 100.0f + i * 10;
 	return (uint32_t)ret;
 }
 
@@ -163,7 +177,7 @@ static void vqs__addEdge(vqs__Edge *edge, vqs__Edge *edgeRev, vqs__Node *from, v
 ////////////////////////////////
 // vqs__BinaryGraph functions //
 ////////////////////////////////
-static bool vqs__graphSpfa(vqs__BinaryGraph *graph) {
+static bool vqs__graphMcmfSpfa(vqs__BinaryGraph *graph) {
 	for (uint32_t i = 0; i < graph->nodeCount; ++i) {
 		graph->nodes[i].dist = INT32_MAX;
 		graph->nodes[i].flow = INT32_MAX;
@@ -173,8 +187,8 @@ static bool vqs__graphSpfa(vqs__BinaryGraph *graph) {
 
 	uint32_t queTop = 0, queTail = 0;
 	const uint32_t kQueSize = graph->nodeCount;
-#define QUE_PUSH(x) graph->spfaQueue[(queTop++) % kQueSize] = (x)
-#define QUE_POP graph->spfaQueue[(queTail++) % kQueSize]
+#define QUE_PUSH(x) graph->queue[(queTop++) % kQueSize] = (x)
+#define QUE_POP graph->queue[(queTail++) % kQueSize]
 	graph->pSNode->inQueue = true;
 	graph->pSNode->dist = 0;
 	QUE_PUSH(graph->pSNode);
@@ -187,7 +201,7 @@ static bool vqs__graphSpfa(vqs__BinaryGraph *graph) {
 			if (e->cap > 0 && e->to->dist > cur->dist + e->cost) {
 				e->to->dist = cur->dist + e->cost;
 				e->to->path = e;
-				e->to->flow = (cur->flow < e->cap) ? cur->flow : e->cap; // min
+				e->to->flow = vqs__i32_min(cur->flow, e->cap);
 
 				if (!e->to->inQueue) {
 					e->to->inQueue = true;
@@ -202,42 +216,105 @@ static bool vqs__graphSpfa(vqs__BinaryGraph *graph) {
 	return graph->pTNode->path;
 }
 
-static int32_t vqs__graphMcmfWithLimits(vqs__BinaryGraph *graph, int32_t flow, uint32_t *leftFlowLimits) {
+static void vqs__graphMcmf(vqs__BinaryGraph *graph) {
+	while (vqs__graphMcmfSpfa(graph)) {
+		int32_t x = graph->pTNode->flow;
+
+		vqs__Node *cur = graph->pTNode;
+		while (cur != graph->pSNode) {
+			cur->path->cap -= x;
+			cur->path->rev->cap += x;
+			cur = cur->path->rev->to;
+		}
+	}
+}
+
+static bool vqs__graphDinicBfs(vqs__BinaryGraph *graph) {
+	for (uint32_t i = 0; i < graph->nodeCount; ++i) {
+		graph->nodes[i].level = 0;
+	}
+	uint32_t queTop = 0, queTail = 0;
+	const uint32_t kQueSize = graph->nodeCount;
+#define QUE_PUSH(x) graph->queue[(queTop++) % kQueSize] = (x)
+#define QUE_POP graph->queue[(queTail++) % kQueSize]
+	graph->pSNode->level = 1;
+	QUE_PUSH(graph->pSNode);
+	while (queTop != queTail) {
+		vqs__Node *cur = QUE_POP;
+		cur->curEdge = cur->head;
+		for (vqs__Edge *e = cur->head; e; e = e->next) {
+			if (e->to->level != 0 || e->cap == 0)
+				continue;
+			e->to->level = cur->level + 1;
+			QUE_PUSH(e->to);
+		}
+	}
+#undef QUE_PUSH
+#undef QUE_POP
+	return graph->pTNode->level;
+}
+
+static int32_t vqs__graphDinicDfs(vqs__BinaryGraph *graph, vqs__Node *cur, int32_t cap) {
+	if (cur == graph->pTNode || cap == 0)
+		return cap;
+	for (vqs__Edge *e; cur->curEdge; cur->curEdge = cur->curEdge->next) {
+		e = cur->curEdge;
+		if (e->to->level != cur->level + 1 || e->cap == 0)
+			continue;
+		int32_t x = vqs__graphDinicDfs(graph, e->to, vqs__i32_min(cap, e->cap));
+		if (x) {
+			e->cap -= x;
+			e->rev->cap += x;
+			return x;
+		}
+	}
+	return 0;
+}
+
+static int32_t vqs__graphDinicWithLimits(vqs__BinaryGraph *graph, int32_t flow, uint32_t *leftFlowLimits,
+                                         uint32_t *leftFlowUsages) {
 	for (;;) {
 		{
 			bool full = true;
-			int32_t minCost = INT32_MAX;
 			for (uint32_t i = 0; i < graph->leftCount; ++i) { // append flow
 				if (leftFlowLimits[i] > 0) {
 					full = false;
 					++graph->pLeftEdges[i * 2u].cap;
-					if (graph->minInteriorCosts[i] < minCost)
-						minCost = graph->minInteriorCosts[i];
+					++leftFlowUsages[i];
 					--leftFlowLimits[i];
 				}
-			}
-			for (uint32_t i = 0; i < graph->interiorEdgeCount; i += 2) { // cancel negative rings
-				vqs__Edge *e = graph->pInteriorEdges + i;
-				if (e->cost > minCost)
-					e->rev->cap = 0;
 			}
 			if (full)
 				return flow;
 		}
 
-		while (vqs__graphSpfa(graph)) {
-			int32_t x = graph->pTNode->flow;
-			flow += x;
-
-			vqs__Node *cur = graph->pTNode;
-			while (cur != graph->pSNode) {
-				cur->path->cap -= x;
-				cur->path->rev->cap += x;
-				cur = cur->path->rev->to;
-			}
+		int32_t f;
+		while (vqs__graphDinicBfs(graph)) {
+			while ((f = vqs__graphDinicDfs(graph, graph->pSNode, INT32_MAX)))
+				flow += f;
 		}
 		if (flow == graph->rightCount)
 			return flow;
+	}
+}
+
+static void vqs__graphRestoreEdgeCaps(vqs__BinaryGraph *graph, const uint32_t *leftFlowUsages) {
+	for (uint32_t i = 0; i < graph->leftCount; ++i) {
+		vqs__Edge *e = graph->pLeftEdges + i * 2;
+		e->cap = leftFlowUsages[i];
+		e->rev->cap = 0;
+	}
+
+	for (uint32_t i = 0; i < graph->rightCount; ++i) {
+		vqs__Edge *e = graph->pRightEdges + i * 2;
+		e->cap = 1;
+		e->rev->cap = 0;
+	}
+
+	for (uint32_t i = 0; i < graph->interiorEdgeCount; i += 2) {
+		vqs__Edge *e = graph->pInteriorEdges + i;
+		e->cap = 1;
+		e->rev->cap = 0;
 	}
 }
 
@@ -265,7 +342,7 @@ static uint32_t vqs__graphBuildInteriorEdges(vqs__BinaryGraph *graph, const VqsQ
 					if (buildEdge) {
 						vqs__addEdge(graph->pInteriorEdges + counter, graph->pInteriorEdges + counter + 1,
 						             graph->pLeftNodes + i, graph->pRightNodes + j, 1,
-						             vqs__queueFlagDist(flags, requiredFlags, priority));
+						             vqs__queueFlagDist(flags, requiredFlags, 1.0f - priority));
 					}
 					counter += 2u;
 				}
@@ -274,7 +351,7 @@ static uint32_t vqs__graphBuildInteriorEdges(vqs__BinaryGraph *graph, const VqsQ
 					if (buildEdge) {
 						vqs__addEdge(graph->pInteriorEdges + counter, graph->pInteriorEdges + counter + 1,
 						             graph->pLeftNodes + i, graph->pRightNodes + j, 1,
-						             vqs__queueFlagDist(flags, requiredFlags, priority));
+						             vqs__queueFlagDist(flags, requiredFlags, 1.0f - priority));
 					}
 					counter += 2u;
 				}
@@ -286,27 +363,34 @@ static uint32_t vqs__graphBuildInteriorEdges(vqs__BinaryGraph *graph, const VqsQ
 
 static VkResult vqs__graphMainAlgorithm(vqs__BinaryGraph *graph, const VqsQuery query) {
 	// RUN MAIN ALGORITHM
-	uint32_t *leftFlowLimits = NULL;
+	uint32_t *leftFlowLimits = NULL, *leftFlowUsages = NULL;
 	VQS_ALLOC_VK(leftFlowLimits, uint32_t, graph->leftCount);
+	VQS_ALLOC_VK(leftFlowUsages, uint32_t, graph->leftCount);
 
 	for (uint32_t i = 0; i < graph->leftCount; ++i)
 		leftFlowLimits[i] = query->queueFamilyProperties[i].queueCount;
 
 	int32_t flow = 0;
-	flow = vqs__graphMcmfWithLimits(graph, flow, leftFlowLimits);
+	flow = vqs__graphDinicWithLimits(graph, flow, leftFlowLimits, leftFlowUsages);
 	if (flow < graph->rightCount) {
 		for (uint32_t i = 0; i < graph->leftCount; ++i) {
 			uint32_t queueCount = query->queueFamilyProperties[i].queueCount;
 			leftFlowLimits[i] = graph->rightCount > queueCount ? graph->rightCount - queueCount : 0u;
 		}
-		flow = vqs__graphMcmfWithLimits(graph, flow, leftFlowLimits);
+		flow = vqs__graphDinicWithLimits(graph, flow, leftFlowLimits, leftFlowUsages);
 
 		if (flow < graph->rightCount) {
 			VQS_FREE(leftFlowLimits);
+			VQS_FREE(leftFlowUsages);
 			return VK_ERROR_UNKNOWN;
 		}
 	}
 	VQS_FREE(leftFlowLimits);
+	vqs__graphRestoreEdgeCaps(graph, leftFlowUsages);
+	VQS_FREE(leftFlowUsages);
+
+	vqs__graphMcmf(graph);
+
 	return VK_SUCCESS;
 }
 
@@ -347,21 +431,8 @@ static VkResult vqs__graphInit(vqs__BinaryGraph *graph, const VqsQuery query) {
 	}
 	vqs__graphBuildInteriorEdges(graph, query, true);
 
-	// SET MIN INTERIOR COSTS (for negative ring canceling)
-	VQS_ALLOC_VK(graph->minInteriorCosts, int32_t, graph->leftCount);
-	for (uint32_t i = 0; i < graph->leftCount; ++i) {
-		graph->minInteriorCosts[i] = INT32_MAX;
-	}
-
-	for (uint32_t i = 0; i < graph->interiorEdgeCount; i += 2) {
-		vqs__Edge *e = graph->pInteriorEdges + i;
-		int32_t *target = graph->minInteriorCosts + (e->rev->to - graph->pLeftNodes);
-		if (e->cost < *target)
-			*target = e->cost;
-	}
-
 	// ALLOC SPFA QUEUE
-	VQS_ALLOC_VK(graph->spfaQueue, vqs__Node *, graph->nodeCount);
+	VQS_ALLOC_VK(graph->queue, vqs__Node *, graph->nodeCount);
 
 	return VK_SUCCESS;
 }
@@ -369,8 +440,7 @@ static VkResult vqs__graphInit(vqs__BinaryGraph *graph, const VqsQuery query) {
 static void vqs__graphFree(vqs__BinaryGraph *graph) {
 	VQS_FREE(graph->nodes);
 	VQS_FREE(graph->edges);
-	VQS_FREE(graph->minInteriorCosts);
-	VQS_FREE(graph->spfaQueue);
+	VQS_FREE(graph->queue);
 }
 
 //////////////////////////
@@ -495,13 +565,13 @@ static void vqs__queryFree(VqsQuery query) {
 VkResult vqsCreateQuery(const VqsQueryCreateInfo *pCreateInfo, VqsQuery *pQuery) {
 	VQS_ALLOC_VK(*pQuery, struct VqsQuery_T, 1);
 
-#define TRY_STMT(stmt)                                                                                                 \
-	{                                                                                                                  \
-		VkResult result = stmt;                                                                                        \
-		if (result != VK_SUCCESS) {                                                                                    \
-			vqsDestroyQuery(*pQuery);                                                                                  \
-			return result;                                                                                             \
-		}                                                                                                              \
+#define TRY_STMT(stmt) \
+	{ \
+		VkResult result = stmt; \
+		if (result != VK_SUCCESS) { \
+			vqsDestroyQuery(*pQuery); \
+			return result; \
+		} \
 	}
 	TRY_STMT(vqs__queryInit(*pQuery, pCreateInfo));
 	TRY_STMT(vqs__queryPreprocessPresentQueues(*pQuery));
@@ -514,11 +584,14 @@ VkResult vqsPerformQuery(VqsQuery query) {
 	vqs__BinaryGraph *graph = NULL;
 	VQS_ALLOC_VK(graph, vqs__BinaryGraph, 1);
 
-#define TRY_STMT(stmt)                                                                                                 \
-	{                                                                                                                  \
-		VkResult result = stmt;                                                                                        \
-		if (result != VK_SUCCESS)                                                                                      \
-			return result;                                                                                             \
+#define TRY_STMT(stmt) \
+	{ \
+		VkResult result = stmt; \
+		if (result != VK_SUCCESS) { \
+			vqs__graphFree(graph); \
+			VQS_FREE(graph); \
+			return result; \
+		} \
 	}
 	TRY_STMT(vqs__graphInit(graph, query));
 	TRY_STMT(vqs__graphMainAlgorithm(graph, query));
@@ -527,7 +600,6 @@ VkResult vqsPerformQuery(VqsQuery query) {
 
 	vqs__graphFree(graph);
 	VQS_FREE(graph);
-
 	return VK_SUCCESS;
 }
 
@@ -576,10 +648,7 @@ void vqsEnumerateDeviceQueueCreateInfos(VqsQuery query, uint32_t *pDeviceQueueCr
 
 	uint32_t infoCounter = 0, priorityCounter = 0;
 	for (uint32_t i = 0; i < query->queueFamilyCount; ++i) {
-		uint32_t queueCount = query->queueFamilyCounters[i];
-		if (queueCount > query->queueFamilyProperties[i].queueCount) {
-			queueCount = query->queueFamilyProperties[i].queueCount;
-		}
+		uint32_t queueCount = vqs__u32_min(query->queueFamilyCounters[i], query->queueFamilyProperties[i].queueCount);
 		if (pQueuePriorities)
 			familyPriorityOffsets[i] = pQueuePriorities + priorityCounter;
 		if (queueCount == 0)
@@ -610,16 +679,15 @@ void vqsEnumerateDeviceQueueCreateInfos(VqsQuery query, uint32_t *pDeviceQueueCr
 			family = query->resultQueueFamilyIndices[i];
 			queueIndex = (--query->queueFamilyCounters[family]) % query->queueFamilyProperties[family].queueCount;
 
-			if (query->queueRequirements[i].priority > familyPriorityOffsets[family][queueIndex]) // set to max priority
-				familyPriorityOffsets[family][queueIndex] = query->queueRequirements[i].priority;
+			familyPriorityOffsets[family][queueIndex] =
+			    vqs__f32_max(familyPriorityOffsets[family][queueIndex], query->queueRequirements[i].priority);
 
 			family = query->resultPresentQueueFamilyIndices[i];
 			if (family != UINT32_MAX) {
 				queueIndex = (--query->queueFamilyCounters[family]) % query->queueFamilyProperties[family].queueCount;
 
-				if (query->queueRequirements[i].priority >
-				    familyPriorityOffsets[family][queueIndex]) // set to max priority
-					familyPriorityOffsets[family][queueIndex] = query->queueRequirements[i].priority;
+				familyPriorityOffsets[family][queueIndex] =
+				    vqs__f32_max(familyPriorityOffsets[family][queueIndex], query->queueRequirements[i].priority);
 			}
 		}
 
