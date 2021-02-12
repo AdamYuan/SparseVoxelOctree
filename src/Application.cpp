@@ -199,6 +199,10 @@ void Application::initialize_vulkan() {
 	             m_path_tracer_queue->GetFamilyIndex(), (void *)m_path_tracer_queue->GetHandle() // path tracer queue
 	);
 
+	if (m_path_tracer_queue->GetFamilyIndex() == m_main_queue->GetFamilyIndex()) {
+		spdlog::warn("Async path tracing queue not available, the main thread might be blocked when path tracing");
+	}
+
 	m_swapchain = myvk::Swapchain::Create(m_main_queue, m_present_queue, false);
 	spdlog::info("Swapchain image count: {}", m_swapchain->GetImageCount());
 
@@ -243,6 +247,8 @@ Application::Application() {
 Application::~Application() {
 	if (m_path_tracer_thread.joinable()) {
 		m_ui_state = UIStates::kEmpty;
+		m_path_tracer_pause = false;
+		path_tracer_thread_update_state();
 		m_path_tracer_thread.join();
 	}
 }
@@ -292,6 +298,8 @@ void Application::ui_switch_state() {
 		m_ui_state = UIStates::kEmpty;
 
 	if (m_path_tracer_thread.joinable() && m_ui_state != UIStates::kPathTracing) {
+		m_path_tracer_pause = false;
+		path_tracer_thread_update_state();
 		m_path_tracer_thread.join();
 	}
 }
@@ -327,11 +335,17 @@ void Application::ui_menubar() {
 		if (ImGui::Button("Stop PT")) {
 			m_ui_state = UIStates::kOctreeTracer;
 		}
+		if (m_path_tracer_queue->GetFamilyIndex() == m_main_queue->GetFamilyIndex()) {
+			if (ImGui::Checkbox("Pause PT", &m_path_tracer_pause)) {
+				path_tracer_thread_update_state();
+			}
+		}
 	} else {
 		if (ImGui::Button("Load"))
 			open_load_scene_popup = true;
 		if (m_ui_state == UIStates::kOctreeTracer) {
 			if (ImGui::Button("Start PT")) {
+				m_path_tracer_pause = false;
 				m_ui_state = UIStates::kPathTracing;
 				m_path_tracer.Reset(m_path_tracer_command_pool);
 
@@ -374,7 +388,7 @@ void Application::ui_menubar() {
 	}
 
 	if (m_ui_state == UIStates::kPathTracing) {
-		if (ImGui::BeginMenu("View")) {
+		if (ImGui::BeginMenu("Channel")) {
 			if (ImGui::MenuItem("Color", nullptr,
 			                    m_path_tracer_viewer.m_view_type == PathTracerViewer::ViewTypes::kColor))
 				m_path_tracer_viewer.m_view_type = PathTracerViewer::ViewTypes::kColor;
@@ -455,8 +469,6 @@ void Application::ui_menubar() {
 		ImGui::PopStyleColor();
 	}
 
-	if (!m_octree.Empty()) {
-	}
 	ImGui::PopItemFlag();
 
 	ImGui::EndMainMenuBar();
@@ -541,13 +553,13 @@ void Application::ui_export_exr_modal() {
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
 
-		constexpr const char *kTypes[] = {"Color", "Albedo", "Normal"};
-		static const char *const *current_type = kTypes + 0;
-		if (ImGui::BeginCombo("Type", *current_type)) {
-			for (int n = 0; n < IM_ARRAYSIZE(kTypes); n++) {
-				bool is_selected = (current_type == kTypes + n);
-				if (ImGui::Selectable(kTypes[n], is_selected))
-					current_type = kTypes + n;
+		constexpr const char *kChannels[] = {"Color", "Albedo", "Normal"};
+		static const char *const *current_channel = kChannels + 0;
+		if (ImGui::BeginCombo("Channel", *current_channel)) {
+			for (int n = 0; n < IM_ARRAYSIZE(kChannels); n++) {
+				bool is_selected = (current_channel == kChannels + n);
+				if (ImGui::Selectable(kChannels[n], is_selected))
+					current_channel = kChannels + n;
 				if (is_selected)
 					ImGui::SetItemDefaultFocus();
 			}
@@ -564,14 +576,25 @@ void Application::ui_export_exr_modal() {
 
 		{
 			if (ImGui::Button("Export", ImVec2(256, 0))) {
-				m_path_tracer_mutex.lock();
+				bool tmp_pause = m_path_tracer_pause;
+
+				m_path_tracer_pause = true;
+				path_tracer_thread_update_state();
+
 				std::vector<float> pixels;
-				if (current_type == kTypes + 0) // color
-					pixels = m_path_tracer.ExtractColorImage(m_path_tracer_command_pool);
-				else if (current_type == kTypes + 1) // albedo
-					pixels = m_path_tracer.ExtractAlbedoImage(m_path_tracer_command_pool);
-				else // normal
-					pixels = m_path_tracer.ExtractNormalImage(m_path_tracer_command_pool);
+				{
+					std::lock_guard<std::mutex> lock_guard{m_path_tracer_mutex};
+					if (current_channel == kChannels + 0) // color
+						pixels = m_path_tracer.ExtractColorImage(m_path_tracer_command_pool);
+					else if (current_channel == kChannels + 1) // albedo
+						pixels = m_path_tracer.ExtractAlbedoImage(m_path_tracer_command_pool);
+					else // normal
+						pixels = m_path_tracer.ExtractNormalImage(m_path_tracer_command_pool);
+				}
+
+				m_path_tracer_pause = tmp_pause;
+				path_tracer_thread_update_state();
+
 				char *err{nullptr};
 				if (SaveEXR(pixels.data(), kWidth, kHeight, 3, save_as_fp16, exr_name_buf, (const char **)&err) < 0)
 					spdlog::error("Error when saving EXR image: {}", err);
@@ -579,7 +602,6 @@ void Application::ui_export_exr_modal() {
 					spdlog::info("Saved EXR image to {}", exr_name_buf);
 				free(err);
 
-				m_path_tracer_mutex.unlock();
 				ImGui::CloseCurrentPopup();
 			}
 			ImGui::SetItemDefaultFocus();
@@ -662,7 +684,6 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 			if (m_main_queue->GetFamilyIndex() != m_loader_queue->GetFamilyIndex()) {
 				// TODO: Test queue ownership transfer
 				command_buffer = myvk::CommandBuffer::Create(m_main_command_pool);
-				fence->Reset();
 				command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 				// transfer ownership
 				command_buffer->CmdPipelineBarrier(
@@ -670,6 +691,7 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 				    {builder.GetOctree()->GetMemoryBarrier(0, 0, m_loader_queue, m_main_queue)}, {});
 				command_buffer->End();
 
+				fence->Reset();
 				command_buffer->Submit({}, {}, fence);
 				fence->Wait();
 			}
@@ -687,33 +709,121 @@ void Application::path_tracer_thread() {
 	m_path_tracer_start_time = glfwGetTime();
 
 	std::shared_ptr<myvk::CommandPool> pt_command_pool = myvk::CommandPool::Create(m_path_tracer_queue);
+
 	std::shared_ptr<myvk::CommandBuffer> pt_command_buffer = myvk::CommandBuffer::Create(pt_command_pool);
 	pt_command_buffer->Begin();
 	m_path_tracer.CmdRender(pt_command_buffer);
 	pt_command_buffer->End();
 
-	// TODO: Transfer queue ownership
+	std::shared_ptr<myvk::CommandBuffer> pt_release_command_buffer = myvk::CommandBuffer::Create(pt_command_pool);
+	std::shared_ptr<myvk::CommandBuffer> pt_acquire_command_buffer = myvk::CommandBuffer::Create(pt_command_pool);
+
+	if (m_path_tracer_queue->GetFamilyIndex() != m_main_queue->GetFamilyIndex()) {
+		pt_release_command_buffer->Begin();
+		pt_release_command_buffer->CmdPipelineBarrier(
+		    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
+		    {m_path_tracer.GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+		                                                     VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue,
+		                                                     m_main_queue),
+		     m_path_tracer.GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+		                                                      VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue,
+		                                                      m_main_queue),
+		     m_path_tracer.GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+		                                                      VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue,
+		                                                      m_main_queue)});
+		pt_release_command_buffer->End();
+
+		pt_acquire_command_buffer->Begin();
+		pt_acquire_command_buffer->CmdPipelineBarrier(
+		    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
+		    {m_path_tracer.GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+		                                                     VK_IMAGE_LAYOUT_GENERAL, m_main_queue,
+		                                                     m_path_tracer_queue),
+		     m_path_tracer.GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+		                                                      VK_IMAGE_LAYOUT_GENERAL, m_main_queue,
+		                                                      m_path_tracer_queue),
+		     m_path_tracer.GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+		                                                      VK_IMAGE_LAYOUT_GENERAL, m_main_queue,
+		                                                      m_path_tracer_queue)});
+		pt_acquire_command_buffer->End();
+	}
+
+	// TODO: Test queue ownership transfer
 	std::shared_ptr<myvk::CommandPool> viewer_command_pool = myvk::CommandPool::Create(m_main_queue);
 
 	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(m_device);
 	while (m_ui_state == UIStates::kPathTracing) {
-		m_path_tracer_mutex.lock();
-		pt_command_buffer->Submit({}, {}, fence);
-		fence->Wait();
-		m_path_tracer_mutex.unlock();
+		while (m_path_tracer_pause) {
+			std::unique_lock<std::mutex> lock{m_path_tracer_mutex};
+			m_path_tracer_condition_variable.wait(lock);
+			lock.unlock();
+		}
 
-		++m_path_tracer_spp;
-		fence->Reset();
+		{
+			std::lock_guard<std::mutex> lock{m_path_tracer_mutex};
+			fence->Reset();
+			pt_command_buffer->Submit({}, {}, fence);
+			fence->Wait();
+			++m_path_tracer_spp;
+		}
 
 		if (m_path_tracer_spp % kPTResultUpdateInterval == 1) {
-			std::shared_ptr<myvk::CommandBuffer> viewer_command_buffer =
-			    myvk::CommandBuffer::Create(viewer_command_pool);
-			viewer_command_buffer->Begin();
-			m_path_tracer_viewer.CmdGenRenderPass(viewer_command_buffer);
-			viewer_command_buffer->End();
-			viewer_command_buffer->Submit({}, {}, fence);
-			fence->Wait();
-			fence->Reset();
+			std::lock_guard<std::mutex> lock{m_path_tracer_mutex};
+			// release pt queue ownership
+			if (m_path_tracer_queue->GetFamilyIndex() != m_main_queue->GetFamilyIndex()) {
+				fence->Reset();
+				pt_release_command_buffer->Submit({}, {}, fence);
+				fence->Wait();
+			}
+
+			{ // gen render pass
+				std::shared_ptr<myvk::CommandBuffer> viewer_command_buffer =
+				    myvk::CommandBuffer::Create(viewer_command_pool);
+				viewer_command_buffer->Begin();
+
+				viewer_command_buffer->CmdPipelineBarrier(
+				    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {}, {},
+				    {m_path_tracer.GetColorImage()->GetMemoryBarrier(
+				         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
+				         VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue, m_main_queue),
+				     m_path_tracer.GetAlbedoImage()->GetMemoryBarrier(
+				         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
+				         VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue, m_main_queue),
+				     m_path_tracer.GetNormalImage()->GetMemoryBarrier(
+				         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
+				         VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue, m_main_queue)});
+
+				m_path_tracer_viewer.CmdGenRenderPass(viewer_command_buffer);
+
+				viewer_command_buffer->CmdPipelineBarrier(
+				    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
+				    {m_path_tracer.GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
+				                                                     VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+				                                                     m_main_queue, m_path_tracer_queue),
+				     m_path_tracer.GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
+				                                                      VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+				                                                      m_main_queue, m_path_tracer_queue),
+				     m_path_tracer.GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
+				                                                      VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+				                                                      m_main_queue, m_path_tracer_queue)});
+				viewer_command_buffer->End();
+
+				fence->Reset();
+				viewer_command_buffer->Submit({}, {}, fence);
+				fence->Wait();
+			}
+
+			// acquire pt queue ownership
+			if (m_path_tracer_queue->GetFamilyIndex() != m_main_queue->GetFamilyIndex()) {
+				fence->Reset();
+				pt_acquire_command_buffer->Submit({}, {}, fence);
+				fence->Wait();
+			}
 		}
 	}
+}
+
+void Application::path_tracer_thread_update_state() {
+	std::unique_lock<std::mutex> lock{m_path_tracer_mutex};
+	m_path_tracer_condition_variable.notify_one();
 }

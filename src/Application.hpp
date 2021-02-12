@@ -82,8 +82,8 @@ private:
 	double m_path_tracer_start_time{0.0};
 	std::thread m_path_tracer_thread;
 	std::mutex m_path_tracer_mutex;
-	// bool m_path_tracer_ready_to_join{false};
-	// std::condition_variable m_path_tracer_condition_variable;
+	bool m_path_tracer_pause{false};
+	std::condition_variable m_path_tracer_condition_variable;
 
 	// ui flags
 	enum class UIStates { kEmpty, kOctreeTracer, kPathTracing, kLoading } m_ui_state{UIStates::kEmpty};
@@ -98,6 +98,8 @@ private:
 	void loader_thread(const char *filename, uint32_t octree_level);
 
 	void path_tracer_thread();
+
+	void path_tracer_thread_update_state();
 
 	void create_render_pass();
 
