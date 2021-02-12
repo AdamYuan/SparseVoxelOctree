@@ -323,7 +323,8 @@ void Application::ui_pop_disable() {
 }
 
 void Application::ui_menubar() {
-	bool open_load_scene_popup = false, open_export_exr_popup = false;
+	bool open_load_scene_popup = false, start_path_tracer_popup = false, stop_path_tracer_popup = false,
+	     open_export_exr_popup = false;
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::BeginMainMenuBar();
@@ -333,26 +334,19 @@ void Application::ui_menubar() {
 			open_export_exr_popup = true;
 		}
 		if (ImGui::Button("Stop PT")) {
-			m_ui_state = UIStates::kOctreeTracer;
-		}
-		if (m_path_tracer_queue->GetFamilyIndex() == m_main_queue->GetFamilyIndex()) {
-			if (ImGui::Checkbox("Pause PT", &m_path_tracer_pause)) {
-				path_tracer_thread_update_state();
-			}
+			stop_path_tracer_popup = true;
 		}
 	} else {
 		if (ImGui::Button("Load"))
 			open_load_scene_popup = true;
 		if (m_ui_state == UIStates::kOctreeTracer) {
 			if (ImGui::Button("Start PT")) {
-				m_path_tracer_pause = false;
-				m_ui_state = UIStates::kPathTracing;
-				m_path_tracer->Reset(m_path_tracer_command_pool);
-
-				m_path_tracer_thread = std::thread(&Application::path_tracer_thread, this);
+				start_path_tracer_popup = true;
 			}
 		}
 	}
+
+	ImGui::Separator();
 
 	if (m_ui_state == UIStates::kOctreeTracer) {
 		if (ImGui::BeginMenu("Camera")) {
@@ -376,32 +370,28 @@ void Application::ui_menubar() {
 			ImGui::Checkbox("Beam Optimization", &m_octree_tracer->m_beam_enable);
 			ImGui::EndMenu();
 		}
-
-		if (ImGui::BeginMenu("PathTracer")) {
-			int bounce = m_path_tracer->m_bounce;
-			if (ImGui::DragInt("Bounce", &bounce, 1, kMinBounce, kMaxBounce))
-				m_path_tracer->m_bounce = bounce;
-
-			ImGui::DragFloat3("Sun Radiance", &m_path_tracer->m_sun_radiance[0], 0.1f, 0.0f, kMaxSunRadiance);
-			ImGui::EndMenu();
-		}
 	}
 
-	/*if (m_ui_state == UIStates::kPathTracing) {
-	    if (ImGui::BeginMenu("Channel")) {
-	        if (ImGui::MenuItem("Color", nullptr,
-	                            m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kColor))
-	            m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kColor;
-	        if (ImGui::MenuItem("Albedo", nullptr,
-	                            m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kAlbedo))
-	            m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kAlbedo;
-	        if (ImGui::MenuItem("Normal", nullptr,
-	                            m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kNormal))
-	            m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kNormal;
+	if (m_ui_state == UIStates::kPathTracing) {
+		if (ImGui::Checkbox("Pause", &m_path_tracer_pause)) {
+			path_tracer_thread_update_state();
+		}
+		/*if (ImGui::BeginMenu("Channel")) {
+		    if (ImGui::MenuItem("Color", nullptr,
+		                        m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kColor))
+		        m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kColor;
+		    if (ImGui::MenuItem("Albedo", nullptr,
+		                        m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kAlbedo))
+		        m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kAlbedo;
+		    if (ImGui::MenuItem("Normal", nullptr,
+		                        m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kNormal))
+		        m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kNormal;
 
-	        ImGui::EndMenu();
-	    }
-	}*/
+		    ImGui::EndMenu();
+		}*/
+	}
+
+	ImGui::Separator();
 
 	if (ImGui::BeginMenu("Log")) {
 		ImGui::BeginChild("LogChild", {kWidth / 2.0f, kHeight / 2.0f}, false, ImGuiWindowFlags_HorizontalScrollbar);
@@ -478,9 +468,15 @@ void Application::ui_menubar() {
 		ImGui::OpenPopup("Load Scene");
 	if (open_export_exr_popup)
 		ImGui::OpenPopup("Export OpenEXR");
+	if (start_path_tracer_popup)
+		ImGui::OpenPopup("Start PathTracer");
+	if (stop_path_tracer_popup)
+		ImGui::OpenPopup("Stop PathTracer");
 
 	ui_load_scene_modal();
 	ui_export_exr_modal();
+	ui_start_path_tracer_modal();
+	ui_stop_path_tracer_modal();
 }
 
 bool Application::ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
@@ -548,11 +544,57 @@ void Application::ui_loading_modal() {
 	}
 }
 
+void Application::ui_start_path_tracer_modal() {
+	if (ImGui::BeginPopupModal("Start PathTracer", nullptr,
+	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
+	                               ImGuiWindowFlags_NoMove)) {
+		int bounce = m_path_tracer->m_bounce;
+		if (ImGui::DragInt("Bounce", &bounce, 1, kMinBounce, kMaxBounce))
+			m_path_tracer->m_bounce = bounce;
+
+		ImGui::DragFloat3("Sun Radiance", &m_path_tracer->m_sun_radiance[0], 0.1f, 0.0f, kMaxSunRadiance);
+
+		if (ImGui::Button("Start", ImVec2(256, 0))) {
+			m_path_tracer_pause = false;
+			m_ui_state = UIStates::kPathTracing;
+			m_camera->UpdateFrameUniformBuffer(0);
+			m_path_tracer->Reset(m_path_tracer_command_pool);
+
+			m_path_tracer_thread = std::thread(&Application::path_tracer_thread, this);
+
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::SetItemDefaultFocus();
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel", ImVec2(256, 0)))
+			ImGui::CloseCurrentPopup();
+
+		ImGui::EndPopup();
+	}
+}
+
+void Application::ui_stop_path_tracer_modal() {
+	if (ImGui::BeginPopupModal("Stop PathTracer", nullptr,
+	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
+	                               ImGuiWindowFlags_NoMove)) {
+		ImGui::Text("Are you sure?");
+		if (ImGui::Button("Stop", ImVec2(64, 0))) {
+			m_ui_state = UIStates::kOctreeTracer;
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::SetItemDefaultFocus();
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel", ImVec2(64, 0)))
+			ImGui::CloseCurrentPopup();
+
+		ImGui::EndPopup();
+	}
+}
+
 void Application::ui_export_exr_modal() {
 	if (ImGui::BeginPopupModal("Export OpenEXR", nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
-
 		constexpr const char *kChannels[] = {"Color", "Albedo", "Normal"};
 		static const char *const *current_channel = kChannels + 0;
 		if (ImGui::BeginCombo("Channel", *current_channel)) {

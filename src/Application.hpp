@@ -122,6 +122,10 @@ private:
 
 	void ui_export_exr_modal();
 
+	void ui_start_path_tracer_modal();
+
+	void ui_stop_path_tracer_modal();
+
 	void ui_loading_modal();
 
 	static bool ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
