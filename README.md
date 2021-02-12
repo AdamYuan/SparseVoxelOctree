@@ -23,9 +23,9 @@ make
 * https://research.nvidia.com/publication/efficient-sparse-voxel-octrees - SVO ray march
 
 ## Screenshots
-![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl-legacy/screenshots/0.png)
-![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl-legacy/screenshots/1.png)
-![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl-legacy/screenshots/2.png)
-![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl-legacy/screenshots/3.png)
+![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl/screenshots/0.png)
+![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl/screenshots/1.png)
+![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl/screenshots/2.png)
+![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl/screenshots/3.png)
 Image Denoised with OIDN
-![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl-legacy/screenshots/4.png)
+![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl/screenshots/4.png)
