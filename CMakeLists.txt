@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(VulkanSVO)
+project(SparseVoxelOctree)
 
 set(CMAKE_CXX_STANDARD 14)
 
@@ -51,7 +51,7 @@ IF(GLSLC)
 	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/path_tracer_viewer.frag ${CMAKE_SOURCE_DIR}/src/spirv/path_tracer_viewer.frag.u32)
 ENDIF()
 
-add_executable(VulkanSVO
+add_executable(SparseVoxelOctree
 	# SPIRV SHADERS
 	src/spirv/quad.vert.u32
 	src/spirv/quad_sampler.frag.u32
@@ -191,11 +191,11 @@ add_executable(VulkanSVO
 	src/myvk/QueryPool.hpp
 	)
 
-target_compile_definitions(VulkanSVO PUBLIC VK_NO_PROTOTYPES)
+target_compile_definitions(SparseVoxelOctree PUBLIC VK_NO_PROTOTYPES)
 
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
-	target_link_libraries(VulkanSVO PRIVATE OpenMP::OpenMP_CXX)
+	target_link_libraries(SparseVoxelOctree PRIVATE OpenMP::OpenMP_CXX)
 endif()
 find_package(Threads REQUIRED)
-target_link_libraries(VulkanSVO PRIVATE glfw spdlog volk Threads::Threads)
+target_link_libraries(SparseVoxelOctree PRIVATE glfw spdlog volk Threads::Threads)
