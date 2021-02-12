@@ -1,4 +1,4 @@
-# Sparse Voxel Octree
+# Sparse Voxel Octree (Old OpenGL Version)
 A GPU SVO Builder using rasterization pipeline, a efficient SVO ray marcher and a simple SVO path tracer.  
 [Vulkan version](https://github.com/AdamYuan/VulkanSVO) with multiple performance improvements is working in progress.
 
@@ -23,9 +23,9 @@ make
 * https://research.nvidia.com/publication/efficient-sparse-voxel-octrees - SVO ray march
 
 ## Screenshots
-![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/0.png)
-![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/1.png)
-![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/2.png)
-![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/3.png)
+![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl-legacy/screenshots/0.png)
+![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl-legacy/screenshots/1.png)
+![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl-legacy/screenshots/2.png)
+![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl-legacy/screenshots/3.png)
 Image Denoised with OIDN
-![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/master/screenshots/4.png)
+![](https://raw.githubusercontent.com/AdamYuan/SparseVoxelOctree/opengl-legacy/screenshots/4.png)
