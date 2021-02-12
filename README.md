@@ -38,7 +38,7 @@ The new Vulkan version is much faster than the old OpenGL version, given the com
 | Vulkan (new)   | **80 ms**             | **356 ms**        | **658 ms**         |
 | OpenGL (old)   | 421 ms                | 1799 ms           | 3861 ms            |
 
-In addition, the new Vulkan version has some advance features such as asynchronous model loading and asynchronous path tracing.
+In addition, the new Vulkan version has some advanced features such as asynchronous model loading and asynchronous path tracing.
 
 ## Reference
 * https://www.seas.upenn.edu/~pcozzi/OpenGLInsights/OpenGLInsights-SparseVoxelization.pdf - Voxelization and SVO building
