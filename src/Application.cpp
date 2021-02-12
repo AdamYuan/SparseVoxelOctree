@@ -103,8 +103,7 @@ void Application::create_render_pass() {
 void Application::create_framebuffers() {
 	m_framebuffers.resize(m_swapchain->GetImageCount());
 	for (uint32_t i = 0; i < m_swapchain->GetImageCount(); ++i) {
-		m_framebuffers[i] =
-		    myvk::Framebuffer::Create(m_render_pass, m_swapchain_image_views[i]);
+		m_framebuffers[i] = myvk::Framebuffer::Create(m_render_pass, m_swapchain_image_views[i]);
 	}
 }
 
@@ -388,21 +387,21 @@ void Application::ui_menubar() {
 		}
 	}
 
-	if (m_ui_state == UIStates::kPathTracing) {
-		if (ImGui::BeginMenu("Channel")) {
-			if (ImGui::MenuItem("Color", nullptr,
-			                    m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kColor))
-				m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kColor;
-			if (ImGui::MenuItem("Albedo", nullptr,
-			                    m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kAlbedo))
-				m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kAlbedo;
-			if (ImGui::MenuItem("Normal", nullptr,
-			                    m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kNormal))
-				m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kNormal;
+	/*if (m_ui_state == UIStates::kPathTracing) {
+	    if (ImGui::BeginMenu("Channel")) {
+	        if (ImGui::MenuItem("Color", nullptr,
+	                            m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kColor))
+	            m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kColor;
+	        if (ImGui::MenuItem("Albedo", nullptr,
+	                            m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kAlbedo))
+	            m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kAlbedo;
+	        if (ImGui::MenuItem("Normal", nullptr,
+	                            m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kNormal))
+	            m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kNormal;
 
-			ImGui::EndMenu();
-		}
-	}
+	        ImGui::EndMenu();
+	    }
+	}*/
 
 	if (ImGui::BeginMenu("Log")) {
 		ImGui::BeginChild("LogChild", {kWidth / 2.0f, kHeight / 2.0f}, false, ImGuiWindowFlags_HorizontalScrollbar);
@@ -598,7 +597,7 @@ void Application::ui_export_exr_modal() {
 
 				char *err{nullptr};
 				if (SaveEXR(pixels.data(), kWidth, kHeight, 3, save_as_fp16, exr_name_buf, (const char **)&err) < 0)
-					spdlog::error("Error when saving EXR image: {}", err);
+					spdlog::error("{}", err);
 				else
 					spdlog::info("Saved EXR image to {}", exr_name_buf);
 				free(err);
@@ -750,6 +749,30 @@ void Application::path_tracer_thread() {
 
 	// TODO: Test queue ownership transfer
 	std::shared_ptr<myvk::CommandPool> viewer_command_pool = myvk::CommandPool::Create(m_main_queue);
+	std::shared_ptr<myvk::CommandBuffer> viewer_command_buffer = myvk::CommandBuffer::Create(viewer_command_pool);
+	viewer_command_buffer->Begin();
+	viewer_command_buffer->CmdPipelineBarrier(
+	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {}, {},
+	    {m_path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT,
+	                                                      VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+	                                                      m_path_tracer_queue, m_main_queue),
+	     m_path_tracer->GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT,
+	                                                       VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+	                                                       m_path_tracer_queue, m_main_queue),
+	     m_path_tracer->GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT,
+	                                                       VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+	                                                       m_path_tracer_queue, m_main_queue)});
+	m_path_tracer_viewer->CmdGenRenderPass(viewer_command_buffer);
+	viewer_command_buffer->CmdPipelineBarrier(
+	    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
+	    {m_path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+	                                                      VK_IMAGE_LAYOUT_GENERAL, m_main_queue, m_path_tracer_queue),
+	     m_path_tracer->GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+	                                                       VK_IMAGE_LAYOUT_GENERAL, m_main_queue, m_path_tracer_queue),
+	     m_path_tracer->GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+	                                                       VK_IMAGE_LAYOUT_GENERAL, m_main_queue,
+	                                                       m_path_tracer_queue)});
+	viewer_command_buffer->End();
 
 	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(m_device);
 	while (m_ui_state == UIStates::kPathTracing) {
@@ -777,37 +800,6 @@ void Application::path_tracer_thread() {
 			}
 
 			{ // gen render pass
-				std::shared_ptr<myvk::CommandBuffer> viewer_command_buffer =
-				    myvk::CommandBuffer::Create(viewer_command_pool);
-				viewer_command_buffer->Begin();
-
-				viewer_command_buffer->CmdPipelineBarrier(
-				    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {}, {},
-				    {m_path_tracer->GetColorImage()->GetMemoryBarrier(
-				         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
-				         VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue, m_main_queue),
-				     m_path_tracer->GetAlbedoImage()->GetMemoryBarrier(
-				         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
-				         VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue, m_main_queue),
-				     m_path_tracer->GetNormalImage()->GetMemoryBarrier(
-				         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
-				         VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue, m_main_queue)});
-
-				m_path_tracer_viewer->CmdGenRenderPass(viewer_command_buffer);
-
-				viewer_command_buffer->CmdPipelineBarrier(
-				    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
-				    {m_path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
-				                                                      VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
-				                                                      m_main_queue, m_path_tracer_queue),
-				     m_path_tracer->GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
-				                                                       VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
-				                                                       m_main_queue, m_path_tracer_queue),
-				     m_path_tracer->GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
-				                                                       VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
-				                                                       m_main_queue, m_path_tracer_queue)});
-				viewer_command_buffer->End();
-
 				fence->Reset();
 				viewer_command_buffer->Submit({}, {}, fence);
 				fence->Wait();

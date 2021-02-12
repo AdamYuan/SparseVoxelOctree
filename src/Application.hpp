@@ -65,7 +65,7 @@ private:
 
 	ImGuiRenderer m_imgui_renderer;
 
-	// global data
+	// global resources
 	std::shared_ptr<Camera> m_camera;
 	std::shared_ptr<Octree> m_octree;
 	std::shared_ptr<OctreeTracer> m_octree_tracer;
