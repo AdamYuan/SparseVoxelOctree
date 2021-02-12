@@ -2,9 +2,9 @@
 #include "PathTracerViewer.hpp"
 #include "QuadSpirv.hpp"
 
-void PathTracerViewer::create_render_pass(const std::shared_ptr<myvk::Device> &device, VkFormat format) {
+void PathTracerViewer::create_render_pass(const std::shared_ptr<myvk::Device> &device) {
 	VkAttachmentDescription color_attachment = {};
-	color_attachment.format = format;
+	color_attachment.format = VK_FORMAT_R8G8B8A8_UNORM;
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -44,7 +44,7 @@ void PathTracerViewer::create_render_pass(const std::shared_ptr<myvk::Device> &d
 }
 
 void PathTracerViewer::create_gen_graphics_pipeline(const std::shared_ptr<myvk::Device> &device) {
-	m_gen_pipeline_layout = myvk::PipelineLayout::Create(device, {m_path_tracer->GetTargetDescriptorSetLayout()},
+	m_gen_pipeline_layout = myvk::PipelineLayout::Create(device, {m_path_tracer_ptr->GetTargetDescriptorSetLayout()},
 	                                                     {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t)}});
 	constexpr uint32_t kPathTracerViewerFragSpirv[] = {
 #include "spirv/path_tracer_viewer.frag.u32"
@@ -234,27 +234,33 @@ void PathTracerViewer::create_main_graphics_pipeline(const std::shared_ptr<myvk:
 	m_main_graphics_pipeline = myvk::GraphicsPipeline::Create(m_main_pipeline_layout, render_pass, pipeline_info);
 }
 
-void PathTracerViewer::Initialize(const PathTracer &path_tracer, const std::shared_ptr<myvk::Swapchain> &swapchain,
-                                  const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass) {
-	m_path_tracer = &path_tracer;
-	m_image = myvk::Image::CreateTexture2D(swapchain->GetDevicePtr(), {kWidth, kHeight}, 1, swapchain->GetImageFormat(),
-	                                       VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-	m_image_view = myvk::ImageView::Create(m_image, VK_IMAGE_VIEW_TYPE_2D);
-	m_sampler =
-	    myvk::Sampler::Create(swapchain->GetDevicePtr(), VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-	create_render_pass(swapchain->GetDevicePtr(), swapchain->GetImageFormat());
-	m_gen_framebuffer = myvk::Framebuffer::Create(m_gen_render_pass, {m_image_view}, {kWidth, kHeight});
-	create_gen_graphics_pipeline(swapchain->GetDevicePtr());
+std::shared_ptr<PathTracerViewer> PathTracerViewer::Create(const std::shared_ptr<PathTracer> &path_tracer,
+                                                           const std::shared_ptr<myvk::RenderPass> &render_pass,
+                                                           uint32_t subpass) {
+	std::shared_ptr<PathTracerViewer> ret = std::make_shared<PathTracerViewer>();
+	ret->m_path_tracer_ptr = path_tracer;
 
-	create_descriptors(swapchain->GetDevicePtr());
-	create_main_graphics_pipeline(render_pass, subpass);
+	ret->m_image =
+	    myvk::Image::CreateTexture2D(render_pass->GetDevicePtr(), {kWidth, kHeight}, 1, VK_FORMAT_R8G8B8A8_UNORM,
+	                                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	ret->m_image_view = myvk::ImageView::Create(ret->m_image, VK_IMAGE_VIEW_TYPE_2D);
+	ret->m_sampler =
+	    myvk::Sampler::Create(render_pass->GetDevicePtr(), VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	ret->create_render_pass(render_pass->GetDevicePtr());
+	ret->m_gen_framebuffer = myvk::Framebuffer::Create(ret->m_gen_render_pass, {ret->m_image_view}, {kWidth, kHeight});
+	ret->create_gen_graphics_pipeline(render_pass->GetDevicePtr());
+
+	ret->create_descriptors(render_pass->GetDevicePtr());
+	ret->create_main_graphics_pipeline(render_pass, subpass);
+
+	return ret;
 }
 
 void PathTracerViewer::CmdGenRenderPass(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
 	uint32_t view_type_u32 = (uint32_t)m_view_type;
 	command_buffer->CmdBeginRenderPass(m_gen_render_pass, m_gen_framebuffer, {{{0.0f, 0.0f, 0.0f, 1.0f}}});
 	command_buffer->CmdBindPipeline(m_gen_graphics_pipeline);
-	command_buffer->CmdBindDescriptorSets({m_path_tracer->GetTargetDescriptorSet()}, m_gen_graphics_pipeline);
+	command_buffer->CmdBindDescriptorSets({m_path_tracer_ptr->GetTargetDescriptorSet()}, m_gen_graphics_pipeline);
 	command_buffer->CmdPushConstants(m_gen_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t),
 	                                 &view_type_u32);
 	command_buffer->CmdDraw(3, 1, 0, 0);

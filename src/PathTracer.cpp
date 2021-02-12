@@ -72,8 +72,8 @@ void PathTracer::create_descriptor(const std::shared_ptr<myvk::Device> &device) 
 void PathTracer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 	m_pipeline_layout = myvk::PipelineLayout::Create(
 	    device,
-	    {m_octree->GetDescriptorSetLayout(), m_camera->GetDescriptorSetLayout(), m_sobol.GetDescriptorSetLayout(),
-	     m_target_descriptor_set_layout, m_noise_descriptor_set_layout},
+	    {m_octree_ptr->GetDescriptorSetLayout(), m_camera_ptr->GetDescriptorSetLayout(),
+	     m_sobol.GetDescriptorSetLayout(), m_target_descriptor_set_layout, m_noise_descriptor_set_layout},
 	    {{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t) + 3 * sizeof(float)}});
 	{
 		constexpr uint32_t kPathTracerCompSpv[] = {
@@ -186,19 +186,23 @@ void PathTracer::set_noise_image(const std::shared_ptr<myvk::CommandPool> &comma
 	fence->Wait();
 }
 
-void PathTracer::Initialize(const std::shared_ptr<myvk::CommandPool> &command_pool, const Octree &octree,
-                            const Camera &camera) {
-	m_octree = &octree;
-	m_camera = &camera;
+std::shared_ptr<PathTracer> PathTracer::Create(const std::shared_ptr<Octree> &octree,
+                                               const std::shared_ptr<Camera> &camera,
+                                               const std::shared_ptr<myvk::CommandPool> &command_pool) {
+	std::shared_ptr<PathTracer> ret = std::make_shared<PathTracer>();
+	ret->m_octree_ptr = octree;
+	ret->m_camera_ptr = camera;
 
-	m_bounce = kDefaultBounce;
-	m_sun_radiance = glm::vec3(kDefaultSunRadiance);
+	ret->m_bounce = kDefaultBounce;
+	ret->m_sun_radiance = glm::vec3(kDefaultSunRadiance);
 
-	m_sobol.Initialize(command_pool->GetDevicePtr());
-	create_images(command_pool->GetDevicePtr());
-	set_noise_image(command_pool);
-	create_descriptor(command_pool->GetDevicePtr());
-	create_pipeline(command_pool->GetDevicePtr());
+	ret->m_sobol.Initialize(command_pool->GetDevicePtr());
+	ret->create_images(command_pool->GetDevicePtr());
+	ret->set_noise_image(command_pool);
+	ret->create_descriptor(command_pool->GetDevicePtr());
+	ret->create_pipeline(command_pool->GetDevicePtr());
+
+	return ret;
 }
 
 void PathTracer::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool) {
@@ -207,7 +211,7 @@ void PathTracer::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool) {
 }
 
 void PathTracer::CmdRender(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) {
-	command_buffer->CmdBindDescriptorSets({m_octree->GetDescriptorSet(), m_camera->GetFrameDescriptorSet(0),
+	command_buffer->CmdBindDescriptorSets({m_octree_ptr->GetDescriptorSet(), m_camera_ptr->GetFrameDescriptorSet(0),
 	                                       m_sobol.GetDescriptorSet(), m_target_descriptor_set, m_noise_descriptor_set},
 	                                      m_pipeline);
 	command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &m_bounce);

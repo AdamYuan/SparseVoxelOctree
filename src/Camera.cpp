@@ -6,8 +6,9 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
-void Camera::Initialize(const std::shared_ptr<myvk::Device> &device, uint32_t frame_count) {
-	m_descriptor_pool =
+std::shared_ptr<Camera> Camera::Create(const std::shared_ptr<myvk::Device> &device, uint32_t frame_count) {
+	std::shared_ptr<Camera> ret = std::make_shared<Camera>();
+	ret->m_descriptor_pool =
 	    myvk::DescriptorPool::Create(device, frame_count, {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frame_count}});
 	{
 		VkDescriptorSetLayoutBinding camera_binding = {};
@@ -16,19 +17,21 @@ void Camera::Initialize(const std::shared_ptr<myvk::Device> &device, uint32_t fr
 		camera_binding.descriptorCount = 1;
 		camera_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {camera_binding});
+		ret->m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {camera_binding});
 	}
 
-	m_descriptor_sets = myvk::DescriptorSet::CreateMultiple(
-	    m_descriptor_pool,
-	    std::vector<std::shared_ptr<myvk::DescriptorSetLayout>>(frame_count, m_descriptor_set_layout));
-	m_uniform_buffers.resize(frame_count);
+	ret->m_descriptor_sets = myvk::DescriptorSet::CreateMultiple(
+	    ret->m_descriptor_pool,
+	    std::vector<std::shared_ptr<myvk::DescriptorSetLayout>>(frame_count, ret->m_descriptor_set_layout));
+	ret->m_uniform_buffers.resize(frame_count);
 
 	for (uint32_t i = 0; i < frame_count; ++i) {
-		m_uniform_buffers[i] = myvk::Buffer::Create(device, sizeof(UniformData), VMA_MEMORY_USAGE_CPU_TO_GPU,
-		                                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-		m_descriptor_sets[i]->UpdateUniformBuffer(m_uniform_buffers[i], 0);
+		ret->m_uniform_buffers[i] = myvk::Buffer::Create(device, sizeof(UniformData), VMA_MEMORY_USAGE_CPU_TO_GPU,
+		                                                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		ret->m_descriptor_sets[i]->UpdateUniformBuffer(ret->m_uniform_buffers[i], 0);
 	}
+
+	return ret;
 }
 
 void Camera::move_forward(float dist, float dir) {

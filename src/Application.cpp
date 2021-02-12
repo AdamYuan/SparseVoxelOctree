@@ -115,20 +115,20 @@ void Application::draw_frame() {
 	m_frame_manager.AfterAcquire(image_index);
 
 	uint32_t current_frame = m_frame_manager.GetCurrentFrame();
-	m_camera.UpdateFrameUniformBuffer(current_frame);
+	m_camera->UpdateFrameUniformBuffer(current_frame);
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_command_buffers[current_frame];
 
 	command_buffer->Reset();
 	command_buffer->Begin();
 
 	if (m_ui_state == UIStates::kOctreeTracer) {
-		m_octree_tracer.CmdBeamRenderPass(command_buffer, current_frame);
+		m_octree_tracer->CmdBeamRenderPass(command_buffer, current_frame);
 	}
 	command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffers[image_index], {{{0.0f, 0.0f, 0.0f, 1.0f}}});
 	if (m_ui_state == UIStates::kOctreeTracer) {
-		m_octree_tracer.CmdDrawPipeline(command_buffer, current_frame);
+		m_octree_tracer->CmdDrawPipeline(command_buffer, current_frame);
 	} else if (m_ui_state == UIStates::kPathTracing) {
-		m_path_tracer_viewer.CmdDrawPipeline(command_buffer);
+		m_path_tracer_viewer->CmdDrawPipeline(command_buffer);
 	}
 	command_buffer->CmdNextSubpass();
 	m_imgui_renderer.CmdDrawPipeline(command_buffer, current_frame);
@@ -234,14 +234,15 @@ Application::Application() {
 	    (std::string{kAppName} + " | " + m_device->GetPhysicalDevicePtr()->GetProperties().deviceName).c_str());
 	create_render_pass();
 	create_framebuffers();
-	m_camera.Initialize(m_device, kFrameCount);
-	m_camera.m_position = glm::vec3(1.5);
-	m_frame_manager.Initialize(m_swapchain, kFrameCount);
-	m_octree.Initialize(m_device);
-	m_octree_tracer.Initialize(m_octree, m_camera, m_render_pass, 0, kFrameCount);
-	m_path_tracer.Initialize(m_path_tracer_command_pool, m_octree, m_camera);
-	m_path_tracer_viewer.Initialize(m_path_tracer, m_swapchain, m_render_pass, 0);
 	m_imgui_renderer.Initialize(m_main_command_pool, m_render_pass, 1, kFrameCount);
+
+	m_camera = Camera::Create(m_device, kFrameCount);
+	m_camera->m_position = glm::vec3(1.5);
+	m_frame_manager.Initialize(m_swapchain, kFrameCount);
+	m_octree = Octree::Create(m_device);
+	m_octree_tracer = OctreeTracer::Create(m_octree, m_camera, m_render_pass, 0, kFrameCount);
+	m_path_tracer = PathTracer::Create(m_octree, m_camera, m_path_tracer_command_pool);
+	m_path_tracer_viewer = PathTracerViewer::Create(m_path_tracer, m_render_pass, 0);
 }
 
 Application::~Application() {
@@ -267,7 +268,7 @@ void Application::Run() {
 		glfwPollEvents();
 
 		if (m_ui_state == UIStates::kOctreeTracer)
-			m_camera.Control(m_window, float(cur_time - lst_time));
+			m_camera->Control(m_window, float(cur_time - lst_time));
 
 		ui_switch_state();
 
@@ -294,7 +295,7 @@ void Application::ui_switch_state() {
 
 			m_ui_state = UIStates::kOctreeTracer;
 		}
-	} else if (m_octree.Empty())
+	} else if (m_octree->Empty())
 		m_ui_state = UIStates::kEmpty;
 
 	if (m_path_tracer_thread.joinable() && m_ui_state != UIStates::kPathTracing) {
@@ -347,7 +348,7 @@ void Application::ui_menubar() {
 			if (ImGui::Button("Start PT")) {
 				m_path_tracer_pause = false;
 				m_ui_state = UIStates::kPathTracing;
-				m_path_tracer.Reset(m_path_tracer_command_pool);
+				m_path_tracer->Reset(m_path_tracer_command_pool);
 
 				m_path_tracer_thread = std::thread(&Application::path_tracer_thread, this);
 			}
@@ -356,33 +357,33 @@ void Application::ui_menubar() {
 
 	if (m_ui_state == UIStates::kOctreeTracer) {
 		if (ImGui::BeginMenu("Camera")) {
-			ImGui::DragAngle("FOV", &m_camera.m_fov, 1, 10, 179);
-			ImGui::DragFloat("Speed", &m_camera.m_speed, 0.005f, 0.005f, 0.2f);
-			ImGui::InputFloat3("Position", &m_camera.m_position[0]);
-			ImGui::DragAngle("Yaw", &m_camera.m_yaw, 1, 0, 360);
-			ImGui::DragAngle("Pitch", &m_camera.m_pitch, 1, -90, 90);
+			ImGui::DragAngle("FOV", &m_camera->m_fov, 1, 10, 179);
+			ImGui::DragFloat("Speed", &m_camera->m_speed, 0.005f, 0.005f, 0.2f);
+			ImGui::InputFloat3("Position", &m_camera->m_position[0]);
+			ImGui::DragAngle("Yaw", &m_camera->m_yaw, 1, 0, 360);
+			ImGui::DragAngle("Pitch", &m_camera->m_pitch, 1, -90, 90);
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("View")) {
-			if (ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kDiffuse))
-				m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kDiffuse;
-			if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kNormal))
-				m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kNormal;
+			if (ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer->m_view_type == OctreeTracer::ViewTypes::kDiffuse))
+				m_octree_tracer->m_view_type = OctreeTracer::ViewTypes::kDiffuse;
+			if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer->m_view_type == OctreeTracer::ViewTypes::kNormal))
+				m_octree_tracer->m_view_type = OctreeTracer::ViewTypes::kNormal;
 			if (ImGui::MenuItem("Iterations", nullptr,
-			                    m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kIteration))
-				m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kIteration;
+			                    m_octree_tracer->m_view_type == OctreeTracer::ViewTypes::kIteration))
+				m_octree_tracer->m_view_type = OctreeTracer::ViewTypes::kIteration;
 
-			ImGui::Checkbox("Beam Optimization", &m_octree_tracer.m_beam_enable);
+			ImGui::Checkbox("Beam Optimization", &m_octree_tracer->m_beam_enable);
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("PathTracer")) {
-			int bounce = m_path_tracer.m_bounce;
+			int bounce = m_path_tracer->m_bounce;
 			if (ImGui::DragInt("Bounce", &bounce, 1, kMinBounce, kMaxBounce))
-				m_path_tracer.m_bounce = bounce;
+				m_path_tracer->m_bounce = bounce;
 
-			ImGui::DragFloat3("Sun Radiance", &m_path_tracer.m_sun_radiance[0], 0.1f, 0.0f, kMaxSunRadiance);
+			ImGui::DragFloat3("Sun Radiance", &m_path_tracer->m_sun_radiance[0], 0.1f, 0.0f, kMaxSunRadiance);
 			ImGui::EndMenu();
 		}
 	}
@@ -390,14 +391,14 @@ void Application::ui_menubar() {
 	if (m_ui_state == UIStates::kPathTracing) {
 		if (ImGui::BeginMenu("Channel")) {
 			if (ImGui::MenuItem("Color", nullptr,
-			                    m_path_tracer_viewer.m_view_type == PathTracerViewer::ViewTypes::kColor))
-				m_path_tracer_viewer.m_view_type = PathTracerViewer::ViewTypes::kColor;
+			                    m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kColor))
+				m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kColor;
 			if (ImGui::MenuItem("Albedo", nullptr,
-			                    m_path_tracer_viewer.m_view_type == PathTracerViewer::ViewTypes::kAlbedo))
-				m_path_tracer_viewer.m_view_type = PathTracerViewer::ViewTypes::kAlbedo;
+			                    m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kAlbedo))
+				m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kAlbedo;
 			if (ImGui::MenuItem("Normal", nullptr,
-			                    m_path_tracer_viewer.m_view_type == PathTracerViewer::ViewTypes::kNormal))
-				m_path_tracer_viewer.m_view_type = PathTracerViewer::ViewTypes::kNormal;
+			                    m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kNormal))
+				m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kNormal;
 
 			ImGui::EndMenu();
 		}
@@ -441,15 +442,15 @@ void Application::ui_menubar() {
 		ImGui::Button(buf);
 		ImGui::PopStyleColor();
 
-		sprintf(buf, "Octree Level: %d", m_octree.GetLevel());
+		sprintf(buf, "Octree Level: %d", m_octree->GetLevel());
 		indent_w -= ImGui::CalcTextSize(buf).x + 8;
 		ImGui::SameLine(indent_w);
 		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_TabUnfocused));
 		ImGui::Button(buf);
 		ImGui::PopStyleColor();
 
-		sprintf(buf, "Octree Size: %.0f/%.0f MB", m_octree.GetRange() / 1000000.0f,
-		        m_octree.GetBuffer()->GetSize() / 1000000.0f);
+		sprintf(buf, "Octree Size: %.0f/%.0f MB", m_octree->GetRange() / 1000000.0f,
+		        m_octree->GetBuffer()->GetSize() / 1000000.0f);
 		indent_w -= ImGui::CalcTextSize(buf).x + 8;
 		ImGui::SameLine(indent_w);
 		ImGui::Button(buf);
@@ -585,11 +586,11 @@ void Application::ui_export_exr_modal() {
 				{
 					std::lock_guard<std::mutex> lock_guard{m_path_tracer_mutex};
 					if (current_channel == kChannels + 0) // color
-						pixels = m_path_tracer.ExtractColorImage(m_path_tracer_command_pool);
+						pixels = m_path_tracer->ExtractColorImage(m_path_tracer_command_pool);
 					else if (current_channel == kChannels + 1) // albedo
-						pixels = m_path_tracer.ExtractAlbedoImage(m_path_tracer_command_pool);
+						pixels = m_path_tracer->ExtractAlbedoImage(m_path_tracer_command_pool);
 					else // normal
-						pixels = m_path_tracer.ExtractNormalImage(m_path_tracer_command_pool);
+						pixels = m_path_tracer->ExtractNormalImage(m_path_tracer_command_pool);
 				}
 
 				m_path_tracer_pause = tmp_pause;
@@ -625,13 +626,11 @@ void Application::glfw_key_callback(GLFWwindow *window, int key, int, int action
 }
 
 void Application::loader_thread(const char *filename, uint32_t octree_level) {
-	Scene scene;
+	std::shared_ptr<Scene> scene;
 	std::shared_ptr<myvk::CommandPool> command_pool = myvk::CommandPool::Create(m_loader_queue);
-	if (scene.Initialize(m_loader_queue, filename)) {
-		Voxelizer voxelizer;
-		voxelizer.Initialize(scene, command_pool, octree_level);
-		OctreeBuilder builder;
-		builder.Initialize(voxelizer, command_pool, octree_level);
+	if ((scene = Scene::Create(m_loader_queue, filename))) {
+		std::shared_ptr<Voxelizer> voxelizer = Voxelizer::Create(scene, command_pool, octree_level);
+		std::shared_ptr<OctreeBuilder> builder = OctreeBuilder::Create(voxelizer, command_pool);
 
 		std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(m_device);
 		std::shared_ptr<myvk::QueryPool> query_pool = myvk::QueryPool::Create(m_device, VK_QUERY_TYPE_TIMESTAMP, 4);
@@ -641,23 +640,24 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 		command_buffer->CmdResetQueryPool(query_pool);
 
 		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, query_pool, 0);
-		voxelizer.CmdVoxelize(command_buffer);
+		voxelizer->CmdVoxelize(command_buffer);
 		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 1);
 
-		command_buffer->CmdPipelineBarrier(
-		    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {},
-		    {voxelizer.GetVoxelFragmentList()->GetMemoryBarrier(VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT)},
-		    {});
+		command_buffer->CmdPipelineBarrier(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		                                   {},
+		                                   {voxelizer->GetVoxelFragmentList()->GetMemoryBarrier(
+		                                       VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT)},
+		                                   {});
 
 		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, query_pool, 2);
-		builder.CmdBuild(command_buffer);
+		builder->CmdBuild(command_buffer);
 		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 3);
 
 		if (m_main_queue->GetFamilyIndex() != m_loader_queue->GetFamilyIndex()) {
 			// TODO: Test queue ownership transfer
 			command_buffer->CmdPipelineBarrier(
 			    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
-			    {builder.GetOctree()->GetMemoryBarrier(0, 0, m_loader_queue, m_main_queue)}, {});
+			    {builder->GetOctree()->GetMemoryBarrier(0, 0, m_loader_queue, m_main_queue)}, {});
 		}
 
 		command_buffer->End();
@@ -688,7 +688,7 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 				// transfer ownership
 				command_buffer->CmdPipelineBarrier(
 				    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
-				    {builder.GetOctree()->GetMemoryBarrier(0, 0, m_loader_queue, m_main_queue)}, {});
+				    {builder->GetOctree()->GetMemoryBarrier(0, 0, m_loader_queue, m_main_queue)}, {});
 				command_buffer->End();
 
 				fence->Reset();
@@ -697,8 +697,8 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 			}
 
 			m_main_queue->WaitIdle();
-			m_octree.Update(builder.GetOctree(), octree_level, builder.GetOctreeRange(command_pool));
-			spdlog::info("Octree range: {} ({} MB)", m_octree.GetRange(), m_octree.GetRange() / 1000000.0f);
+			m_octree->Update(command_pool, builder);
+			spdlog::info("Octree range: {} ({} MB)", m_octree->GetRange(), m_octree->GetRange() / 1000000.0f);
 		}
 	}
 	m_loader_ready_to_join = true;
@@ -712,7 +712,7 @@ void Application::path_tracer_thread() {
 
 	std::shared_ptr<myvk::CommandBuffer> pt_command_buffer = myvk::CommandBuffer::Create(pt_command_pool);
 	pt_command_buffer->Begin();
-	m_path_tracer.CmdRender(pt_command_buffer);
+	m_path_tracer->CmdRender(pt_command_buffer);
 	pt_command_buffer->End();
 
 	std::shared_ptr<myvk::CommandBuffer> pt_release_command_buffer = myvk::CommandBuffer::Create(pt_command_pool);
@@ -722,29 +722,29 @@ void Application::path_tracer_thread() {
 		pt_release_command_buffer->Begin();
 		pt_release_command_buffer->CmdPipelineBarrier(
 		    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
-		    {m_path_tracer.GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-		                                                     VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue,
-		                                                     m_main_queue),
-		     m_path_tracer.GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+		    {m_path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
 		                                                      VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue,
 		                                                      m_main_queue),
-		     m_path_tracer.GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-		                                                      VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue,
-		                                                      m_main_queue)});
+		     m_path_tracer->GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+		                                                       VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue,
+		                                                       m_main_queue),
+		     m_path_tracer->GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+		                                                       VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue,
+		                                                       m_main_queue)});
 		pt_release_command_buffer->End();
 
 		pt_acquire_command_buffer->Begin();
 		pt_acquire_command_buffer->CmdPipelineBarrier(
 		    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
-		    {m_path_tracer.GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-		                                                     VK_IMAGE_LAYOUT_GENERAL, m_main_queue,
-		                                                     m_path_tracer_queue),
-		     m_path_tracer.GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+		    {m_path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
 		                                                      VK_IMAGE_LAYOUT_GENERAL, m_main_queue,
 		                                                      m_path_tracer_queue),
-		     m_path_tracer.GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-		                                                      VK_IMAGE_LAYOUT_GENERAL, m_main_queue,
-		                                                      m_path_tracer_queue)});
+		     m_path_tracer->GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+		                                                       VK_IMAGE_LAYOUT_GENERAL, m_main_queue,
+		                                                       m_path_tracer_queue),
+		     m_path_tracer->GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
+		                                                       VK_IMAGE_LAYOUT_GENERAL, m_main_queue,
+		                                                       m_path_tracer_queue)});
 		pt_acquire_command_buffer->End();
 	}
 
@@ -783,29 +783,29 @@ void Application::path_tracer_thread() {
 
 				viewer_command_buffer->CmdPipelineBarrier(
 				    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {}, {},
-				    {m_path_tracer.GetColorImage()->GetMemoryBarrier(
+				    {m_path_tracer->GetColorImage()->GetMemoryBarrier(
 				         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
 				         VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue, m_main_queue),
-				     m_path_tracer.GetAlbedoImage()->GetMemoryBarrier(
+				     m_path_tracer->GetAlbedoImage()->GetMemoryBarrier(
 				         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
 				         VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue, m_main_queue),
-				     m_path_tracer.GetNormalImage()->GetMemoryBarrier(
+				     m_path_tracer->GetNormalImage()->GetMemoryBarrier(
 				         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
 				         VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue, m_main_queue)});
 
-				m_path_tracer_viewer.CmdGenRenderPass(viewer_command_buffer);
+				m_path_tracer_viewer->CmdGenRenderPass(viewer_command_buffer);
 
 				viewer_command_buffer->CmdPipelineBarrier(
 				    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
-				    {m_path_tracer.GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
-				                                                     VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
-				                                                     m_main_queue, m_path_tracer_queue),
-				     m_path_tracer.GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
+				    {m_path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
 				                                                      VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
 				                                                      m_main_queue, m_path_tracer_queue),
-				     m_path_tracer.GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
-				                                                      VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
-				                                                      m_main_queue, m_path_tracer_queue)});
+				     m_path_tracer->GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
+				                                                       VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+				                                                       m_main_queue, m_path_tracer_queue),
+				     m_path_tracer->GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
+				                                                       VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+				                                                       m_main_queue, m_path_tracer_queue)});
 				viewer_command_buffer->End();
 
 				fence->Reset();

@@ -15,6 +15,9 @@ public:
 	bool m_beam_enable{true};
 
 private:
+	std::shared_ptr<Octree> m_octree_ptr;
+	std::shared_ptr<Camera> m_camera_ptr;
+
 	std::shared_ptr<myvk::DescriptorPool> m_descriptor_pool;
 	std::shared_ptr<myvk::DescriptorSetLayout> m_descriptor_set_layout;
 
@@ -34,9 +37,6 @@ private:
 	};
 	std::vector<FrameResource> m_frame_resources;
 
-	const Octree *m_octree;
-	const Camera *m_camera;
-
 	void create_descriptor_pool(const std::shared_ptr<myvk::Device> &device, uint32_t frame_count);
 
 	void create_layouts(const std::shared_ptr<myvk::Device> &device);
@@ -50,8 +50,12 @@ private:
 	void create_beam_graphics_pipeline(const std::shared_ptr<myvk::Device> &device);
 
 public:
-	void Initialize(const Octree &octree, const Camera &camera, const std::shared_ptr<myvk::RenderPass> &render_pass,
-	                uint32_t subpass, uint32_t frame_count);
+	static std::shared_ptr<OctreeTracer> Create(const std::shared_ptr<Octree> &octree,
+	                                            const std::shared_ptr<Camera> &camera,
+	                                            const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass,
+	                                            uint32_t frame_count);
+	const std::shared_ptr<Octree> &GetOctreePtr() const { return m_octree_ptr; }
+	const std::shared_ptr<Camera> &GetCameraPtr() const { return m_camera_ptr; }
 
 	void CmdBeamRenderPass(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame) const;
 

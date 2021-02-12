@@ -34,7 +34,7 @@ private:
 	UniformData fetch_uniform_data() const;
 
 public:
-	void Initialize(const std::shared_ptr<myvk::Device> &device, uint32_t frame_count);
+	static std::shared_ptr<Camera> Create(const std::shared_ptr<myvk::Device> &device, uint32_t frame_count);
 
 	void Control(GLFWwindow *window, float delta);
 

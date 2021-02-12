@@ -12,6 +12,8 @@
 
 class Voxelizer {
 private:
+	std::shared_ptr<Scene> m_scene_ptr;
+
 	std::shared_ptr<myvk::RenderPass> m_render_pass;
 	std::shared_ptr<myvk::Framebuffer> m_framebuffer;
 
@@ -26,8 +28,7 @@ private:
 	std::shared_ptr<myvk::DescriptorSetLayout> m_descriptor_set_layout;
 	std::shared_ptr<myvk::DescriptorSet> m_descriptor_set;
 
-	uint32_t m_voxel_resolution, m_voxel_fragment_count;
-	const Scene *m_scene;
+	uint32_t m_level, m_voxel_resolution, m_voxel_fragment_count;
 
 	void create_descriptors(const std::shared_ptr<myvk::Device> &device);
 	void create_render_pass(const std::shared_ptr<myvk::Device> &device);
@@ -35,7 +36,12 @@ private:
 	void count_and_create_fragment_list(const std::shared_ptr<myvk::CommandPool> &command_pool);
 
 public:
-	void Initialize(const Scene &scene, const std::shared_ptr<myvk::CommandPool> &command_pool, uint32_t octree_level);
+	static std::shared_ptr<Voxelizer> Create(const std::shared_ptr<Scene> &scene,
+	                                         const std::shared_ptr<myvk::CommandPool> &command_pool,
+	                                         uint32_t octree_level);
+	const std::shared_ptr<Scene> &GetScenePtr() const { return m_scene_ptr; }
+	uint32_t GetLevel() const { return m_level; }
+
 	void CmdVoxelize(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
 	uint32_t GetVoxelResolution() const { return m_voxel_resolution; }
 	uint32_t GetVoxelFragmentCount() const { return m_voxel_fragment_count; }

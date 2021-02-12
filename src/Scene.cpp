@@ -375,7 +375,9 @@ void Scene::create_descriptors(const std::shared_ptr<myvk::Device> &device) {
 	}
 }
 
-bool Scene::Initialize(const std::shared_ptr<myvk::Queue> &graphics_queue, const char *filename) {
+std::shared_ptr<Scene> Scene::Create(const std::shared_ptr<myvk::Queue> &graphics_queue, const char *filename) {
+	std::shared_ptr<Scene> ret = std::make_shared<Scene>();
+
 	std::string base_dir = get_base_dir(filename);
 
 	std::vector<Mesh> meshes;
@@ -383,16 +385,16 @@ bool Scene::Initialize(const std::shared_ptr<myvk::Queue> &graphics_queue, const
 
 	if (!load_meshes(filename, base_dir.c_str(), &meshes, &texture_filenames)) {
 		spdlog::error("Failed to load meshes");
-		return false;
+		return nullptr;
 	}
 	spdlog::info("Meshes loaded from {}", filename);
 
-	load_buffers_and_draw_cmd(graphics_queue, meshes);
-	load_textures(graphics_queue, texture_filenames);
-	process_texture_errors();
-	create_descriptors(graphics_queue->GetDevicePtr());
+	ret->load_buffers_and_draw_cmd(graphics_queue, meshes);
+	ret->load_textures(graphics_queue, texture_filenames);
+	ret->process_texture_errors();
+	ret->create_descriptors(graphics_queue->GetDevicePtr());
 
-	return true;
+	return ret;
 }
 
 VkVertexInputBindingDescription Scene::GetVertexBindingDescription() {

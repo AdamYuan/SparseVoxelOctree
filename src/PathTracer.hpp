@@ -10,8 +10,8 @@
 
 class PathTracer {
 private:
-	const Octree *m_octree;
-	const Camera *m_camera;
+	std::shared_ptr<Octree> m_octree_ptr;
+	std::shared_ptr<Camera> m_camera_ptr;
 
 	Sobol m_sobol;
 	std::shared_ptr<myvk::Image> m_color_image, m_albedo_image, m_normal_image, m_noise_image;
@@ -40,7 +40,11 @@ public:
 	uint32_t m_bounce;
 	glm::vec3 m_sun_radiance;
 
-	void Initialize(const std::shared_ptr<myvk::CommandPool> &command_pool, const Octree &octree, const Camera &camera);
+	static std::shared_ptr<PathTracer> Create(const std::shared_ptr<Octree> &octree,
+	                                          const std::shared_ptr<Camera> &camera,
+	                                          const std::shared_ptr<myvk::CommandPool> &command_pool);
+	const std::shared_ptr<Octree> &GetOctreePtr() const { return m_octree_ptr; }
+	const std::shared_ptr<Camera> &GetCameraPtr() const { return m_camera_ptr; }
 
 	void Reset(const std::shared_ptr<myvk::CommandPool> &command_pool);
 

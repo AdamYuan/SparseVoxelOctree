@@ -12,6 +12,8 @@
 
 class OctreeBuilder {
 private:
+	std::shared_ptr<Voxelizer> m_voxelizer_ptr;
+
 	std::shared_ptr<myvk::PipelineLayout> m_pipeline_layout;
 	std::shared_ptr<myvk::ComputePipeline> m_tag_node_pipeline, m_init_node_pipeline, m_alloc_node_pipeline,
 	    m_modify_arg_pipeline;
@@ -26,17 +28,16 @@ private:
 	std::shared_ptr<myvk::DescriptorSetLayout> m_descriptor_set_layout;
 	std::shared_ptr<myvk::DescriptorSet> m_descriptor_set;
 
-	const Voxelizer *m_voxelizer;
-
-	uint32_t m_octree_level;
-
 	void create_buffers(const std::shared_ptr<myvk::Device> &device);
 	void create_descriptors(const std::shared_ptr<myvk::Device> &device);
 	void create_pipeline(const std::shared_ptr<myvk::Device> &device);
 
 public:
-	void Initialize(const Voxelizer &voxelizer, const std::shared_ptr<myvk::CommandPool> &command_pool,
-	                uint32_t octree_level);
+	static std::shared_ptr<OctreeBuilder> Create(const std::shared_ptr<Voxelizer> &voxelizer,
+	                                             const std::shared_ptr<myvk::CommandPool> &command_pool);
+	const std::shared_ptr<Voxelizer> &GetVoxelizerPtr() const { return m_voxelizer_ptr; }
+	uint32_t GetLevel() const { return m_voxelizer_ptr->GetLevel(); }
+
 	void CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
 	VkDeviceSize GetOctreeRange(const std::shared_ptr<myvk::CommandPool> &command_pool) const;
 	const std::shared_ptr<myvk::Buffer> &GetOctree() const { return m_octree_buffer; }

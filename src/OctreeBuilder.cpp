@@ -5,17 +5,20 @@
 
 inline static constexpr uint32_t group_x_64(uint32_t x) { return (x >> 6u) + ((x & 0x3fu) ? 1u : 0u); }
 
-void OctreeBuilder::Initialize(const Voxelizer &voxelizer, const std::shared_ptr<myvk::CommandPool> &command_pool,
-                               uint32_t octree_level) {
-	std::shared_ptr<myvk::Device> device = command_pool->GetDevicePtr();
-	m_octree_level = octree_level;
-	m_voxelizer = &voxelizer;
-	m_atomic_counter.Initialize(device);
-	m_atomic_counter.Reset(command_pool, 0);
+std::shared_ptr<OctreeBuilder> OctreeBuilder::Create(const std::shared_ptr<Voxelizer> &voxelizer,
+                                                     const std::shared_ptr<myvk::CommandPool> &command_pool) {
+	std::shared_ptr<OctreeBuilder> ret = std::make_shared<OctreeBuilder>();
 
-	create_buffers(device);
-	create_descriptors(device);
-	create_pipeline(device);
+	std::shared_ptr<myvk::Device> device = command_pool->GetDevicePtr();
+	ret->m_voxelizer_ptr = voxelizer;
+	ret->m_atomic_counter.Initialize(device);
+	ret->m_atomic_counter.Reset(command_pool, 0);
+
+	ret->create_buffers(device);
+	ret->create_descriptors(device);
+	ret->create_pipeline(device);
+
+	return ret;
 }
 
 void OctreeBuilder::create_buffers(const std::shared_ptr<myvk::Device> &device) {
@@ -42,7 +45,7 @@ void OctreeBuilder::create_buffers(const std::shared_ptr<myvk::Device> &device) 
 	}
 
 	// Estimate octree buffer size
-	uint32_t octree_node_num = std::max(kOctreeNodeNumMin, m_voxelizer->GetVoxelFragmentCount() << 2u);
+	uint32_t octree_node_num = std::max(kOctreeNodeNumMin, m_voxelizer_ptr->GetVoxelFragmentCount() << 2u);
 	octree_node_num = std::min(octree_node_num, kOctreeNodeNumMax);
 
 	m_octree_buffer = myvk::Buffer::Create(device, octree_node_num * sizeof(uint32_t), VMA_MEMORY_USAGE_GPU_ONLY,
@@ -91,7 +94,7 @@ void OctreeBuilder::create_descriptors(const std::shared_ptr<myvk::Device> &devi
 	m_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
 	m_descriptor_set->UpdateStorageBuffer(m_atomic_counter.GetBuffer(), 0);
 	m_descriptor_set->UpdateStorageBuffer(m_octree_buffer, 1);
-	m_descriptor_set->UpdateStorageBuffer(m_voxelizer->GetVoxelFragmentList(), 2);
+	m_descriptor_set->UpdateStorageBuffer(m_voxelizer_ptr->GetVoxelFragmentList(), 2);
 	m_descriptor_set->UpdateStorageBuffer(m_build_info_buffer, 3);
 	m_descriptor_set->UpdateStorageBuffer(m_indirect_buffer, 4);
 }
@@ -158,14 +161,14 @@ void OctreeBuilder::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command
 		    {});
 	}
 
-	uint32_t fragment_group_x = group_x_64(m_voxelizer->GetVoxelFragmentCount());
-	uint32_t push_constants[] = {m_voxelizer->GetVoxelFragmentCount(), m_voxelizer->GetVoxelResolution()};
+	uint32_t fragment_group_x = group_x_64(m_voxelizer_ptr->GetVoxelFragmentCount());
+	uint32_t push_constants[] = {m_voxelizer_ptr->GetVoxelFragmentCount(), m_voxelizer_ptr->GetVoxelResolution()};
 
 	command_buffer->CmdBindDescriptorSets({m_descriptor_set}, m_pipeline_layout, VK_PIPELINE_BIND_POINT_COMPUTE, {});
 	command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 2 * sizeof(uint32_t),
 	                                 push_constants);
 
-	for (uint32_t i = 1; i <= m_octree_level; ++i) {
+	for (uint32_t i = 1; i <= m_voxelizer_ptr->GetLevel(); ++i) {
 		command_buffer->CmdBindPipeline(m_init_node_pipeline);
 		command_buffer->CmdDispatchIndirect(m_indirect_buffer);
 
@@ -178,7 +181,7 @@ void OctreeBuilder::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command
 		command_buffer->CmdBindPipeline(m_tag_node_pipeline);
 		command_buffer->CmdDispatch(fragment_group_x, 1, 1);
 
-		if (i != m_octree_level) {
+		if (i != m_voxelizer_ptr->GetLevel()) {
 			command_buffer->CmdPipelineBarrier(
 			    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {},
 			    {m_octree_buffer->GetMemoryBarrier(VK_ACCESS_SHADER_WRITE_BIT,

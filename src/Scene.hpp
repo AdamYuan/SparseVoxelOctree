@@ -52,7 +52,7 @@ private:
 	void create_descriptors(const std::shared_ptr<myvk::Device> &device);
 
 public:
-	bool Initialize(const std::shared_ptr<myvk::Queue> &graphics_queue, const char *filename);
+	static std::shared_ptr<Scene> Create(const std::shared_ptr<myvk::Queue> &graphics_queue, const char *filename);
 
 	static VkVertexInputBindingDescription GetVertexBindingDescription();
 

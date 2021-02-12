@@ -63,13 +63,14 @@ private:
 	// render pass
 	std::shared_ptr<myvk::RenderPass> m_render_pass;
 
-	// global data
-	Camera m_camera;
 	ImGuiRenderer m_imgui_renderer;
-	Octree m_octree;
-	OctreeTracer m_octree_tracer;
-	PathTracer m_path_tracer;
-	PathTracerViewer m_path_tracer_viewer;
+
+	// global data
+	std::shared_ptr<Camera> m_camera;
+	std::shared_ptr<Octree> m_octree;
+	std::shared_ptr<OctreeTracer> m_octree_tracer;
+	std::shared_ptr<PathTracer> m_path_tracer;
+	std::shared_ptr<PathTracerViewer> m_path_tracer_viewer;
 
 	// multithreading loader
 	std::thread m_loader_thread;

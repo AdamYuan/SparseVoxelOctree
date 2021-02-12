@@ -1,6 +1,7 @@
 #include "Octree.hpp"
 
-void Octree::Initialize(const std::shared_ptr<myvk::Device> &device) {
+std::shared_ptr<Octree> Octree::Create(const std::shared_ptr<myvk::Device> &device) {
+	std::shared_ptr<Octree> ret = std::make_shared<Octree>();
 	{
 		VkDescriptorSetLayoutBinding octree_binding = {};
 		octree_binding.binding = 0;
@@ -8,15 +9,19 @@ void Octree::Initialize(const std::shared_ptr<myvk::Device> &device) {
 		octree_binding.descriptorCount = 1;
 		octree_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {octree_binding});
+		ret->m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {octree_binding});
 	}
-	m_descriptor_pool = myvk::DescriptorPool::Create(device, 1, {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1}});
-	m_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
+	ret->m_descriptor_pool = myvk::DescriptorPool::Create(device, 1, {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1}});
+	ret->m_descriptor_set = myvk::DescriptorSet::Create(ret->m_descriptor_pool, ret->m_descriptor_set_layout);
+
+	return ret;
 }
 
-void Octree::Update(const std::shared_ptr<myvk::Buffer> &buffer, uint32_t level, VkDeviceSize range) {
-	m_buffer = buffer;
-	m_level = level;
-	m_range = range;
-	m_descriptor_set->UpdateStorageBuffer(buffer, 0, 0, 0, range);
+void Octree::Update(const std::shared_ptr<myvk::CommandPool> &command_pool,
+                    const std::shared_ptr<OctreeBuilder> &builder) {
+	uint32_t octree_range = builder->GetOctreeRange(command_pool);
+	m_buffer = builder->GetOctree();
+	m_level = builder->GetLevel();
+	m_range = octree_range;
+	m_descriptor_set->UpdateStorageBuffer(m_buffer, 0, 0, 0, octree_range);
 }

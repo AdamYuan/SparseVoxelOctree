@@ -1,6 +1,7 @@
 #ifndef OCTREE_HPP
 #define OCTREE_HPP
 
+#include "OctreeBuilder.hpp"
 #include "myvk/Buffer.hpp"
 #include "myvk/DescriptorSet.hpp"
 
@@ -14,17 +15,15 @@ private:
 	std::shared_ptr<myvk::DescriptorSet> m_descriptor_set;
 
 public:
-	void Initialize(const std::shared_ptr<myvk::Device> &device);
+	static std::shared_ptr<Octree> Create(const std::shared_ptr<myvk::Device> &device);
 
-	void Update(const std::shared_ptr<myvk::Buffer> &buffer, uint32_t level, VkDeviceSize range);
+	void Update(const std::shared_ptr<myvk::CommandPool> &command_pool, const std::shared_ptr<OctreeBuilder> &builder);
 
 	bool Empty() const { return m_buffer == nullptr; }
 
 	const std::shared_ptr<myvk::Buffer> &GetBuffer() const { return m_buffer; }
 
-	const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayout() const {
-		return m_descriptor_set_layout;
-	}
+	const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayout() const { return m_descriptor_set_layout; }
 
 	const std::shared_ptr<myvk::DescriptorSet> &GetDescriptorSet() const { return m_descriptor_set; }
 
