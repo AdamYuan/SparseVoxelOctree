@@ -32,6 +32,8 @@ public:
 
 	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_image_ptr->GetDevicePtr(); };
 
+	const std::shared_ptr<ImageBase> &GetImagePtr() const { return m_image_ptr; };
+
 	VkImageView GetHandle() const { return m_image_view; }
 
 	~ImageView();

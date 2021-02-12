@@ -36,7 +36,7 @@ void OctreeTracer::create_frame_resources(const std::shared_ptr<myvk::Device> &d
 		i.m_beam_image_view = myvk::ImageView::Create(i.m_beam_image, VK_IMAGE_VIEW_TYPE_2D);
 		i.m_beam_sampler = myvk::Sampler::Create(device, VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 		i.m_beam_framebuffer =
-		    myvk::Framebuffer::Create(m_beam_render_pass, {i.m_beam_image_view}, {kBeamWidth, kBeamHeight});
+		    myvk::Framebuffer::Create(m_beam_render_pass, i.m_beam_image_view);
 		i.m_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
 		i.m_descriptor_set->UpdateCombinedImageSampler(i.m_beam_sampler, i.m_beam_image_view, 0);
 	}

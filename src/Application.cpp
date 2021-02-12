@@ -104,7 +104,7 @@ void Application::create_framebuffers() {
 	m_framebuffers.resize(m_swapchain->GetImageCount());
 	for (uint32_t i = 0; i < m_swapchain->GetImageCount(); ++i) {
 		m_framebuffers[i] =
-		    myvk::Framebuffer::Create(m_render_pass, {m_swapchain_image_views[i]}, m_swapchain->GetExtent());
+		    myvk::Framebuffer::Create(m_render_pass, m_swapchain_image_views[i]);
 	}
 }
 

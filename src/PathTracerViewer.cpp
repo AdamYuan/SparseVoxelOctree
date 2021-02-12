@@ -247,7 +247,7 @@ std::shared_ptr<PathTracerViewer> PathTracerViewer::Create(const std::shared_ptr
 	ret->m_sampler =
 	    myvk::Sampler::Create(render_pass->GetDevicePtr(), VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 	ret->create_render_pass(render_pass->GetDevicePtr());
-	ret->m_gen_framebuffer = myvk::Framebuffer::Create(ret->m_gen_render_pass, {ret->m_image_view}, {kWidth, kHeight});
+	ret->m_gen_framebuffer = myvk::Framebuffer::Create(ret->m_gen_render_pass, ret->m_image_view);
 	ret->create_gen_graphics_pipeline(render_pass->GetDevicePtr());
 
 	ret->create_descriptors(render_pass->GetDevicePtr());

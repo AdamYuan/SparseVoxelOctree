@@ -25,6 +25,10 @@ public:
 	                                           const VkExtent2D &extent, uint32_t layers = 1,
 	                                           VkFramebufferCreateFlags flags = 0);
 
+	static std::shared_ptr<Framebuffer> Create(const std::shared_ptr<RenderPass> &render_pass,
+	                                           const std::shared_ptr<ImageView> &image_view,
+	                                           VkFramebufferCreateFlags flags = 0);
+
 	VkFramebuffer GetHandle() const { return m_framebuffer; }
 
 	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_render_pass_ptr->GetDevicePtr(); }

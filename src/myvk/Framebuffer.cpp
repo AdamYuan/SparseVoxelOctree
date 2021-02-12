@@ -33,6 +33,14 @@ std::shared_ptr<Framebuffer> Framebuffer::Create(const std::shared_ptr<RenderPas
 	return ret;
 }
 
+std::shared_ptr<Framebuffer> Framebuffer::Create(const std::shared_ptr<RenderPass> &render_pass,
+                                                 const std::shared_ptr<ImageView> &image_view,
+                                                 VkFramebufferCreateFlags flags) {
+	VkExtent3D extent_3d = image_view->GetImagePtr()->GetExtent();
+	return Create(render_pass, {image_view}, {extent_3d.width, extent_3d.height},
+	              image_view->GetImagePtr()->GetArrayLayers(), flags);
+}
+
 Framebuffer::~Framebuffer() {
 	if (m_framebuffer)
 		vkDestroyFramebuffer(m_render_pass_ptr->GetDevicePtr()->GetHandle(), m_framebuffer, nullptr);
