@@ -3,3 +3,4 @@ Release/**
 Debug/**
 .cache/**
 compile_commands.json
+*.exr
