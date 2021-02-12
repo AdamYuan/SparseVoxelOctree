@@ -20,13 +20,13 @@ public:
 
 	bool Empty() const { return m_buffer == nullptr; }
 
-	const std::shared_ptr<myvk::Buffer> &GetBufferPtr() const { return m_buffer; }
+	const std::shared_ptr<myvk::Buffer> &GetBuffer() const { return m_buffer; }
 
-	const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayoutPtr() const {
+	const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayout() const {
 		return m_descriptor_set_layout;
 	}
 
-	const std::shared_ptr<myvk::DescriptorSet> &GetDescriptorSetPtr() const { return m_descriptor_set; }
+	const std::shared_ptr<myvk::DescriptorSet> &GetDescriptorSet() const { return m_descriptor_set; }
 
 	uint32_t GetLevel() const { return m_level; }
 

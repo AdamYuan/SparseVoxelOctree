@@ -1,5 +1,4 @@
 #include "Sobol.hpp"
-#include "SobolSpirv.hpp"
 
 constexpr uint32_t kMaxDimension = 64;
 constexpr VkDeviceSize kBufferSize = (kMaxDimension + 1) * sizeof(uint32_t);
@@ -38,6 +37,9 @@ void Sobol::Initialize(const std::shared_ptr<myvk::Device> &device) {
 	m_pipeline_layout = myvk::PipelineLayout::Create(device, {m_descriptor_set_layout},
 	                                                 {{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t)}});
 	{
+		constexpr uint32_t kSobolCompSpv[] = {
+#include "spirv/sobol.comp.u32"
+		};
 		std::shared_ptr<myvk::ShaderModule> sobol_shader_module =
 		    myvk::ShaderModule::Create(device, kSobolCompSpv, sizeof(kSobolCompSpv));
 		m_compute_pipeline = myvk::ComputePipeline::Create(m_pipeline_layout, sobol_shader_module);

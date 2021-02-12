@@ -9,6 +9,7 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_internal.h>
+#include <tinyexr.h>
 #include <tinyfiledialogs.h>
 
 #ifndef NDEBUG
@@ -119,11 +120,16 @@ void Application::draw_frame() {
 
 	command_buffer->Reset();
 	command_buffer->Begin();
-	if (!m_octree.Empty())
+
+	if (m_ui_state == UIStates::kOctreeTracer) {
 		m_octree_tracer.CmdBeamRenderPass(command_buffer, current_frame);
+	}
 	command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffers[image_index], {{{0.0f, 0.0f, 0.0f, 1.0f}}});
-	if (!m_octree.Empty())
+	if (m_ui_state == UIStates::kOctreeTracer) {
 		m_octree_tracer.CmdDrawPipeline(command_buffer, current_frame);
+	} else if (m_ui_state == UIStates::kPathTracing) {
+		m_path_tracer_viewer.CmdDrawPipeline(command_buffer);
+	}
 	command_buffer->CmdNextSubpass();
 	m_imgui_renderer.CmdDrawPipeline(command_buffer, current_frame);
 	command_buffer->CmdEndRenderPass();
@@ -162,9 +168,11 @@ void Application::initialize_vulkan() {
 	// DEVICE CREATION
 	{
 		std::vector<myvk::QueueRequirement> queue_requirements = {
-		    myvk::QueueRequirement(VK_QUEUE_GRAPHICS_BIT, &m_main_queue, m_surface, &m_present_queue),
-		    myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT, &m_loader_queue),
-		    myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT, &m_path_tracer_queue),
+		    myvk::QueueRequirement(VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT, &m_main_queue, m_surface,
+		                           &m_present_queue),
+		    myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT,
+		                           &m_loader_queue),
+		    myvk::QueueRequirement(VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT, &m_path_tracer_queue),
 		};
 		myvk::DeviceCreateInfo device_create_info;
 		device_create_info.Initialize(physical_devices[0], queue_requirements, {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
@@ -200,6 +208,8 @@ void Application::initialize_vulkan() {
 		m_swapchain_image_views[i] = myvk::ImageView::Create(m_swapchain_images[i]);
 
 	m_main_command_pool = myvk::CommandPool::Create(m_main_queue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	m_path_tracer_command_pool =
+	    myvk::CommandPool::Create(m_path_tracer_queue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
 	m_frame_command_buffers = myvk::CommandBuffer::CreateMultiple(m_main_command_pool, kFrameCount);
 }
@@ -225,7 +235,16 @@ Application::Application() {
 	m_frame_manager.Initialize(m_swapchain, kFrameCount);
 	m_octree.Initialize(m_device);
 	m_octree_tracer.Initialize(m_octree, m_camera, m_render_pass, 0, kFrameCount);
+	m_path_tracer.Initialize(m_path_tracer_command_pool, m_octree, m_camera);
+	m_path_tracer_viewer.Initialize(m_path_tracer, m_swapchain, m_render_pass, 0);
 	m_imgui_renderer.Initialize(m_main_command_pool, m_render_pass, 1, kFrameCount);
+}
+
+Application::~Application() {
+	if (m_path_tracer_thread.joinable()) {
+		m_ui_state = UIStates::kEmpty;
+		m_path_tracer_thread.join();
+	}
 }
 
 void Application::LoadScene(const char *filename, uint32_t octree_level) {
@@ -241,7 +260,8 @@ void Application::Run() {
 
 		glfwPollEvents();
 
-		m_camera.Control(m_window, float(cur_time - lst_time));
+		if (m_ui_state == UIStates::kOctreeTracer)
+			m_camera.Control(m_window, float(cur_time - lst_time));
 
 		ui_switch_state();
 
@@ -265,11 +285,15 @@ void Application::ui_switch_state() {
 			m_loader_condition_variable.notify_all();
 			m_loader_thread.join();
 			m_loader_ready_to_join = false;
+
+			m_ui_state = UIStates::kOctreeTracer;
 		}
 	} else if (m_octree.Empty())
 		m_ui_state = UIStates::kEmpty;
-	else
-		m_ui_state = UIStates::kOctreeTracer;
+
+	if (m_path_tracer_thread.joinable() && m_ui_state != UIStates::kPathTracing) {
+		m_path_tracer_thread.join();
+	}
 }
 
 void Application::ui_render_main() {
@@ -296,38 +320,73 @@ void Application::ui_menubar() {
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::BeginMainMenuBar();
 
-	if (ImGui::BeginMenu("File")) {
-		if (ImGui::MenuItem("Load Scene", nullptr))
+	if (m_ui_state == UIStates::kPathTracing) {
+		if (ImGui::Button("Export")) {
+			open_export_exr_popup = true;
+		}
+		if (ImGui::Button("Stop PT")) {
+			m_ui_state = UIStates::kOctreeTracer;
+		}
+	} else {
+		if (ImGui::Button("Load"))
 			open_load_scene_popup = true;
+		if (m_ui_state == UIStates::kOctreeTracer) {
+			if (ImGui::Button("Start PT")) {
+				m_ui_state = UIStates::kPathTracing;
+				m_path_tracer.Reset(m_path_tracer_command_pool);
 
-		ImGui::EndMenu();
+				m_path_tracer_thread = std::thread(&Application::path_tracer_thread, this);
+			}
+		}
 	}
 
-	/*if(m_octree && ImGui::Button("Start PT"))
-	{
-	    m_pathtracing_flag = true;
-	    m_pathtracer.Prepare(m_camera, *m_octree, m_octree_tracer);
-	}*/
+	if (m_ui_state == UIStates::kOctreeTracer) {
+		if (ImGui::BeginMenu("Camera")) {
+			ImGui::DragAngle("FOV", &m_camera.m_fov, 1, 10, 179);
+			ImGui::DragFloat("Speed", &m_camera.m_speed, 0.005f, 0.005f, 0.2f);
+			ImGui::InputFloat3("Position", &m_camera.m_position[0]);
+			ImGui::DragAngle("Yaw", &m_camera.m_yaw, 1, 0, 360);
+			ImGui::DragAngle("Pitch", &m_camera.m_pitch, 1, -90, 90);
+			ImGui::EndMenu();
+		}
 
-	if (ImGui::BeginMenu("Camera")) {
-		ImGui::DragAngle("FOV", &m_camera.m_fov, 1, 10, 179);
-		ImGui::DragFloat("Speed", &m_camera.m_speed, 0.005f, 0.005f, 0.2f);
-		ImGui::InputFloat3("Position", &m_camera.m_position[0]);
-		ImGui::DragAngle("Yaw", &m_camera.m_yaw, 1, 0, 360);
-		ImGui::DragAngle("Pitch", &m_camera.m_pitch, 1, -90, 90);
-		ImGui::EndMenu();
+		if (ImGui::BeginMenu("View")) {
+			if (ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kDiffuse))
+				m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kDiffuse;
+			if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kNormal))
+				m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kNormal;
+			if (ImGui::MenuItem("Iterations", nullptr,
+			                    m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kIteration))
+				m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kIteration;
+
+			ImGui::Checkbox("Beam Optimization", &m_octree_tracer.m_beam_enable);
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("PathTracer")) {
+			int bounce = m_path_tracer.m_bounce;
+			if (ImGui::DragInt("Bounce", &bounce, 1, kMinBounce, kMaxBounce))
+				m_path_tracer.m_bounce = bounce;
+
+			ImGui::DragFloat3("Sun Radiance", &m_path_tracer.m_sun_radiance[0], 0.1f, 0.0f, kMaxSunRadiance);
+			ImGui::EndMenu();
+		}
 	}
 
-	if (ImGui::BeginMenu("View")) {
-		if (ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kDiffuse))
-			m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kDiffuse;
-		if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kNormal))
-			m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kNormal;
-		if (ImGui::MenuItem("Iterations", nullptr, m_octree_tracer.m_view_type == OctreeTracer::ViewTypes::kIteration))
-			m_octree_tracer.m_view_type = OctreeTracer::ViewTypes::kIteration;
+	if (m_ui_state == UIStates::kPathTracing) {
+		if (ImGui::BeginMenu("View")) {
+			if (ImGui::MenuItem("Color", nullptr,
+			                    m_path_tracer_viewer.m_view_type == PathTracerViewer::ViewTypes::kColor))
+				m_path_tracer_viewer.m_view_type = PathTracerViewer::ViewTypes::kColor;
+			if (ImGui::MenuItem("Albedo", nullptr,
+			                    m_path_tracer_viewer.m_view_type == PathTracerViewer::ViewTypes::kAlbedo))
+				m_path_tracer_viewer.m_view_type = PathTracerViewer::ViewTypes::kAlbedo;
+			if (ImGui::MenuItem("Normal", nullptr,
+			                    m_path_tracer_viewer.m_view_type == PathTracerViewer::ViewTypes::kNormal))
+				m_path_tracer_viewer.m_view_type = PathTracerViewer::ViewTypes::kNormal;
 
-		ImGui::Checkbox("Beam Optimization", &m_octree_tracer.m_beam_enable);
-		ImGui::EndMenu();
+			ImGui::EndMenu();
+		}
 	}
 
 	if (ImGui::BeginMenu("Log")) {
@@ -359,18 +418,15 @@ void Application::ui_menubar() {
 	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 	float indent_w = ImGui::GetWindowContentRegionWidth();
 
-	{
-		char buf[32];
+	char buf[128];
+	if (m_ui_state == UIStates::kOctreeTracer) {
 		sprintf(buf, "FPS: %.1f", ImGui::GetIO().Framerate);
 		indent_w -= ImGui::CalcTextSize(buf).x;
 		ImGui::SameLine(indent_w);
 		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_TabUnfocusedActive));
 		ImGui::Button(buf);
 		ImGui::PopStyleColor();
-	}
 
-	if (!m_octree.Empty()) {
-		char buf[128];
 		sprintf(buf, "Octree Level: %d", m_octree.GetLevel());
 		indent_w -= ImGui::CalcTextSize(buf).x + 8;
 		ImGui::SameLine(indent_w);
@@ -379,19 +435,30 @@ void Application::ui_menubar() {
 		ImGui::PopStyleColor();
 
 		sprintf(buf, "Octree Size: %.0f/%.0f MB", m_octree.GetRange() / 1000000.0f,
-		        m_octree.GetBufferPtr()->GetSize() / 1000000.0f);
+		        m_octree.GetBuffer()->GetSize() / 1000000.0f);
 		indent_w -= ImGui::CalcTextSize(buf).x + 8;
 		ImGui::SameLine(indent_w);
 		ImGui::Button(buf);
+	} else if (m_ui_state == UIStates::kPathTracing) {
+		sprintf(buf, "SPP: %u", m_path_tracer_spp);
+		indent_w -= ImGui::CalcTextSize(buf).x;
+		ImGui::SameLine(indent_w);
+		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_TabUnfocusedActive));
+		ImGui::Button(buf);
+		ImGui::PopStyleColor();
+
+		sprintf(buf, "Render Time: %u sec", uint32_t(glfwGetTime() - m_path_tracer_start_time));
+		indent_w -= ImGui::CalcTextSize(buf).x + 8;
+		ImGui::SameLine(indent_w);
+		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_TabUnfocused));
+		ImGui::Button(buf);
+		ImGui::PopStyleColor();
+	}
+
+	if (!m_octree.Empty()) {
 	}
 	ImGui::PopItemFlag();
 
-	/*if(ImGui::BeginMenu("Path Tracer"))
-	{
-	    ImGui::DragInt("Bounce", &m_pathtracer.m_bounce, 1, 2, kMaxBounce);
-	    ImGui::DragFloat3("Sun Radiance", &m_pathtracer.m_sun_radiance[0],
-	0.1f, 0.0f, 20.0f); ImGui::EndMenu();
-	}*/
 	/*else if(m_octree)
 	{
 	    if(ImGui::Button("Exit PT"))
@@ -419,8 +486,8 @@ void Application::ui_menubar() {
 
 	if (open_load_scene_popup)
 		ImGui::OpenPopup("Load Scene");
-	// if (open_export_exr_popup)
-	//	ImGui::OpenPopup("Export OpenEXR");
+	if (open_export_exr_popup)
+		ImGui::OpenPopup("Export OpenEXR");
 
 	ui_load_scene_modal();
 	ui_export_exr_modal();
@@ -492,39 +559,60 @@ void Application::ui_loading_modal() {
 }
 
 void Application::ui_export_exr_modal() {
-	/*if (ImGui::BeginPopupModal("Export OpenEXR", nullptr,
-	                           ImGuiWindowFlags_AlwaysAutoResize |
-	ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove))
-	{
-	    static char exr_name_buf[kFilenameBufSize]{};
-	    static bool save_as_fp16{false};
-	    ImGui::LabelText("", "INFO: will export %s channel",
-	                     m_pathtracer.m_view_type == PathTracer::kColor ?
-	"COLOR" : (m_pathtracer.m_view_type == PathTracer::kAlbedo ? "ALBEDO" :
-	"NORMAL"));
+	if (ImGui::BeginPopupModal("Export OpenEXR", nullptr,
+	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
+	                               ImGuiWindowFlags_NoMove)) {
 
-	    constexpr const char *kFilter[] = {"*.exr"};
-	    ui_file_save("OpenEXR Filename", "...##0", exr_name_buf,
-	kFilenameBufSize, "Export OpenEXR", 1, kFilter);
+		constexpr const char *kTypes[] = {"Color", "Albedo", "Normal"};
+		static const char *const *current_type = kTypes + 0;
+		if (ImGui::BeginCombo("Type", *current_type)) {
+			for (int n = 0; n < IM_ARRAYSIZE(kTypes); n++) {
+				bool is_selected = (current_type == kTypes + n);
+				if (ImGui::Selectable(kTypes[n], is_selected))
+					current_type = kTypes + n;
+				if (is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
 
-	    ImGui::Checkbox("Export As FP16", &save_as_fp16);
+		static char exr_name_buf[kFilenameBufSize]{};
+		static bool save_as_fp16{false};
 
-	    {
-	        if (ImGui::Button("Export", ImVec2(256, 0)))
-	        {
-	            m_pathtracer.Save(exr_name_buf, save_as_fp16);
-	            ImGui::CloseCurrentPopup();
-	        }
-	        ImGui::SetItemDefaultFocus();
-	        ImGui::SameLine();
-	        if (ImGui::Button("Cancel", ImVec2(256, 0)))
-	        {
-	            ImGui::CloseCurrentPopup();
-	        }
-	    }
+		constexpr const char *kFilter[] = {"*.exr"};
+		ui_file_save("OpenEXR Filename", "...##0", exr_name_buf, kFilenameBufSize, "Export OpenEXR", 1, kFilter);
 
-	    ImGui::EndPopup();
-	}*/
+		ImGui::Checkbox("Export as FP16", &save_as_fp16);
+
+		{
+			if (ImGui::Button("Export", ImVec2(256, 0))) {
+				m_path_tracer_mutex.lock();
+				std::vector<float> pixels;
+				if (current_type == kTypes + 0) // color
+					pixels = m_path_tracer.ExtractColorImage(m_path_tracer_command_pool);
+				else if (current_type == kTypes + 1) // albedo
+					pixels = m_path_tracer.ExtractAlbedoImage(m_path_tracer_command_pool);
+				else // normal
+					pixels = m_path_tracer.ExtractNormalImage(m_path_tracer_command_pool);
+				char *err{nullptr};
+				if (SaveEXR(pixels.data(), kWidth, kHeight, 3, save_as_fp16, exr_name_buf, (const char **)&err) < 0)
+					spdlog::error("Error when saving EXR image: {}", err);
+				else
+					spdlog::info("Saved EXR image to {}", exr_name_buf);
+				free(err);
+
+				m_path_tracer_mutex.unlock();
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::SetItemDefaultFocus();
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel", ImVec2(256, 0))) {
+				ImGui::CloseCurrentPopup();
+			}
+		}
+
+		ImGui::EndPopup();
+	}
 }
 
 void Application::glfw_key_callback(GLFWwindow *window, int key, int, int action, int) {
@@ -556,11 +644,10 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 		voxelizer.CmdVoxelize(command_buffer);
 		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 1);
 
-		command_buffer->CmdPipelineBarrier(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		                                   {},
-		                                   {voxelizer.GetVoxelFragmentListPtr()->GetMemoryBarrier(
-		                                       VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT)},
-		                                   {});
+		command_buffer->CmdPipelineBarrier(
+		    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {},
+		    {voxelizer.GetVoxelFragmentList()->GetMemoryBarrier(VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT)},
+		    {});
 
 		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, query_pool, 2);
 		builder.CmdBuild(command_buffer);
@@ -615,4 +702,40 @@ void Application::loader_thread(const char *filename, uint32_t octree_level) {
 		}
 	}
 	m_loader_ready_to_join = true;
+}
+
+void Application::path_tracer_thread() {
+	m_path_tracer_spp = 0;
+	m_path_tracer_start_time = glfwGetTime();
+
+	std::shared_ptr<myvk::CommandPool> pt_command_pool = myvk::CommandPool::Create(m_path_tracer_queue);
+	std::shared_ptr<myvk::CommandBuffer> pt_command_buffer = myvk::CommandBuffer::Create(pt_command_pool);
+	pt_command_buffer->Begin();
+	m_path_tracer.CmdRender(pt_command_buffer);
+	pt_command_buffer->End();
+
+	// TODO: Transfer queue ownership
+	std::shared_ptr<myvk::CommandPool> viewer_command_pool = myvk::CommandPool::Create(m_main_queue);
+
+	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(m_device);
+	while (m_ui_state == UIStates::kPathTracing) {
+		m_path_tracer_mutex.lock();
+		pt_command_buffer->Submit({}, {}, fence);
+		fence->Wait();
+		m_path_tracer_mutex.unlock();
+
+		++m_path_tracer_spp;
+		fence->Reset();
+
+		if (m_path_tracer_spp % kPTResultUpdateInterval == 1) {
+			std::shared_ptr<myvk::CommandBuffer> viewer_command_buffer =
+			    myvk::CommandBuffer::Create(viewer_command_pool);
+			viewer_command_buffer->Begin();
+			m_path_tracer_viewer.CmdGenRenderPass(viewer_command_buffer);
+			viewer_command_buffer->End();
+			viewer_command_buffer->Submit({}, {}, fence);
+			fence->Wait();
+			fence->Reset();
+		}
+	}
 }

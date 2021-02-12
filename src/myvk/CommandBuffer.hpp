@@ -83,7 +83,11 @@ public:
 
 	void CmdCopy(const std::shared_ptr<BufferBase> &src, const std::shared_ptr<ImageBase> &dst,
 	             const std::vector<VkBufferImageCopy> &regions,
-	             VkImageLayout layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) const;
+	             VkImageLayout dst_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) const;
+
+	void CmdCopy(const std::shared_ptr<ImageBase> &src, const std::shared_ptr<BufferBase> &dst,
+	             const std::vector<VkBufferImageCopy> &regions,
+	             VkImageLayout src_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) const;
 
 	void CmdDraw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) const;
 

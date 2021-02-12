@@ -16,6 +16,8 @@
 #include "ImGuiRenderer.hpp"
 #include "Octree.hpp"
 #include "OctreeTracer.hpp"
+#include "PathTracer.hpp"
+#include "PathTracerViewer.hpp"
 #include "Scene.hpp"
 #include "myvk/Buffer.hpp"
 #include "myvk/CommandBuffer.hpp"
@@ -48,7 +50,7 @@ private:
 	std::shared_ptr<myvk::Device> m_device;
 	std::shared_ptr<myvk::Queue> m_main_queue, m_loader_queue, m_path_tracer_queue;
 	std::shared_ptr<myvk::PresentQueue> m_present_queue;
-	std::shared_ptr<myvk::CommandPool> m_main_command_pool;
+	std::shared_ptr<myvk::CommandPool> m_main_command_pool, m_path_tracer_command_pool;
 
 	// frame objects
 	std::shared_ptr<myvk::Swapchain> m_swapchain;
@@ -66,12 +68,22 @@ private:
 	ImGuiRenderer m_imgui_renderer;
 	Octree m_octree;
 	OctreeTracer m_octree_tracer;
+	PathTracer m_path_tracer;
+	PathTracerViewer m_path_tracer_viewer;
 
 	// multithreading loader
 	std::thread m_loader_thread;
 	std::mutex m_loader_mutex;
 	bool m_loader_ready_to_join{false};
 	std::condition_variable m_loader_condition_variable;
+
+	// multithreading path tracer
+	uint32_t m_path_tracer_spp{0};
+	double m_path_tracer_start_time{0.0};
+	std::thread m_path_tracer_thread;
+	std::mutex m_path_tracer_mutex;
+	// bool m_path_tracer_ready_to_join{false};
+	// std::condition_variable m_path_tracer_condition_variable;
 
 	// ui flags
 	enum class UIStates { kEmpty, kOctreeTracer, kPathTracing, kLoading } m_ui_state{UIStates::kEmpty};
@@ -84,6 +96,8 @@ private:
 	void initialize_vulkan();
 
 	void loader_thread(const char *filename, uint32_t octree_level);
+
+	void path_tracer_thread();
 
 	void create_render_pass();
 
@@ -121,6 +135,8 @@ public:
 	void LoadScene(const char *filename, uint32_t octree_level);
 
 	void Run();
+
+	~Application();
 };
 
 #endif

@@ -1,17 +1,63 @@
 #ifndef PATH_TRACER_HPP
 #define PATH_TRACER_HPP
 
+#include "Camera.hpp"
+#include "Octree.hpp"
 #include "Sobol.hpp"
 #include "myvk/Image.hpp"
 
+#include <glm/glm.hpp>
+
 class PathTracer {
 private:
+	const Octree *m_octree;
+	const Camera *m_camera;
+
 	Sobol m_sobol;
-	std::shared_ptr<myvk::Image> m_color_image, m_albedo_image, m_normal_image;
-	std::shared_ptr<myvk::ImageView> m_color_image_view, m_albedo_image_view, m_normal_image_view;
+	std::shared_ptr<myvk::Image> m_color_image, m_albedo_image, m_normal_image, m_noise_image;
+	std::shared_ptr<myvk::ImageView> m_color_image_view, m_albedo_image_view, m_normal_image_view, m_noise_image_view;
+	std::shared_ptr<myvk::Sampler> m_noise_sampler;
+
+	std::shared_ptr<myvk::DescriptorPool> m_descriptor_pool;
+	std::shared_ptr<myvk::DescriptorSetLayout> m_target_descriptor_set_layout, m_noise_descriptor_set_layout;
+	std::shared_ptr<myvk::DescriptorSet> m_target_descriptor_set, m_noise_descriptor_set;
+
+	std::shared_ptr<myvk::PipelineLayout> m_pipeline_layout;
+	std::shared_ptr<myvk::ComputePipeline> m_pipeline;
+
+	void create_images(const std::shared_ptr<myvk::Device> &device);
+	void create_descriptor(const std::shared_ptr<myvk::Device> &device);
+	void create_pipeline(const std::shared_ptr<myvk::Device> &device);
+
+	void clear_target_images(const std::shared_ptr<myvk::CommandPool> &command_pool);
+	void set_noise_image(const std::shared_ptr<myvk::CommandPool> &command_pool);
+
+	static void extract_target_image_to_buffer(const std::shared_ptr<myvk::CommandPool> &command_pool,
+	                                           const std::shared_ptr<myvk::ImageBase> &image,
+	                                           const std::shared_ptr<myvk::BufferBase> &buffer);
 
 public:
-	void Initialize(const std::shared_ptr<myvk::Device> &device);
+	uint32_t m_bounce;
+	glm::vec3 m_sun_radiance;
+
+	void Initialize(const std::shared_ptr<myvk::CommandPool> &command_pool, const Octree &octree, const Camera &camera);
+
+	void Reset(const std::shared_ptr<myvk::CommandPool> &command_pool);
+
+	void CmdRender(const std::shared_ptr<myvk::CommandBuffer> &command_buffer);
+
+	const std::shared_ptr<myvk::Image> &GetColorImage() const { return m_color_image; }
+	const std::shared_ptr<myvk::Image> &GetAlbedoImage() const { return m_albedo_image; }
+	const std::shared_ptr<myvk::Image> &GetNormalImage() const { return m_normal_image; }
+
+	const std::shared_ptr<myvk::DescriptorSetLayout> &GetTargetDescriptorSetLayout() const {
+		return m_target_descriptor_set_layout;
+	}
+	const std::shared_ptr<myvk::DescriptorSet> &GetTargetDescriptorSet() const { return m_target_descriptor_set; }
+
+	std::vector<float> ExtractColorImage(const std::shared_ptr<myvk::CommandPool> &command_pool) const;
+	std::vector<float> ExtractAlbedoImage(const std::shared_ptr<myvk::CommandPool> &command_pool) const;
+	std::vector<float> ExtractNormalImage(const std::shared_ptr<myvk::CommandPool> &command_pool) const;
 };
 
 #endif

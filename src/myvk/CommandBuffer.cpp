@@ -162,6 +162,12 @@ void CommandBuffer::CmdCopy(const std::shared_ptr<BufferBase> &src, const std::s
 	                       regions.data());
 }
 
+void CommandBuffer::CmdCopy(const std::shared_ptr<ImageBase> &src, const std::shared_ptr<BufferBase> &dst,
+                            const std::vector<VkBufferImageCopy> &regions, VkImageLayout layout) const {
+	vkCmdCopyImageToBuffer(m_command_buffer, src->GetHandle(), layout, dst->GetHandle(), regions.size(),
+	                       regions.data());
+}
+
 void CommandBuffer::CmdDraw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex,
                             uint32_t first_instance) const {
 	vkCmdDraw(m_command_buffer, vertex_count, instance_count, first_vertex, first_instance);

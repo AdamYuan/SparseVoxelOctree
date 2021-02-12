@@ -22,6 +22,13 @@ constexpr uint32_t kBeamSize = 8; // for beam optimization
 constexpr uint32_t kBeamWidth = (kWidth + (kBeamSize - 1)) / kBeamSize + 1;
 constexpr uint32_t kBeamHeight = (kHeight + (kBeamSize - 1)) / kBeamSize + 1;
 
+constexpr uint32_t kMinBounce = 2;
+constexpr uint32_t kDefaultBounce = 4;
 constexpr uint32_t kMaxBounce = 16;
+
+constexpr float kDefaultSunRadiance = 5.0f;
+constexpr float kMaxSunRadiance = 20.0f;
+
+constexpr uint32_t kPTResultUpdateInterval = 10;
 
 #endif

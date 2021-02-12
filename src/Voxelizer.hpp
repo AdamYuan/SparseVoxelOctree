@@ -39,7 +39,7 @@ public:
 	void CmdVoxelize(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
 	uint32_t GetVoxelResolution() const { return m_voxel_resolution; }
 	uint32_t GetVoxelFragmentCount() const { return m_voxel_fragment_count; }
-	const std::shared_ptr<myvk::Buffer> &GetVoxelFragmentListPtr() const { return m_voxel_fragment_list; }
+	const std::shared_ptr<myvk::Buffer> &GetVoxelFragmentList() const { return m_voxel_fragment_list; }
 };
 
 #endif

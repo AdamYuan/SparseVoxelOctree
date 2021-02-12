@@ -29,6 +29,7 @@ IF(GLSLC)
 	endfunction()
 
 	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/quad.vert ${CMAKE_SOURCE_DIR}/src/spirv/quad.vert.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/quad_sampler.frag ${CMAKE_SOURCE_DIR}/src/spirv/quad_sampler.frag.u32)
 
 	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/sobol.comp ${CMAKE_SOURCE_DIR}/src/spirv/sobol.comp.u32)
 
@@ -43,11 +44,15 @@ IF(GLSLC)
 
 	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer.frag ${CMAKE_SOURCE_DIR}/src/spirv/octree_tracer.frag.u32)
 	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer_beam.frag ${CMAKE_SOURCE_DIR}/src/spirv/octree_tracer_beam.frag.u32)
+
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/path_tracer.comp ${CMAKE_SOURCE_DIR}/src/spirv/path_tracer.comp.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/path_tracer_viewer.frag ${CMAKE_SOURCE_DIR}/src/spirv/path_tracer_viewer.frag.u32)
 ENDIF()
 
 add_executable(VulkanSVO
 	# SPIRV SHADERS
 	src/spirv/quad.vert.u32
+	src/spirv/quad_sampler.frag.u32
 
 	src/spirv/sobol.comp.u32
 
@@ -63,6 +68,9 @@ add_executable(VulkanSVO
 	src/spirv/octree_tracer.frag.u32
 	src/spirv/octree_tracer_beam.frag.u32
 
+	src/spirv/path_tracer.comp.u32
+	src/spirv/path_tracer_viewer.frag.u32
+
 	# SINGLE HEADERS
 	dep/vk_mem_alloc.cpp
 	dep/vk_queue_selector.c
@@ -70,6 +78,7 @@ add_executable(VulkanSVO
 	dep/tiny_obj_loader.cpp
 	dep/tinyfiledialogs.c
 	dep/volk.c
+	dep/tinyexr.cc
 
 	# IMGUI
 	dep/imgui/imgui.cpp
@@ -86,6 +95,7 @@ add_executable(VulkanSVO
 
 	# MAIN PROGRAM
 	src/main.cpp
+	src/QuadSpirv.hpp
 	src/Config.hpp
 	src/Application.cpp
 	src/Application.hpp
@@ -111,6 +121,8 @@ add_executable(VulkanSVO
 	src/Sobol.hpp
 	src/PathTracer.cpp
 	src/PathTracer.hpp
+	src/PathTracerViewer.cpp
+	src/PathTracerViewer.hpp
 
 	# MYVK
 	src/myvk/DeviceObjectBase.hpp
@@ -178,6 +190,11 @@ add_executable(VulkanSVO
 	src/myvk/QueryPool.hpp
 	)
 
-find_package(Threads)
 target_compile_definitions(VulkanSVO PUBLIC VK_NO_PROTOTYPES)
-target_link_libraries(VulkanSVO ${CMAKE_DL_LIBS} glfw spdlog Threads::Threads)
+
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+	target_link_libraries(VulkanSVO PRIVATE OpenMP::OpenMP_CXX)
+endif()
+find_package(Threads REQUIRED)
+target_link_libraries(VulkanSVO PRIVATE ${CMAKE_DL_LIBS} glfw spdlog Threads::Threads)

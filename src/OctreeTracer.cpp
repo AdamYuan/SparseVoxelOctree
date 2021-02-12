@@ -1,6 +1,5 @@
 #include "Config.hpp"
 #include "OctreeTracer.hpp"
-#include "OctreeTracerSpirv.hpp"
 #include "QuadSpirv.hpp"
 #include "myvk/ShaderModule.hpp"
 
@@ -20,10 +19,10 @@ void OctreeTracer::create_layouts(const std::shared_ptr<myvk::Device> &device) {
 		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {beam_image_binding});
 	}
 	m_main_pipeline_layout = myvk::PipelineLayout::Create(
-	    device, {m_octree->GetDescriptorSetLayoutPtr(), m_camera->GetDescriptorSetLayout(), m_descriptor_set_layout},
+	    device, {m_octree->GetDescriptorSetLayout(), m_camera->GetDescriptorSetLayout(), m_descriptor_set_layout},
 	    {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 5 * sizeof(uint32_t)}});
 	m_beam_pipeline_layout = myvk::PipelineLayout::Create(
-	    device, {m_octree->GetDescriptorSetLayoutPtr(), m_camera->GetDescriptorSetLayout()},
+	    device, {m_octree->GetDescriptorSetLayout(), m_camera->GetDescriptorSetLayout()},
 	    {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 3 * sizeof(uint32_t) + sizeof(float)}});
 }
 
@@ -44,6 +43,9 @@ void OctreeTracer::create_frame_resources(const std::shared_ptr<myvk::Device> &d
 
 void OctreeTracer::create_main_graphics_pipeline(const std::shared_ptr<myvk::RenderPass> &render_pass,
                                                  uint32_t subpass) {
+	constexpr uint32_t kOctreeTracerFragSpv[] = {
+#include "spirv/octree_tracer.frag.u32"
+	};
 	std::shared_ptr<myvk::Device> device = render_pass->GetDevicePtr();
 
 	std::shared_ptr<myvk::ShaderModule> vert_shader_module, frag_shader_module;
@@ -169,6 +171,9 @@ void OctreeTracer::create_beam_render_pass(const std::shared_ptr<myvk::Device> &
 }
 
 void OctreeTracer::create_beam_graphics_pipeline(const std::shared_ptr<myvk::Device> &device) {
+	constexpr uint32_t kOctreeTracerBeamFragSpv[] = {
+#include "spirv/octree_tracer_beam.frag.u32"
+	};
 	std::shared_ptr<myvk::ShaderModule> vert_shader_module, frag_shader_module;
 	vert_shader_module = myvk::ShaderModule::Create(device, kQuadVertSpv, sizeof(kQuadVertSpv));
 	frag_shader_module = myvk::ShaderModule::Create(device, kOctreeTracerBeamFragSpv, sizeof(kOctreeTracerBeamFragSpv));
@@ -274,7 +279,7 @@ void OctreeTracer::CmdBeamRenderPass(const std::shared_ptr<myvk::CommandBuffer> 
 	command_buffer->CmdBeginRenderPass(m_beam_render_pass, cur.m_beam_framebuffer, {{{0.0f, 0.0f, 0.0f, 1.0f}}});
 	command_buffer->CmdBindPipeline(m_beam_graphics_pipeline);
 	command_buffer->CmdBindDescriptorSets(
-	    {m_octree->GetDescriptorSetPtr(), m_camera->GetFrameDescriptorSet(current_frame)}, m_beam_graphics_pipeline);
+	    {m_octree->GetDescriptorSet(), m_camera->GetFrameDescriptorSet(current_frame)}, m_beam_graphics_pipeline);
 	uint32_t uint_push_constants[] = {kWidth, kHeight, kBeamSize};
 	command_buffer->CmdPushConstants(m_beam_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0,
 	                                 sizeof(uint_push_constants), uint_push_constants);
@@ -290,7 +295,7 @@ void OctreeTracer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &c
 	const auto &cur = m_frame_resources[current_frame];
 	command_buffer->CmdBindPipeline(m_main_graphics_pipeline);
 	command_buffer->CmdBindDescriptorSets(
-	    {m_octree->GetDescriptorSetPtr(), m_camera->GetFrameDescriptorSet(current_frame), cur.m_descriptor_set},
+	    {m_octree->GetDescriptorSet(), m_camera->GetFrameDescriptorSet(current_frame), cur.m_descriptor_set},
 	    m_main_graphics_pipeline);
 	uint32_t push_constants[] = {kWidth, kHeight, (uint32_t)m_view_type, m_beam_enable, kBeamSize};
 	command_buffer->CmdPushConstants(m_main_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push_constants),

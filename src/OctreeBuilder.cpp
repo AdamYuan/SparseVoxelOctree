@@ -1,10 +1,9 @@
 #include "Config.hpp"
 #include "OctreeBuilder.hpp"
-#include "OctreeBuilderSpirv.hpp"
 
 #include <spdlog/spdlog.h>
 
-inline static uint32_t group_x_64(uint32_t x) { return (x >> 6u) + ((x & 0x3fu) ? 1u : 0u); }
+inline static constexpr uint32_t group_x_64(uint32_t x) { return (x >> 6u) + ((x & 0x3fu) ? 1u : 0u); }
 
 void OctreeBuilder::Initialize(const Voxelizer &voxelizer, const std::shared_ptr<myvk::CommandPool> &command_pool,
                                uint32_t octree_level) {
@@ -90,9 +89,9 @@ void OctreeBuilder::create_descriptors(const std::shared_ptr<myvk::Device> &devi
 		                                               build_info_binding, indirect_binding});
 	}
 	m_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
-	m_descriptor_set->UpdateStorageBuffer(m_atomic_counter.GetBufferPtr(), 0);
+	m_descriptor_set->UpdateStorageBuffer(m_atomic_counter.GetBuffer(), 0);
 	m_descriptor_set->UpdateStorageBuffer(m_octree_buffer, 1);
-	m_descriptor_set->UpdateStorageBuffer(m_voxelizer->GetVoxelFragmentListPtr(), 2);
+	m_descriptor_set->UpdateStorageBuffer(m_voxelizer->GetVoxelFragmentList(), 2);
 	m_descriptor_set->UpdateStorageBuffer(m_build_info_buffer, 3);
 	m_descriptor_set->UpdateStorageBuffer(m_indirect_buffer, 4);
 }
@@ -102,24 +101,36 @@ void OctreeBuilder::create_pipeline(const std::shared_ptr<myvk::Device> &device)
 	                                                 {{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t) * 2}});
 
 	{
+		constexpr uint32_t kOctreeTagNodeCompSpv[] = {
+#include "spirv/octree_tag_node.comp.u32"
+		};
 		std::shared_ptr<myvk::ShaderModule> octree_tag_node_shader_module =
 		    myvk::ShaderModule::Create(device, kOctreeTagNodeCompSpv, sizeof(kOctreeTagNodeCompSpv));
 		m_tag_node_pipeline = myvk::ComputePipeline::Create(m_pipeline_layout, octree_tag_node_shader_module);
 	}
 
 	{
+		constexpr uint32_t kOctreeInitNodeCompSpv[] = {
+#include "spirv/octree_init_node.comp.u32"
+		};
 		std::shared_ptr<myvk::ShaderModule> octree_init_node_shader_module =
 		    myvk::ShaderModule::Create(device, kOctreeInitNodeCompSpv, sizeof(kOctreeInitNodeCompSpv));
 		m_init_node_pipeline = myvk::ComputePipeline::Create(m_pipeline_layout, octree_init_node_shader_module);
 	}
 
 	{
+		constexpr uint32_t kOctreeAllocNodeCompSpv[] = {
+#include "spirv/octree_alloc_node.comp.u32"
+		};
 		std::shared_ptr<myvk::ShaderModule> octree_alloc_node_shader_module =
 		    myvk::ShaderModule::Create(device, kOctreeAllocNodeCompSpv, sizeof(kOctreeAllocNodeCompSpv));
 		m_alloc_node_pipeline = myvk::ComputePipeline::Create(m_pipeline_layout, octree_alloc_node_shader_module);
 	}
 
 	{
+		constexpr uint32_t kOctreeModifyArgCompSpv[] = {
+#include "spirv/octree_modify_arg.comp.u32"
+		};
 		std::shared_ptr<myvk::ShaderModule> octree_modify_arg_shader_module =
 		    myvk::ShaderModule::Create(device, kOctreeModifyArgCompSpv, sizeof(kOctreeModifyArgCompSpv));
 		m_modify_arg_pipeline = myvk::ComputePipeline::Create(m_pipeline_layout, octree_modify_arg_shader_module);
