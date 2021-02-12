@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.15)
 project(VulkanSVO)
 
 set(CMAKE_CXX_STANDARD 14)
@@ -12,10 +12,12 @@ include_directories(
 	dep/glfw/include
 	dep/meshoptimizer/src
 	dep/spdlog/include
+	dep/volk
 	)
 
 add_subdirectory(dep/glfw)
 add_subdirectory(dep/spdlog)
+add_subdirectory(dep/volk)
 
 find_program(GLSLC "glslc")
 IF(GLSLC)
@@ -77,7 +79,6 @@ add_executable(VulkanSVO
 	dep/stb_image.cpp
 	dep/tiny_obj_loader.cpp
 	dep/tinyfiledialogs.c
-	dep/volk.c
 	dep/tinyexr.cc
 
 	# IMGUI
@@ -197,4 +198,4 @@ if(OpenMP_CXX_FOUND)
 	target_link_libraries(VulkanSVO PRIVATE OpenMP::OpenMP_CXX)
 endif()
 find_package(Threads REQUIRED)
-target_link_libraries(VulkanSVO PRIVATE ${CMAKE_DL_LIBS} glfw spdlog Threads::Threads)
+target_link_libraries(VulkanSVO PRIVATE glfw spdlog volk Threads::Threads)
