@@ -5,20 +5,21 @@
 #include <volk.h>
 
 #include <array>
-#include <condition_variable>
 #include <memory>
-#include <thread>
 #include <vector>
 
 #include <spdlog/sinks/ringbuffer_sink.h>
 
 #include "Camera.hpp"
 #include "ImGuiRenderer.hpp"
+#include "LoaderThread.hpp"
 #include "Octree.hpp"
 #include "OctreeTracer.hpp"
 #include "PathTracer.hpp"
+#include "PathTracerThread.hpp"
 #include "PathTracerViewer.hpp"
 #include "Scene.hpp"
+
 #include "myvk/Buffer.hpp"
 #include "myvk/CommandBuffer.hpp"
 #include "myvk/CommandPool.hpp"
@@ -73,18 +74,8 @@ private:
 	std::shared_ptr<PathTracerViewer> m_path_tracer_viewer;
 
 	// multithreading loader
-	std::thread m_loader_thread;
-	std::mutex m_loader_mutex;
-	bool m_loader_ready_to_join{false};
-	std::condition_variable m_loader_condition_variable;
-
-	// multithreading path tracer
-	uint32_t m_path_tracer_spp{0};
-	double m_path_tracer_start_time{0.0};
-	std::thread m_path_tracer_thread;
-	std::mutex m_path_tracer_mutex;
-	bool m_path_tracer_pause{false};
-	std::condition_variable m_path_tracer_condition_variable;
+	std::shared_ptr<LoaderThread> m_loader_thread;
+	std::shared_ptr<PathTracerThread> m_path_tracer_thread;
 
 	// ui flags
 	enum class UIStates { kEmpty, kOctreeTracer, kPathTracing, kLoading } m_ui_state{UIStates::kEmpty};
@@ -95,12 +86,6 @@ private:
 	void create_window();
 
 	void initialize_vulkan();
-
-	void loader_thread(const char *filename, uint32_t octree_level);
-
-	void path_tracer_thread();
-
-	void path_tracer_thread_update_state();
 
 	void create_render_pass();
 
@@ -139,11 +124,9 @@ private:
 public:
 	Application();
 
-	void LoadScene(const char *filename, uint32_t octree_level);
+	void Load(const char *filename, uint32_t octree_level);
 
 	void Run();
-
-	~Application();
 };
 
 #endif

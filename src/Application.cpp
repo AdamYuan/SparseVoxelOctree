@@ -2,8 +2,6 @@
 
 #include "Config.hpp"
 #include "ImGuiHelper.hpp"
-#include "OctreeBuilder.hpp"
-#include "Voxelizer.hpp"
 #include <spdlog/spdlog.h>
 
 #include <imgui/imgui.h>
@@ -242,22 +240,12 @@ Application::Application() {
 	m_octree_tracer = OctreeTracer::Create(m_octree, m_camera, m_render_pass, 0, kFrameCount);
 	m_path_tracer = PathTracer::Create(m_octree, m_camera, m_path_tracer_command_pool);
 	m_path_tracer_viewer = PathTracerViewer::Create(m_path_tracer, m_render_pass, 0);
+
+	m_loader_thread = LoaderThread::Create(m_octree, m_loader_queue, m_main_queue);
+	m_path_tracer_thread = PathTracerThread::Create(m_path_tracer_viewer, m_path_tracer_queue, m_main_queue);
 }
 
-Application::~Application() {
-	if (m_path_tracer_thread.joinable()) {
-		m_ui_state = UIStates::kEmpty;
-		m_path_tracer_pause = false;
-		path_tracer_thread_update_state();
-		m_path_tracer_thread.join();
-	}
-}
-
-void Application::LoadScene(const char *filename, uint32_t octree_level) {
-	if (m_loader_thread.joinable())
-		return;
-	m_loader_thread = std::thread(&Application::loader_thread, this, filename, octree_level);
-}
+void Application::Load(const char *filename, uint32_t octree_level) { m_loader_thread->Launch(filename, octree_level); }
 
 void Application::Run() {
 	double lst_time = glfwGetTime();
@@ -284,23 +272,18 @@ void Application::Run() {
 }
 
 void Application::ui_switch_state() {
-	if (m_loader_thread.joinable()) {
+	if (m_path_tracer_thread->IsRunning()) {
+		m_ui_state = UIStates::kPathTracing;
+	} else if (m_loader_thread->IsRunning()) {
 		m_ui_state = UIStates::kLoading;
 
-		if (m_loader_ready_to_join) {
-			m_loader_condition_variable.notify_all();
-			m_loader_thread.join();
-			m_loader_ready_to_join = false;
-
+		if (m_loader_thread->TryJoin()) {
 			m_ui_state = UIStates::kOctreeTracer;
 		}
 	} else if (m_octree->Empty())
 		m_ui_state = UIStates::kEmpty;
-
-	if (m_path_tracer_thread.joinable() && m_ui_state != UIStates::kPathTracing) {
-		m_path_tracer_pause = false;
-		path_tracer_thread_update_state();
-		m_path_tracer_thread.join();
+	else {
+		m_ui_state = UIStates::kOctreeTracer;
 	}
 }
 
@@ -373,8 +356,9 @@ void Application::ui_menubar() {
 	}
 
 	if (m_ui_state == UIStates::kPathTracing) {
-		if (ImGui::Checkbox("Pause", &m_path_tracer_pause)) {
-			path_tracer_thread_update_state();
+		bool pause = m_path_tracer_thread->IsPause();
+		if (ImGui::Checkbox("Pause", &pause)) {
+			m_path_tracer_thread->SetPause(pause);
 		}
 		/*if (ImGui::BeginMenu("Channel")) {
 		    if (ImGui::MenuItem("Color", nullptr,
@@ -444,14 +428,14 @@ void Application::ui_menubar() {
 		ImGui::SameLine(indent_w);
 		ImGui::Button(buf);
 	} else if (m_ui_state == UIStates::kPathTracing) {
-		sprintf(buf, "SPP: %u", m_path_tracer_spp);
+		sprintf(buf, "SPP: %u", m_path_tracer_thread->GetSPP());
 		indent_w -= ImGui::CalcTextSize(buf).x;
 		ImGui::SameLine(indent_w);
 		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_TabUnfocusedActive));
 		ImGui::Button(buf);
 		ImGui::PopStyleColor();
 
-		sprintf(buf, "Render Time: %u sec", uint32_t(glfwGetTime() - m_path_tracer_start_time));
+		sprintf(buf, "Render Time: %u sec", uint32_t(m_path_tracer_thread->GetRenderTime()));
 		indent_w -= ImGui::CalcTextSize(buf).x + 8;
 		ImGui::SameLine(indent_w);
 		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_TabUnfocused));
@@ -520,7 +504,7 @@ void Application::ui_load_scene_modal() {
 		ImGui::DragInt("Octree Level", &octree_leve, 1, 2, 12);
 
 		if (ImGui::Button("Load", ImVec2(256, 0))) {
-			LoadScene(name_buf, octree_leve);
+			m_loader_thread->Launch(name_buf, octree_leve);
 			ImGui::CloseCurrentPopup();
 		}
 		ImGui::SetItemDefaultFocus();
@@ -555,12 +539,7 @@ void Application::ui_start_path_tracer_modal() {
 		ImGui::DragFloat3("Sun Radiance", &m_path_tracer->m_sun_radiance[0], 0.1f, 0.0f, kMaxSunRadiance);
 
 		if (ImGui::Button("Start", ImVec2(256, 0))) {
-			m_path_tracer_pause = false;
-			m_ui_state = UIStates::kPathTracing;
-			m_camera->UpdateFrameUniformBuffer(0);
-			m_path_tracer->Reset(m_path_tracer_command_pool);
-
-			m_path_tracer_thread = std::thread(&Application::path_tracer_thread, this);
+			m_path_tracer_thread->Launch();
 
 			ImGui::CloseCurrentPopup();
 		}
@@ -579,7 +558,7 @@ void Application::ui_stop_path_tracer_modal() {
 	                               ImGuiWindowFlags_NoMove)) {
 		ImGui::Text("Are you sure?");
 		if (ImGui::Button("Stop", ImVec2(64, 0))) {
-			m_ui_state = UIStates::kOctreeTracer;
+			m_path_tracer_thread->StopAndJoin();
 			ImGui::CloseCurrentPopup();
 		}
 		ImGui::SetItemDefaultFocus();
@@ -618,14 +597,12 @@ void Application::ui_export_exr_modal() {
 
 		{
 			if (ImGui::Button("Export", ImVec2(256, 0))) {
-				bool tmp_pause = m_path_tracer_pause;
-
-				m_path_tracer_pause = true;
-				path_tracer_thread_update_state();
+				bool tmp_pause = m_path_tracer_thread->IsPause();
+				m_path_tracer_thread->SetPause(true);
 
 				std::vector<float> pixels;
 				{
-					std::lock_guard<std::mutex> lock_guard{m_path_tracer_mutex};
+					std::lock_guard<std::mutex> lock_guard{m_path_tracer_thread->GetTargetMutex()};
 					if (current_channel == kChannels + 0) // color
 						pixels = m_path_tracer->ExtractColorImage(m_path_tracer_command_pool);
 					else if (current_channel == kChannels + 1) // albedo
@@ -634,8 +611,7 @@ void Application::ui_export_exr_modal() {
 						pixels = m_path_tracer->ExtractNormalImage(m_path_tracer_command_pool);
 				}
 
-				m_path_tracer_pause = tmp_pause;
-				path_tracer_thread_update_state();
+				m_path_tracer_thread->SetPause(tmp_pause);
 
 				char *err{nullptr};
 				if (SaveEXR(pixels.data(), kWidth, kHeight, 3, save_as_fp16, exr_name_buf, (const char **)&err) < 0)
@@ -664,200 +640,4 @@ void Application::glfw_key_callback(GLFWwindow *window, int key, int, int action
 		if (action == GLFW_PRESS && key == GLFW_KEY_X)
 			app->m_ui_display_flag ^= 1u;
 	}
-}
-
-void Application::loader_thread(const char *filename, uint32_t octree_level) {
-	std::shared_ptr<Scene> scene;
-	std::shared_ptr<myvk::CommandPool> command_pool = myvk::CommandPool::Create(m_loader_queue);
-	if ((scene = Scene::Create(m_loader_queue, filename))) {
-		std::shared_ptr<Voxelizer> voxelizer = Voxelizer::Create(scene, command_pool, octree_level);
-		std::shared_ptr<OctreeBuilder> builder = OctreeBuilder::Create(voxelizer, command_pool);
-
-		std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(m_device);
-		std::shared_ptr<myvk::QueryPool> query_pool = myvk::QueryPool::Create(m_device, VK_QUERY_TYPE_TIMESTAMP, 4);
-		std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
-		command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-		command_buffer->CmdResetQueryPool(query_pool);
-
-		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, query_pool, 0);
-		voxelizer->CmdVoxelize(command_buffer);
-		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 1);
-
-		command_buffer->CmdPipelineBarrier(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		                                   {},
-		                                   {voxelizer->GetVoxelFragmentList()->GetMemoryBarrier(
-		                                       VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT)},
-		                                   {});
-
-		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, query_pool, 2);
-		builder->CmdBuild(command_buffer);
-		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 3);
-
-		if (m_main_queue->GetFamilyIndex() != m_loader_queue->GetFamilyIndex()) {
-			// TODO: Test queue ownership transfer
-			command_buffer->CmdPipelineBarrier(
-			    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
-			    {builder->GetOctree()->GetMemoryBarrier(0, 0, m_loader_queue, m_main_queue)}, {});
-		}
-
-		command_buffer->End();
-
-		spdlog::info("Voxelize and Octree building BEGIN");
-
-		command_buffer->Submit({}, {}, fence);
-		fence->Wait();
-
-		// time measurement
-		uint64_t timestamps[4];
-		query_pool->GetResults64(timestamps, VK_QUERY_RESULT_WAIT_BIT);
-		spdlog::info("Voxelize and Octree building FINISHED in {} ms (Voxelize "
-		             "{} ms, Octree building {} ms)",
-		             double(timestamps[3] - timestamps[0]) * 0.000001, double(timestamps[1] - timestamps[0]) * 0.000001,
-		             double(timestamps[3] - timestamps[2]) * 0.000001);
-
-		// join to main thread and update octree
-		m_loader_ready_to_join = true;
-		{
-			std::unique_lock<std::mutex> lock{m_loader_mutex};
-			m_loader_condition_variable.wait(lock);
-
-			if (m_main_queue->GetFamilyIndex() != m_loader_queue->GetFamilyIndex()) {
-				// TODO: Test queue ownership transfer
-				command_buffer = myvk::CommandBuffer::Create(m_main_command_pool);
-				command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-				// transfer ownership
-				command_buffer->CmdPipelineBarrier(
-				    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
-				    {builder->GetOctree()->GetMemoryBarrier(0, 0, m_loader_queue, m_main_queue)}, {});
-				command_buffer->End();
-
-				fence->Reset();
-				command_buffer->Submit({}, {}, fence);
-				fence->Wait();
-			}
-
-			m_main_queue->WaitIdle();
-			m_octree->Update(command_pool, builder);
-			spdlog::info("Octree range: {} ({} MB)", m_octree->GetRange(), m_octree->GetRange() / 1000000.0f);
-		}
-	}
-	m_loader_ready_to_join = true;
-}
-
-void Application::path_tracer_thread() {
-	m_path_tracer_spp = 0;
-	m_path_tracer_start_time = glfwGetTime();
-
-	std::shared_ptr<myvk::CommandPool> pt_command_pool = myvk::CommandPool::Create(m_path_tracer_queue);
-
-	std::shared_ptr<myvk::CommandBuffer> pt_command_buffer = myvk::CommandBuffer::Create(pt_command_pool);
-	pt_command_buffer->Begin();
-	m_path_tracer->CmdRender(pt_command_buffer);
-	pt_command_buffer->End();
-
-	std::shared_ptr<myvk::CommandBuffer> pt_release_command_buffer = myvk::CommandBuffer::Create(pt_command_pool);
-	std::shared_ptr<myvk::CommandBuffer> pt_acquire_command_buffer = myvk::CommandBuffer::Create(pt_command_pool);
-
-	if (m_path_tracer_queue->GetFamilyIndex() != m_main_queue->GetFamilyIndex()) {
-		pt_release_command_buffer->Begin();
-		pt_release_command_buffer->CmdPipelineBarrier(
-		    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
-		    {m_path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-		                                                      VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue,
-		                                                      m_main_queue),
-		     m_path_tracer->GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-		                                                       VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue,
-		                                                       m_main_queue),
-		     m_path_tracer->GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-		                                                       VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue,
-		                                                       m_main_queue)});
-		pt_release_command_buffer->End();
-
-		pt_acquire_command_buffer->Begin();
-		pt_acquire_command_buffer->CmdPipelineBarrier(
-		    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
-		    {m_path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-		                                                      VK_IMAGE_LAYOUT_GENERAL, m_main_queue,
-		                                                      m_path_tracer_queue),
-		     m_path_tracer->GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-		                                                       VK_IMAGE_LAYOUT_GENERAL, m_main_queue,
-		                                                       m_path_tracer_queue),
-		     m_path_tracer->GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-		                                                       VK_IMAGE_LAYOUT_GENERAL, m_main_queue,
-		                                                       m_path_tracer_queue)});
-		pt_acquire_command_buffer->End();
-	}
-
-	// TODO: Test queue ownership transfer
-	std::shared_ptr<myvk::CommandPool> viewer_command_pool = myvk::CommandPool::Create(m_main_queue);
-	std::shared_ptr<myvk::CommandBuffer> viewer_command_buffer = myvk::CommandBuffer::Create(viewer_command_pool);
-	viewer_command_buffer->Begin();
-	viewer_command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {}, {},
-	    {m_path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT,
-	                                                      VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
-	                                                      m_path_tracer_queue, m_main_queue),
-	     m_path_tracer->GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT,
-	                                                       VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
-	                                                       m_path_tracer_queue, m_main_queue),
-	     m_path_tracer->GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT,
-	                                                       VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
-	                                                       m_path_tracer_queue, m_main_queue)});
-	m_path_tracer_viewer->CmdGenRenderPass(viewer_command_buffer);
-	viewer_command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
-	    {m_path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-	                                                      VK_IMAGE_LAYOUT_GENERAL, m_main_queue, m_path_tracer_queue),
-	     m_path_tracer->GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-	                                                       VK_IMAGE_LAYOUT_GENERAL, m_main_queue, m_path_tracer_queue),
-	     m_path_tracer->GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-	                                                       VK_IMAGE_LAYOUT_GENERAL, m_main_queue,
-	                                                       m_path_tracer_queue)});
-	viewer_command_buffer->End();
-
-	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(m_device);
-	while (m_ui_state == UIStates::kPathTracing) {
-		while (m_path_tracer_pause) {
-			std::unique_lock<std::mutex> lock{m_path_tracer_mutex};
-			m_path_tracer_condition_variable.wait(lock);
-			lock.unlock();
-		}
-
-		{
-			std::lock_guard<std::mutex> lock{m_path_tracer_mutex};
-			fence->Reset();
-			pt_command_buffer->Submit({}, {}, fence);
-			fence->Wait();
-			++m_path_tracer_spp;
-		}
-
-		if (m_path_tracer_spp % kPTResultUpdateInterval == 1) {
-			std::lock_guard<std::mutex> lock{m_path_tracer_mutex};
-			// release pt queue ownership
-			if (m_path_tracer_queue->GetFamilyIndex() != m_main_queue->GetFamilyIndex()) {
-				fence->Reset();
-				pt_release_command_buffer->Submit({}, {}, fence);
-				fence->Wait();
-			}
-
-			{ // gen render pass
-				fence->Reset();
-				viewer_command_buffer->Submit({}, {}, fence);
-				fence->Wait();
-			}
-
-			// acquire pt queue ownership
-			if (m_path_tracer_queue->GetFamilyIndex() != m_main_queue->GetFamilyIndex()) {
-				fence->Reset();
-				pt_acquire_command_buffer->Submit({}, {}, fence);
-				fence->Wait();
-			}
-		}
-	}
-}
-
-void Application::path_tracer_thread_update_state() {
-	std::unique_lock<std::mutex> lock{m_path_tracer_mutex};
-	m_path_tracer_condition_variable.notify_one();
 }

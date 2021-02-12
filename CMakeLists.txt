@@ -132,6 +132,10 @@ add_executable(SparseVoxelOctree
 	src/PathTracer.hpp
 	src/PathTracerViewer.cpp
 	src/PathTracerViewer.hpp
+	src/LoaderThread.cpp
+	src/LoaderThread.hpp
+	src/PathTracerThread.cpp
+	src/PathTracerThread.hpp
 
 	# MYVK
 	src/myvk/DeviceObjectBase.hpp

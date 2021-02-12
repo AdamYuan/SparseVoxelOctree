@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 
 	Application app{};
 	if (filename)
-		app.LoadScene(*filename, octree_level);
+		app.Load(*filename, octree_level);
 	app.Run();
 
 	return EXIT_SUCCESS;
