@@ -1,6 +1,5 @@
-# Sparse Voxel Octree (Old OpenGL Version)
+# Sparse Voxel Octree (Obsoleted OpenGL Version)
 A GPU SVO Builder using rasterization pipeline, a efficient SVO ray marcher and a simple SVO path tracer.  
-[Vulkan version](https://github.com/AdamYuan/VulkanSVO) with multiple performance improvements is working in progress.
 
 ## Compilation
 ```bash
