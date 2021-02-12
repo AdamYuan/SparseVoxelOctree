@@ -1,10 +1,11 @@
-# Sparse Voxel Octree
+# Sparse Voxel Octree (Vulkan Version)
 A GPU SVO Builder using rasterization pipeline, a efficient SVO ray marcher and a simple SVO path tracer.  
-The program is written with Vulkan.  
+If you want an OpenGL version, check [OpenGL branch](https://github.com/AdamYuan/SparseVoxelOctree/tree/opengl).
 
 ## Compilation
 ```bash
-cmake . -DCMAKE_BUILD_TYPE=Release
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
 make
 ```
 
@@ -19,6 +20,9 @@ make
 * [ImGui](https://github.com/ocornut/imgui) - UI rendering
 * [tinyfiledialogs](https://sourceforge.net/projects/tinyfiledialogs/) - Call native file dialog (require Zenity on linux)
 * [spdlog](https://github.com/gabime/spdlog) - Logging system
+
+## Performance
+The 
 
 ## Reference
 * https://www.seas.upenn.edu/~pcozzi/OpenGLInsights/OpenGLInsights-SparseVoxelization.pdf - Voxelization and SVO building
