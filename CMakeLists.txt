@@ -25,6 +25,10 @@ include_directories(
 
 add_subdirectory(dep/glfw)
 add_subdirectory(dep/spdlog)
+
+if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+  set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
+endif()
 add_subdirectory(dep/volk)
 
 find_program(GLSLC "glslc")

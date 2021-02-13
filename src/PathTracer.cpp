@@ -86,64 +86,33 @@ void PathTracer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 }
 
 void PathTracer::clear_target_images(const std::shared_ptr<myvk::CommandPool> &command_pool) {
-	// create a staging buffer with maximum possible size
-	std::shared_ptr<myvk::Buffer> staging_buffer =
-	    myvk::Buffer::CreateStaging(command_pool->GetDevicePtr(), kWidth * kHeight * sizeof(uint32_t) * 4);
-	{
-		uint32_t *data = (uint32_t *)staging_buffer->Map();
-		std::fill(data, data + kWidth * kHeight * 4, 0u);
-		staging_buffer->Unmap();
-	}
-
-	VkBufferImageCopy region = {};
-	region.bufferOffset = 0;
-	region.bufferRowLength = 0;
-	region.bufferImageHeight = 0;
-	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	region.imageSubresource.mipLevel = 0;
-	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.layerCount = 1;
-	region.imageOffset = {0, 0, 0};
-	region.imageExtent = {kWidth, kHeight, 1};
-
 	std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
 	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(command_pool->GetDevicePtr());
 	command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	command_buffer->CmdPipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
-	                                   m_color_image->GetDstMemoryBarriers({region}, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-	                                                                       VK_IMAGE_LAYOUT_UNDEFINED,
-	                                                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-	command_buffer->CmdPipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
-	                                   m_normal_image->GetDstMemoryBarriers({region}, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-	                                                                        VK_IMAGE_LAYOUT_UNDEFINED,
-	                                                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-	command_buffer->CmdPipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
-	                                   m_albedo_image->GetDstMemoryBarriers({region}, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-	                                                                        VK_IMAGE_LAYOUT_UNDEFINED,
-	                                                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+	command_buffer->CmdPipelineBarrier(
+	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
+	    {m_color_image->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
+	                                     VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+	     m_albedo_image->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
+	                                      VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+	     m_normal_image->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
+	                                      VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)});
 
-	command_buffer->CmdCopy(staging_buffer, m_color_image, {region});
-	command_buffer->CmdCopy(staging_buffer, m_normal_image, {region});
-	command_buffer->CmdCopy(staging_buffer, m_albedo_image, {region});
+	command_buffer->CmdClearColorImage(m_color_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	command_buffer->CmdClearColorImage(m_albedo_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	command_buffer->CmdClearColorImage(m_normal_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 	command_buffer->CmdPipelineBarrier(
 	    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
-	    m_color_image->GetDstMemoryBarriers({region}, VK_ACCESS_TRANSFER_WRITE_BIT, 0,
-	                                        // VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-	                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL));
-	command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
-	    m_normal_image->GetDstMemoryBarriers({region}, VK_ACCESS_TRANSFER_WRITE_BIT, 0,
-	                                         // VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-	                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL));
-	command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
-	    m_albedo_image->GetDstMemoryBarriers({region}, VK_ACCESS_TRANSFER_WRITE_BIT, 0,
-	                                         // VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-	                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL));
+	    {m_color_image->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, 0,
+	                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL),
+	     m_albedo_image->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, 0,
+	                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL),
+	     m_normal_image->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, 0,
+	                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL)});
 	command_buffer->End();
 
-	command_buffer->Submit({}, {}, fence);
+	command_buffer->Submit(fence);
 	fence->Wait();
 }
 
@@ -182,7 +151,7 @@ void PathTracer::set_noise_image(const std::shared_ptr<myvk::CommandPool> &comma
 	                                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 	command_buffer->End();
 
-	command_buffer->Submit({}, {}, fence);
+	command_buffer->Submit(fence);
 	fence->Wait();
 }
 
@@ -248,7 +217,7 @@ void PathTracer::extract_target_image_to_buffer(const std::shared_ptr<myvk::Comm
 	    image->GetDstMemoryBarriers({region}, 0, 0, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL));
 	command_buffer->End();
 
-	command_buffer->Submit({}, {}, fence);
+	command_buffer->Submit(fence);
 	fence->Wait();
 }
 

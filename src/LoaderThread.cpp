@@ -72,7 +72,7 @@ void LoaderThread::thread_func(const char *filename, uint32_t octree_level) {
 
 		spdlog::info("Voxelize and Octree building BEGIN");
 
-		command_buffer->Submit({}, {}, fence);
+		command_buffer->Submit(fence);
 		fence->Wait();
 
 		// time measurement
@@ -100,7 +100,7 @@ void LoaderThread::thread_func(const char *filename, uint32_t octree_level) {
 				command_buffer->End();
 
 				fence->Reset();
-				command_buffer->Submit({}, {}, fence);
+				command_buffer->Submit(fence);
 				fence->Wait();
 			}
 

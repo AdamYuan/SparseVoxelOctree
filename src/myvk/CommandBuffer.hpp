@@ -35,6 +35,7 @@ public:
 	VkResult Submit(const SemaphoreStageGroup &wait_semaphores = SemaphoreStageGroup(),
 	                const SemaphoreGroup &signal_semaphores = SemaphoreGroup(),
 	                const std::shared_ptr<Fence> &fence = nullptr) const;
+	VkResult Submit(const std::shared_ptr<Fence> &fence = nullptr) const;
 
 	VkResult Reset(VkCommandBufferResetFlags flags = 0) const;
 
@@ -103,6 +104,12 @@ public:
 
 	void CmdBlitImage(const std::shared_ptr<ImageBase> &src, const std::shared_ptr<ImageBase> &dst,
 	                  const VkImageBlit &blit, VkFilter filter) const;
+
+	void CmdClearColorImage(const std::shared_ptr<ImageBase> &image, VkImageLayout layout,
+	                        const VkClearColorValue &color, const std::vector<VkImageSubresourceRange> &regions) const;
+
+	void CmdClearColorImage(const std::shared_ptr<ImageBase> &image, VkImageLayout layout,
+	                        const VkClearColorValue &color = {}) const;
 
 	void CmdGenerateMipmap2D(const std::shared_ptr<ImageBase> &image, VkPipelineStageFlags src_stage,
 	                         VkPipelineStageFlags dst_stage, VkAccessFlags src_access_mask,

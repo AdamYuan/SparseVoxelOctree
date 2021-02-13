@@ -212,7 +212,7 @@ void Scene::load_buffers_and_draw_cmd(const std::shared_ptr<myvk::Queue> &graphi
 	command_buffer->CmdCopy(vertex_staging_buffer, m_vertex_buffer, {{0, 0, vertex_buffer_size}});
 	command_buffer->CmdCopy(index_staging_buffer, m_index_buffer, {{0, 0, index_buffer_size}});
 	command_buffer->End();
-	command_buffer->Submit({}, {}, fence);
+	command_buffer->Submit(fence);
 
 	fence->Wait();
 
@@ -301,7 +301,7 @@ void Scene::load_textures(const std::shared_ptr<myvk::Queue> &graphics_queue,
 				tracker.Track(fence, {command_buffer, staging_buffer});
 				tracker.Update();
 
-				command_buffer->Submit({}, {}, fence);
+				command_buffer->Submit(fence);
 
 				spdlog::info("Texture {} loaded", texture_filenames[i].c_str());
 			}

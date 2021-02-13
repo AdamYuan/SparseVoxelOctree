@@ -15,7 +15,7 @@ void Counter::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool, uint
 	command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	command_buffer->CmdCopy(m_staging_buffer, m_buffer, {{0, 0, sizeof(uint32_t)}});
 	command_buffer->End();
-	command_buffer->Submit({}, {}, m_fence);
+	command_buffer->Submit(m_fence);
 	m_fence->Wait();
 	m_fence->Reset();
 }
@@ -25,7 +25,7 @@ uint32_t Counter::Read(const std::shared_ptr<myvk::CommandPool> &command_pool) c
 	command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	command_buffer->CmdCopy(m_buffer, m_staging_buffer, {{0, 0, sizeof(uint32_t)}});
 	command_buffer->End();
-	command_buffer->Submit({}, {}, m_fence);
+	command_buffer->Submit(m_fence);
 	m_fence->Wait();
 	m_fence->Reset();
 	uint32_t ret = *((uint32_t *)m_staging_buffer->Map());

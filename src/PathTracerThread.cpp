@@ -16,14 +16,14 @@ PathTracerThread::~PathTracerThread() { StopAndJoin(); }
 void PathTracerThread::Launch() {
 	if (m_thread.joinable())
 		return;
-	std::shared_ptr<myvk::CommandPool> pt_command_pool = myvk::CommandPool::Create(m_path_tracer_queue);
 	m_run = true;
 	m_pause = false;
 	m_spp = 0;
 	m_start_time = glfwGetTime();
 
 	m_path_tracer_viewer_ptr->GetPathTracerPtr()->GetCameraPtr()->UpdateFrameUniformBuffer(0);
-	m_path_tracer_viewer_ptr->GetPathTracerPtr()->Reset(pt_command_pool);
+	m_path_tracer_viewer_ptr->GetPathTracerPtr()->Reset(myvk::CommandPool::Create(m_path_tracer_queue));
+	m_path_tracer_viewer_ptr->Reset(myvk::CommandPool::Create(m_main_queue));
 
 	m_thread = std::thread(&PathTracerThread::thread_func, this);
 }
@@ -87,8 +87,8 @@ void PathTracerThread::thread_func() {
 	}
 
 	// TODO: Test queue ownership transfer
-	std::shared_ptr<myvk::CommandPool> viewer_command_pool = myvk::CommandPool::Create(m_main_queue);
-	std::shared_ptr<myvk::CommandBuffer> viewer_command_buffer = myvk::CommandBuffer::Create(viewer_command_pool);
+	std::shared_ptr<myvk::CommandPool> main_command_pool = myvk::CommandPool::Create(m_main_queue);
+	std::shared_ptr<myvk::CommandBuffer> viewer_command_buffer = myvk::CommandBuffer::Create(main_command_pool);
 	viewer_command_buffer->Begin();
 	viewer_command_buffer->CmdPipelineBarrier(
 	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {}, {},
@@ -123,7 +123,7 @@ void PathTracerThread::thread_func() {
 		{
 			std::lock_guard<std::mutex> lock{m_target_mutex};
 			fence->Reset();
-			pt_command_buffer->Submit({}, {}, fence);
+			pt_command_buffer->Submit(fence);
 			fence->Wait();
 		}
 
@@ -133,13 +133,13 @@ void PathTracerThread::thread_func() {
 				m_target_mutex.lock();
 
 				fence->Reset();
-				pt_release_command_buffer->Submit({}, {}, fence);
+				pt_release_command_buffer->Submit(fence);
 				fence->Wait();
 			}
 
 			{ // gen render pass
 				fence->Reset();
-				viewer_command_buffer->Submit({}, {}, fence);
+				viewer_command_buffer->Submit(fence);
 				fence->Wait();
 			}
 

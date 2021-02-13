@@ -61,6 +61,6 @@ void Sobol::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool, uint32
 	command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	command_buffer->CmdCopy(m_staging_buffer, m_sobol_buffer, {{0, 0, kBufferSize}});
 	command_buffer->End();
-	command_buffer->Submit({}, {}, fence);
+	command_buffer->Submit(fence);
 	fence->Wait();
 }

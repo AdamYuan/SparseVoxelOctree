@@ -76,6 +76,18 @@ VkResult CommandBuffer::Submit(const SemaphoreStageGroup &wait_semaphores, const
 	                     fence ? fence->GetHandle() : VK_NULL_HANDLE);
 }
 
+VkResult CommandBuffer::Submit(const std::shared_ptr<Fence> &fence) const {
+	VkSubmitInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	info.commandBufferCount = 1;
+	info.pCommandBuffers = &m_command_buffer;
+
+	std::lock_guard<std::mutex> lock_guard{m_command_pool_ptr->GetQueuePtr()->GetMutex()};
+	return vkQueueSubmit(m_command_pool_ptr->GetQueuePtr()->GetHandle(), 1, &info,
+	                     fence ? fence->GetHandle() : VK_NULL_HANDLE);
+}
+
 VkResult CommandBuffer::Begin(VkCommandBufferUsageFlags usage) const {
 	VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -271,6 +283,17 @@ void CommandBuffer::CmdGenerateMipmap2D(const std::shared_ptr<ImageBase> &image,
 			                                            new_layout));
 		}
 	}
+}
+
+void CommandBuffer::CmdClearColorImage(const std::shared_ptr<ImageBase> &image, VkImageLayout layout,
+                                       const VkClearColorValue &color,
+                                       const std::vector<VkImageSubresourceRange> &regions) const {
+	vkCmdClearColorImage(m_command_buffer, image->GetHandle(), layout, &color, regions.size(), regions.data());
+}
+
+void CommandBuffer::CmdClearColorImage(const std::shared_ptr<ImageBase> &image, VkImageLayout layout,
+                                       const VkClearColorValue &color) const {
+	CmdClearColorImage(image, layout, color, {image->GetSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT)});
 }
 
 void CommandBuffer::CmdDispatch(uint32_t group_x, uint32_t group_y, uint32_t group_z) const {

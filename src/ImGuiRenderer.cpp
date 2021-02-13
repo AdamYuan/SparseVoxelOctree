@@ -59,7 +59,7 @@ void ImGuiRenderer::create_font_texture(const std::shared_ptr<myvk::CommandPool>
 
 		command_buffer->End();
 
-		command_buffer->Submit({}, {}, fence);
+		command_buffer->Submit(fence);
 		fence->Wait();
 	}
 

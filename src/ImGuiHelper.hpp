@@ -5,6 +5,7 @@
 #include <imgui/imgui_internal.h>
 
 namespace ImGui {
+void LoadFontAwesome();
 bool Spinner(const char *label, float radius, int thickness, const ImU32 &color);
 void StyleCinder(ImGuiStyle *dst = nullptr);
 bool DragAngle(const char *label, float *v_rad, float v_speed = 1.0f, float v_degrees_min = 0.0f,

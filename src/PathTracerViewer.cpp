@@ -240,9 +240,9 @@ std::shared_ptr<PathTracerViewer> PathTracerViewer::Create(const std::shared_ptr
 	std::shared_ptr<PathTracerViewer> ret = std::make_shared<PathTracerViewer>();
 	ret->m_path_tracer_ptr = path_tracer;
 
-	ret->m_image =
-	    myvk::Image::CreateTexture2D(render_pass->GetDevicePtr(), {kWidth, kHeight}, 1, VK_FORMAT_R8G8B8A8_UNORM,
-	                                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	ret->m_image = myvk::Image::CreateTexture2D(
+	    render_pass->GetDevicePtr(), {kWidth, kHeight}, 1, VK_FORMAT_R8G8B8A8_UNORM,
+	    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 	ret->m_image_view = myvk::ImageView::Create(ret->m_image, VK_IMAGE_VIEW_TYPE_2D);
 	ret->m_sampler =
 	    myvk::Sampler::Create(render_pass->GetDevicePtr(), VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
@@ -254,6 +254,25 @@ std::shared_ptr<PathTracerViewer> PathTracerViewer::Create(const std::shared_ptr
 	ret->create_main_graphics_pipeline(render_pass, subpass);
 
 	return ret;
+}
+
+void PathTracerViewer::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool) const {
+	std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
+	command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	command_buffer->CmdPipelineBarrier(
+	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
+	    {m_image->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
+	                               VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)});
+	command_buffer->CmdClearColorImage(m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	command_buffer->CmdPipelineBarrier(
+	    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
+	    {m_image->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, 0,
+	                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)});
+	command_buffer->End();
+
+	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(command_pool->GetDevicePtr());
+	command_buffer->Submit(fence);
+	fence->Wait();
 }
 
 void PathTracerViewer::CmdGenRenderPass(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
