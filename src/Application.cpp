@@ -318,21 +318,56 @@ void Application::ui_menubar() {
 		if (ImGui::MenuItem(ICON_FA_FILE_EXPORT)) {
 			open_export_exr_popup = true;
 		}
+		if (ImGui::IsItemHovered()) {
+			ImGui::BeginTooltip();
+			ImGui::TextUnformatted("Export OpenEXR");
+			ImGui::EndTooltip();
+		}
+
 		if (ImGui::MenuItem(ICON_FA_STOP)) {
 			stop_path_tracer_popup = true;
 		}
-		bool pause = m_path_tracer_thread->IsPause();
-		if (!pause && ImGui::MenuItem(ICON_FA_PAUSE)) {
-			m_path_tracer_thread->SetPause(true);
-		} else if (pause && ImGui::MenuItem(ICON_FA_PLAY)) {
-			m_path_tracer_thread->SetPause(false);
+		if (ImGui::IsItemHovered()) {
+			ImGui::BeginTooltip();
+			ImGui::TextUnformatted("Stop Path Tracer");
+			ImGui::EndTooltip();
+		}
+
+		if (m_path_tracer_thread->IsPause()) {
+			if (ImGui::MenuItem(ICON_FA_PLAY)) {
+				m_path_tracer_thread->SetPause(false);
+			}
+			if (ImGui::IsItemHovered()) {
+				ImGui::BeginTooltip();
+				ImGui::TextUnformatted("Resume Path Tracer");
+				ImGui::EndTooltip();
+			}
+		} else {
+			if (ImGui::MenuItem(ICON_FA_PAUSE)) {
+				m_path_tracer_thread->SetPause(true);
+			}
+			if (ImGui::IsItemHovered()) {
+				ImGui::BeginTooltip();
+				ImGui::TextUnformatted("Pause Path Tracer");
+				ImGui::EndTooltip();
+			}
 		}
 	} else {
 		if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN))
 			open_load_scene_popup = true;
+		if (ImGui::IsItemHovered()) {
+			ImGui::BeginTooltip();
+			ImGui::TextUnformatted("Load Scene");
+			ImGui::EndTooltip();
+		}
 		if (m_ui_state == UIStates::kOctreeTracer) {
 			if (ImGui::MenuItem(ICON_FA_PLAY)) {
 				start_path_tracer_popup = true;
+			}
+			if (ImGui::IsItemHovered()) {
+				ImGui::BeginTooltip();
+				ImGui::TextUnformatted("Start Path Tracer");
+				ImGui::EndTooltip();
 			}
 			if (ImGui::BeginMenu("Camera")) {
 				ImGui::DragAngle("FOV", &m_camera->m_fov, 1, 10, 179);
