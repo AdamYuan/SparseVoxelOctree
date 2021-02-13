@@ -453,7 +453,7 @@ void Application::ui_menubar() {
 		ImGui::SameLine(indent_w);
 		ImGui::Separator();
 
-		sprintf(buf, ICON_FA_CUBES " %d", m_octree->GetLevel());
+		sprintf(buf, ICON_FA_CUBE " %d", m_octree->GetLevel());
 		indent_w -= ImGui::CalcTextSize(buf).x + 8;
 		ImGui::SameLine(indent_w);
 		ImGui::TextUnformatted(buf);
