@@ -1,6 +1,6 @@
 #include "ImGuiHelper.hpp"
 #include <font-awesome/IconsFontAwesome5.h>
-#include <font-awesome/font_awesome.inl>
+#include <font-awesome/fa_solid_900.inl>
 
 namespace ImGui {
 void LoadFontAwesome() {
@@ -12,7 +12,7 @@ void LoadFontAwesome() {
 	ImFontConfig icons_config;
 	icons_config.MergeMode = true;
 	icons_config.PixelSnapH = true;
-	io.Fonts->AddFontFromMemoryCompressedTTF(font_awesome_compressed_data, font_awesome_compressed_size, 16.0f,
+	io.Fonts->AddFontFromMemoryCompressedTTF(fa_solid_900_compressed_data, fa_solid_900_compressed_size, 16.0f,
 	                                         &icons_config, icons_ranges);
 }
 bool Spinner(const char *label, float radius, int thickness, const ImU32 &color) {

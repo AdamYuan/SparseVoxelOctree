@@ -19,7 +19,7 @@ void PathTracerThread::Launch() {
 	m_run = true;
 	m_pause = false;
 	m_spp = 0;
-	m_start_time = glfwGetTime();
+	m_time = glfwGetTime();
 
 	m_path_tracer_viewer_ptr->GetPathTracerPtr()->GetCameraPtr()->UpdateFrameUniformBuffer(0);
 	m_path_tracer_viewer_ptr->GetPathTracerPtr()->Reset(myvk::CommandPool::Create(m_path_tracer_queue));
@@ -28,9 +28,16 @@ void PathTracerThread::Launch() {
 	m_thread = std::thread(&PathTracerThread::thread_func, this);
 }
 
-double PathTracerThread::GetRenderTime() const { return glfwGetTime() - m_start_time; }
+double PathTracerThread::GetRenderTime() const {
+	if (m_pause)
+		return m_time;
+	return glfwGetTime() - m_time;
+}
 
 void PathTracerThread::SetPause(bool pause) {
+	if (pause == m_pause)
+		return;
+	m_time = glfwGetTime() - m_time;
 	m_pause = pause;
 	std::unique_lock<std::mutex> lock{m_pause_mutex};
 	m_pause_condition_variable.notify_one();

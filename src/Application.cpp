@@ -369,31 +369,10 @@ void Application::ui_menubar() {
 				ImGui::TextUnformatted("Start Path Tracer");
 				ImGui::EndTooltip();
 			}
-			if (ImGui::BeginMenu("Camera")) {
-				ImGui::DragAngle("FOV", &m_camera->m_fov, 1, 10, 179);
-				ImGui::DragFloat("Speed", &m_camera->m_speed, 0.005f, 0.005f, 0.2f);
-				ImGui::InputFloat3("Position", &m_camera->m_position[0]);
-				ImGui::DragAngle("Yaw", &m_camera->m_yaw, 1, 0, 360);
-				ImGui::DragAngle("Pitch", &m_camera->m_pitch, 1, -90, 90);
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::BeginMenu("View")) {
-				if (ImGui::MenuItem("Diffuse", nullptr,
-				                    m_octree_tracer->m_view_type == OctreeTracer::ViewTypes::kDiffuse))
-					m_octree_tracer->m_view_type = OctreeTracer::ViewTypes::kDiffuse;
-				if (ImGui::MenuItem("Normal", nullptr,
-				                    m_octree_tracer->m_view_type == OctreeTracer::ViewTypes::kNormal))
-					m_octree_tracer->m_view_type = OctreeTracer::ViewTypes::kNormal;
-				if (ImGui::MenuItem("Iterations", nullptr,
-				                    m_octree_tracer->m_view_type == OctreeTracer::ViewTypes::kIteration))
-					m_octree_tracer->m_view_type = OctreeTracer::ViewTypes::kIteration;
-
-				ImGui::Checkbox("Beam Optimization", &m_octree_tracer->m_beam_enable);
-				ImGui::EndMenu();
-			}
 		}
 	}
+
+	ImGui::Separator();
 
 	/*if (m_ui_state == UIStates::kPathTracing) {
 	    if (ImGui::BeginMenu("Channel")) {
@@ -410,6 +389,30 @@ void Application::ui_menubar() {
 	        ImGui::EndMenu();
 	    }
 	}*/
+
+	if (m_ui_state == UIStates::kOctreeTracer) {
+		if (ImGui::BeginMenu("Camera")) {
+			ImGui::DragAngle("FOV", &m_camera->m_fov, 1, 10, 179);
+			ImGui::DragFloat("Speed", &m_camera->m_speed, 0.005f, 0.005f, 0.2f);
+			ImGui::InputFloat3("Position", &m_camera->m_position[0]);
+			ImGui::DragAngle("Yaw", &m_camera->m_yaw, 1, 0, 360);
+			ImGui::DragAngle("Pitch", &m_camera->m_pitch, 1, -90, 90);
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("View")) {
+			if (ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer->m_view_type == OctreeTracer::ViewTypes::kDiffuse))
+				m_octree_tracer->m_view_type = OctreeTracer::ViewTypes::kDiffuse;
+			if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer->m_view_type == OctreeTracer::ViewTypes::kNormal))
+				m_octree_tracer->m_view_type = OctreeTracer::ViewTypes::kNormal;
+			if (ImGui::MenuItem("Iterations", nullptr,
+			                    m_octree_tracer->m_view_type == OctreeTracer::ViewTypes::kIteration))
+				m_octree_tracer->m_view_type = OctreeTracer::ViewTypes::kIteration;
+
+			ImGui::Checkbox("Beam Optimization", &m_octree_tracer->m_beam_enable);
+			ImGui::EndMenu();
+		}
+	}
 
 	if (ImGui::BeginMenu("Log")) {
 		ImGui::BeginChild("LogChild", {kWidth / 2.0f, kHeight / 2.0f}, false, ImGuiWindowFlags_HorizontalScrollbar);
@@ -437,7 +440,6 @@ void Application::ui_menubar() {
 	}
 
 	// Status bar
-	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 	float indent_w = ImGui::GetWindowContentRegionWidth();
 
 	char buf[128];
@@ -445,39 +447,67 @@ void Application::ui_menubar() {
 		sprintf(buf, "FPS %.1f", ImGui::GetIO().Framerate);
 		indent_w -= ImGui::CalcTextSize(buf).x;
 		ImGui::SameLine(indent_w);
-		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_TabUnfocusedActive));
-		ImGui::Button(buf);
-		ImGui::PopStyleColor();
+		ImGui::TextUnformatted(buf);
 
-		sprintf(buf, "Octree Level %d", m_octree->GetLevel());
+		indent_w -= 8;
+		ImGui::SameLine(indent_w);
+		ImGui::Separator();
+
+		sprintf(buf, ICON_FA_CUBES " %d", m_octree->GetLevel());
 		indent_w -= ImGui::CalcTextSize(buf).x + 8;
 		ImGui::SameLine(indent_w);
-		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_TabUnfocused));
-		ImGui::Button(buf);
-		ImGui::PopStyleColor();
+		ImGui::TextUnformatted(buf);
 
-		sprintf(buf, "Octree Size %.0f/%.0f MB", m_octree->GetRange() / 1000000.0f,
+		if (ImGui::IsItemHovered()) {
+			ImGui::BeginTooltip();
+			ImGui::TextUnformatted("Octree Level");
+			ImGui::EndTooltip();
+		}
+
+		sprintf(buf, ICON_FA_DATABASE " %.0f/%.0f MB", m_octree->GetRange() / 1000000.0f,
 		        m_octree->GetBuffer()->GetSize() / 1000000.0f);
 		indent_w -= ImGui::CalcTextSize(buf).x + 8;
 		ImGui::SameLine(indent_w);
-		ImGui::Button(buf);
+		ImGui::TextUnformatted(buf);
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::BeginTooltip();
+			ImGui::TextUnformatted("Octree Used Size / Allocated Size");
+			ImGui::EndTooltip();
+		}
 	} else if (m_ui_state == UIStates::kPathTracing) {
 		sprintf(buf, "SPP %u", m_path_tracer_thread->GetSPP());
 		indent_w -= ImGui::CalcTextSize(buf).x;
 		ImGui::SameLine(indent_w);
-		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_TabUnfocusedActive));
-		ImGui::Button(buf);
-		ImGui::PopStyleColor();
+		ImGui::TextUnformatted(buf);
 
-		sprintf(buf, "Render Time %u sec", uint32_t(m_path_tracer_thread->GetRenderTime()));
+		indent_w -= 8;
+		ImGui::SameLine(indent_w);
+		ImGui::Separator();
+
+		sprintf(buf, ICON_FA_STOPWATCH " %u sec", uint32_t(m_path_tracer_thread->GetRenderTime()));
 		indent_w -= ImGui::CalcTextSize(buf).x + 8;
 		ImGui::SameLine(indent_w);
-		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_TabUnfocused));
-		ImGui::Button(buf);
-		ImGui::PopStyleColor();
-	}
+		ImGui::TextUnformatted(buf);
 
-	ImGui::PopItemFlag();
+		if (ImGui::IsItemHovered()) {
+			ImGui::BeginTooltip();
+			ImGui::TextUnformatted("Render Time");
+			ImGui::EndTooltip();
+		}
+
+		if (m_path_tracer_queue->GetFamilyIndex() == m_main_queue->GetFamilyIndex()) {
+			indent_w -= ImGui::CalcTextSize(ICON_FA_EXCLAMATION_TRIANGLE).x + 8;
+			ImGui::SameLine(indent_w);
+			ImGui::TextUnformatted(ICON_FA_EXCLAMATION_TRIANGLE);
+
+			if (ImGui::IsItemHovered()) {
+				ImGui::BeginTooltip();
+				ImGui::TextUnformatted("Async path tracing queue not available");
+				ImGui::EndTooltip();
+			}
+		}
+	}
 
 	ImGui::EndMainMenuBar();
 	ImGui::PopStyleVar();

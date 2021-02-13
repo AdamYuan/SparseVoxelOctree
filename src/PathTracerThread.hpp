@@ -19,7 +19,7 @@ private:
 	bool m_pause, m_run;
 
 	uint32_t m_spp;
-	double m_start_time;
+	double m_time;
 
 	void thread_func();
 
