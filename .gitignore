@@ -1,6 +1,0 @@
-# Project exclude paths
-Release/**
-Debug/**
-.cache/**
-compile_commands.json
-*.exr
