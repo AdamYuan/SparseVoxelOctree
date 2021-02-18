@@ -61,7 +61,7 @@ jobs:
         if: startsWith(matrix.config.name, 'Ubuntu_Wayland')
         run: |
           sudo apt-get update
-          sudo apt-get install ninja-build cmake libwayland-dev libwayland-egl-backend-dev extra-cmake-modules
+          sudo apt-get install ninja-build cmake libwayland-dev libwayland-egl-backend-dev wayland-protocols extra-cmake-modules
           ninja --version
           cmake --version
           gcc --version
