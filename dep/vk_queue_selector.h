@@ -79,7 +79,7 @@ VQS_API void vqsEnumerateDeviceQueueCreateInfos(VqsQuery query, uint32_t *pDevic
 #ifdef VQS_IMPLEMENTATION
 #undef VQS_IMPLEMENTATION
 
-#include <malloc.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
