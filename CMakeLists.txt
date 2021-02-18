@@ -215,3 +215,5 @@ if(OpenMP_CXX_FOUND)
 endif()
 find_package(Threads REQUIRED)
 target_link_libraries(SparseVoxelOctree PRIVATE glfw spdlog volk Threads::Threads)
+
+install(TARGETS SparseVoxelOctree RUNTIME DESTINATION)
