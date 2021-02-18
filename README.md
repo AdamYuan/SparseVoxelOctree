@@ -1,4 +1,5 @@
 # Sparse Voxel Octree (Vulkan Version)
+![](https://github.com/AdamYuan/SparseVoxelOctree/workflows/Linux/badge.svg)
 ![](https://github.com/AdamYuan/SparseVoxelOctree/workflows/Windows/badge.svg)
 ![](https://github.com/AdamYuan/SparseVoxelOctree/workflows/Mac%20OS/badge.svg)  
 A GPU SVO Builder using rasterization pipeline, a efficient SVO ray marcher and a simple SVO path tracer.  
