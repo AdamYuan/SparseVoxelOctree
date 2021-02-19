@@ -22,11 +22,16 @@ jobs:
             build_type: "Release",
             cc: "clang",
             cxx: "clang++",
-            archiver: "7za a"
+            archiver: "7za a",
+            generators: "Ninja"
           }
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          brew install ninja
           
       - name: Configure
         shell: bash
@@ -37,6 +42,7 @@ jobs:
             -S . \
             -B . \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
+            -G "${{ matrix.config.generators }}" \
             -DCMAKE_INSTALL_PREFIX:PATH=instdir
 
       - name: Build
