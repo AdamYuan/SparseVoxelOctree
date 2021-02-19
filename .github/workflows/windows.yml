@@ -81,7 +81,7 @@ jobs:
           name: ${{ matrix.config.artifact }}
 
       - name: Upload release asset
-        # if: github.event_name == 'release' && (github.event.action == 'published' || github.event.action == 'created')
+        if: github.event_name == 'release' && (github.event.action == 'published' || github.event.action == 'created')
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
