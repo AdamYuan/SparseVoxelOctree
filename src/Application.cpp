@@ -280,7 +280,7 @@ void Application::ui_switch_state() {
 		m_ui_state = UIStates::kLoading;
 
 		if (m_loader_thread->TryJoin()) {
-			m_ui_state = UIStates::kOctreeTracer;
+			m_ui_state = m_octree->Empty() ? UIStates::kEmpty : UIStates::kOctreeTracer;
 		}
 	} else if (m_octree->Empty())
 		m_ui_state = UIStates::kEmpty;
