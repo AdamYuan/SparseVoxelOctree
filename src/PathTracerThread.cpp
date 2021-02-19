@@ -14,7 +14,7 @@ std::shared_ptr<PathTracerThread> PathTracerThread::Create(const std::shared_ptr
 PathTracerThread::~PathTracerThread() { StopAndJoin(); }
 
 void PathTracerThread::Launch() {
-	if (m_thread.joinable())
+	if (m_path_tracer_thread.joinable())
 		return;
 	m_run = true;
 	m_pause = false;
@@ -25,7 +25,8 @@ void PathTracerThread::Launch() {
 	m_path_tracer_viewer_ptr->GetPathTracerPtr()->Reset(myvk::CommandPool::Create(m_path_tracer_queue));
 	m_path_tracer_viewer_ptr->Reset(myvk::CommandPool::Create(m_main_queue));
 
-	m_thread = std::thread(&PathTracerThread::thread_func, this);
+	m_path_tracer_thread = std::thread(&PathTracerThread::path_tracer_thread_func, this);
+	m_viewer_thread = std::thread(&PathTracerThread::viewer_thread_func, this);
 }
 
 double PathTracerThread::GetRenderTime() const {
@@ -44,14 +45,21 @@ void PathTracerThread::SetPause(bool pause) {
 }
 
 void PathTracerThread::StopAndJoin() {
-	if (!m_thread.joinable())
+	if (!m_path_tracer_thread.joinable())
 		return;
 	m_run = false;
 	SetPause(false);
-	m_thread.join();
+	UpdateViewer();
+	m_path_tracer_thread.join();
+	m_viewer_thread.join();
 }
 
-void PathTracerThread::thread_func() {
+void PathTracerThread::UpdateViewer() {
+	std::unique_lock<std::mutex> lock{m_viewer_mutex};
+	m_viewer_condition_variable.notify_one();
+}
+
+void PathTracerThread::path_tracer_thread_func() {
 	std::shared_ptr<myvk::Device> device = m_main_queue->GetDevicePtr();
 	std::shared_ptr<PathTracer> path_tracer = m_path_tracer_viewer_ptr->GetPathTracerPtr();
 
@@ -62,6 +70,35 @@ void PathTracerThread::thread_func() {
 	path_tracer->CmdRender(pt_command_buffer);
 	pt_command_buffer->End();
 
+	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(device);
+	while (m_run) {
+		while (m_pause) {
+			std::unique_lock<std::mutex> lock{m_pause_mutex};
+			m_pause_condition_variable.wait(lock);
+			lock.unlock();
+		}
+
+		if (!m_run)
+			return;
+
+		{
+			std::lock_guard<std::mutex> lock{m_target_mutex};
+			fence->Reset();
+			pt_command_buffer->Submit(fence);
+			fence->Wait();
+		}
+
+		if ((m_spp++) % kPTResultUpdateInterval == 0) {
+			UpdateViewer();
+		}
+	}
+}
+
+void PathTracerThread::viewer_thread_func() {
+	std::shared_ptr<myvk::Device> device = m_main_queue->GetDevicePtr();
+	std::shared_ptr<PathTracer> path_tracer = m_path_tracer_viewer_ptr->GetPathTracerPtr();
+
+	std::shared_ptr<myvk::CommandPool> pt_command_pool = myvk::CommandPool::Create(m_path_tracer_queue);
 	std::shared_ptr<myvk::CommandBuffer> pt_release_command_buffer = myvk::CommandBuffer::Create(pt_command_pool);
 	std::shared_ptr<myvk::CommandBuffer> pt_acquire_command_buffer = myvk::CommandBuffer::Create(pt_command_pool);
 
@@ -95,69 +132,67 @@ void PathTracerThread::thread_func() {
 
 	// TODO: Test queue ownership transfer
 	std::shared_ptr<myvk::CommandPool> main_command_pool = myvk::CommandPool::Create(m_main_queue);
-	std::shared_ptr<myvk::CommandBuffer> viewer_command_buffer = myvk::CommandBuffer::Create(main_command_pool);
-	viewer_command_buffer->Begin();
-	viewer_command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {}, {},
-	    {path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT,
-	                                                    VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
-	                                                    m_path_tracer_queue, m_main_queue),
-	     path_tracer->GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT,
-	                                                     VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
-	                                                     m_path_tracer_queue, m_main_queue),
-	     path_tracer->GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT,
-	                                                     VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
-	                                                     m_path_tracer_queue, m_main_queue)});
-	m_path_tracer_viewer_ptr->CmdGenRenderPass(viewer_command_buffer);
-	viewer_command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
-	    {path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-	                                                    VK_IMAGE_LAYOUT_GENERAL, m_main_queue, m_path_tracer_queue),
-	     path_tracer->GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-	                                                     VK_IMAGE_LAYOUT_GENERAL, m_main_queue, m_path_tracer_queue),
-	     path_tracer->GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_GENERAL,
-	                                                     VK_IMAGE_LAYOUT_GENERAL, m_main_queue, m_path_tracer_queue)});
-	viewer_command_buffer->End();
 
 	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(device);
 	while (m_run) {
-		while (m_pause) {
-			std::unique_lock<std::mutex> lock{m_pause_mutex};
-			m_pause_condition_variable.wait(lock);
-			lock.unlock();
+		{
+			std::unique_lock<std::mutex> lock{m_viewer_mutex};
+			m_viewer_condition_variable.wait(lock);
+			m_viewer_mutex.unlock();
 		}
 
-		{
-			std::lock_guard<std::mutex> lock{m_target_mutex};
+		if (!m_run)
+			return;
+
+		// release pt queue ownership
+		if (m_path_tracer_queue->GetFamilyIndex() != m_main_queue->GetFamilyIndex()) {
+			m_target_mutex.lock();
+
 			fence->Reset();
-			pt_command_buffer->Submit(fence);
+			pt_release_command_buffer->Submit(fence);
 			fence->Wait();
 		}
 
-		if ((m_spp++) % kPTResultUpdateInterval == 0) {
-			// release pt queue ownership
-			if (m_path_tracer_queue->GetFamilyIndex() != m_main_queue->GetFamilyIndex()) {
-				m_target_mutex.lock();
+		{ // gen render pass
+			std::shared_ptr<myvk::CommandBuffer> viewer_command_buffer = myvk::CommandBuffer::Create(main_command_pool);
+			viewer_command_buffer->Begin();
+			viewer_command_buffer->CmdPipelineBarrier(
+			    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {}, {},
+			    {path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT,
+			                                                    VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+			                                                    m_path_tracer_queue, m_main_queue),
+			     path_tracer->GetAlbedoImage()->GetMemoryBarrier(
+			         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
+			         VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue, m_main_queue),
+			     path_tracer->GetNormalImage()->GetMemoryBarrier(
+			         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
+			         VK_IMAGE_LAYOUT_GENERAL, m_path_tracer_queue, m_main_queue)});
+			m_path_tracer_viewer_ptr->CmdGenRenderPass(viewer_command_buffer);
+			viewer_command_buffer->CmdPipelineBarrier(
+			    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {}, {},
+			    {path_tracer->GetColorImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
+			                                                    VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+			                                                    m_main_queue, m_path_tracer_queue),
+			     path_tracer->GetAlbedoImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
+			                                                     VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+			                                                     m_main_queue, m_path_tracer_queue),
+			     path_tracer->GetNormalImage()->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0,
+			                                                     VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+			                                                     m_main_queue, m_path_tracer_queue)});
+			viewer_command_buffer->End();
 
-				fence->Reset();
-				pt_release_command_buffer->Submit(fence);
-				fence->Wait();
-			}
+			fence->Reset();
+			viewer_command_buffer->Submit(fence);
+			fence->Wait();
+		}
 
-			{ // gen render pass
-				fence->Reset();
-				viewer_command_buffer->Submit(fence);
-				fence->Wait();
-			}
+		// acquire pt queue ownership
+		if (m_path_tracer_queue->GetFamilyIndex() != m_main_queue->GetFamilyIndex()) {
+			fence->Reset();
+			pt_acquire_command_buffer->Submit({}, {}, fence);
+			fence->Wait();
 
-			// acquire pt queue ownership
-			if (m_path_tracer_queue->GetFamilyIndex() != m_main_queue->GetFamilyIndex()) {
-				fence->Reset();
-				pt_acquire_command_buffer->Submit({}, {}, fence);
-				fence->Wait();
-
-				m_target_mutex.unlock();
-			}
+			m_target_mutex.unlock();
 		}
 	}
 }

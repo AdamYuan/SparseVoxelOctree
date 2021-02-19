@@ -374,23 +374,27 @@ void Application::ui_menubar() {
 
 	ImGui::Separator();
 
-	/*if (m_ui_state == UIStates::kPathTracing) {
-	    if (ImGui::BeginMenu("Channel")) {
-	        if (ImGui::MenuItem("Color", nullptr,
-	                            m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kColor))
-	            m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kColor;
-	        if (ImGui::MenuItem("Albedo", nullptr,
-	                            m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kAlbedo))
-	            m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kAlbedo;
-	        if (ImGui::MenuItem("Normal", nullptr,
-	                            m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kNormal))
-	            m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kNormal;
+	if (m_ui_state == UIStates::kPathTracing) {
+		if (ImGui::BeginMenu("View")) {
+			if (ImGui::MenuItem("Color", nullptr,
+			                    m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kColor)) {
+				m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kColor;
+				m_path_tracer_thread->UpdateViewer();
+			}
+			if (ImGui::MenuItem("Albedo", nullptr,
+			                    m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kAlbedo)) {
+				m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kAlbedo;
+				m_path_tracer_thread->UpdateViewer();
+			}
+			if (ImGui::MenuItem("Normal", nullptr,
+			                    m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kNormal)) {
+				m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kNormal;
+				m_path_tracer_thread->UpdateViewer();
+			}
 
-	        ImGui::EndMenu();
-	    }
-	}*/
-
-	if (m_ui_state == UIStates::kOctreeTracer) {
+			ImGui::EndMenu();
+		}
+	} else if (m_ui_state == UIStates::kOctreeTracer) {
 		if (ImGui::BeginMenu("Camera")) {
 			ImGui::DragAngle("FOV", &m_camera->m_fov, 1, 10, 179);
 			ImGui::DragFloat("Speed", &m_camera->m_speed, 0.005f, 0.005f, 0.2f);
@@ -484,6 +488,17 @@ void Application::ui_menubar() {
 		indent_w -= 8;
 		ImGui::SameLine(indent_w);
 		ImGui::Separator();
+
+		sprintf(buf, ICON_FA_BOLT " %u", m_path_tracer->m_bounce);
+		indent_w -= ImGui::CalcTextSize(buf).x + 8;
+		ImGui::SameLine(indent_w);
+		ImGui::TextUnformatted(buf);
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::BeginTooltip();
+			ImGui::TextUnformatted("Bounce");
+			ImGui::EndTooltip();
+		}
 
 		sprintf(buf, ICON_FA_STOPWATCH " %u sec", uint32_t(m_path_tracer_thread->GetRenderTime()));
 		indent_w -= ImGui::CalcTextSize(buf).x + 8;

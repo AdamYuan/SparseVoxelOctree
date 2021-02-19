@@ -1,6 +1,5 @@
 name: Windows
 
-# Controls when the action will run. Triggers the workflow on push
 on: 
   push:
   pull_request:
@@ -8,55 +7,44 @@ on:
     # tags:
     # - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     name: ${{ matrix.config.name }}
-    runs-on: ${{ matrix.config.os }} # будет запускаться по очереди на всех типах машин
+    runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
       matrix:
         config: 
         - {
-            name: "Windows Latest MSVC",
+            name: "Windows MSVC 64",
             os: windows-latest,
-            artifact: "windows_msvc.7z",
+            artifact: "windows_msvc_64.7z",
             build_type: "Release",
             cc: "cl",
             cxx: "cl",
-            environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat",
+            arch: "x64",
             archiver: "7z a",
             generators: "Visual Studio 16 2019"
           }
         - {
-            name: "Windows Latest MinGW",
+            name: "Windows MSVC 32",
             os: windows-latest,
-            artifact: "windows_mingw.7z",
+            artifact: "windows_msvc_32.7z",
             build_type: "Release",
-            cc: "gcc",
-            cxx: "g++",
+            cc: "cl",
+            cxx: "cl",
+            arch: "Win32",
             archiver: "7z a",
-            generators: "Ninja"
+            generators: "Visual Studio 16 2019"
           }
 
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-
-      - name: Print env
-        run: |
-          echo github.event.action: ${{ github.event.action }}
-          echo github.event_name: ${{ github.event_name }}
-
 
       - name: Install dependencies
         run: |
-          choco install ninja cmake
-          ninja --version
+          choco install cmake
           cmake --version
-        # cmd "${{ matrix.config.environment_script }}"
           
       - name: Configure
         shell: bash
@@ -66,6 +54,7 @@ jobs:
           cmake \
             -S . \
             -B . \
+            -A ${{ matrix.config.arch }} \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
             -G "${{ matrix.config.generators }}" \
             -DCMAKE_INSTALL_PREFIX:PATH=instdir

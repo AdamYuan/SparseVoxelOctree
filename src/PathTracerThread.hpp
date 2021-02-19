@@ -13,15 +13,16 @@ private:
 	std::shared_ptr<PathTracerViewer> m_path_tracer_viewer_ptr;
 	std::shared_ptr<myvk::Queue> m_path_tracer_queue, m_main_queue;
 
-	std::thread m_thread;
-	std::condition_variable m_pause_condition_variable;
-	std::mutex m_pause_mutex, m_target_mutex;
+	std::thread m_path_tracer_thread, m_viewer_thread;
+	std::condition_variable m_pause_condition_variable, m_viewer_condition_variable;
+	std::mutex m_pause_mutex, m_target_mutex, m_viewer_mutex;
 	bool m_pause, m_run;
 
 	uint32_t m_spp;
 	double m_time;
 
-	void thread_func();
+	void path_tracer_thread_func();
+	void viewer_thread_func();
 
 public:
 	static std::shared_ptr<PathTracerThread> Create(const std::shared_ptr<PathTracerViewer> &path_tracer_viewer,
@@ -34,6 +35,8 @@ public:
 	void SetPause(bool pause);
 	void StopAndJoin();
 
+	void UpdateViewer();
+
 	uint32_t GetSPP() const { return m_spp; }
 	double GetRenderTime() const;
 
@@ -41,7 +44,7 @@ public:
 	const std::mutex &GetTargetMutex() const { return m_target_mutex; }
 
 	bool IsPause() const { return m_pause; }
-	bool IsRunning() const { return m_thread.joinable(); }
+	bool IsRunning() const { return m_path_tracer_thread.joinable(); }
 };
 
 #endif
