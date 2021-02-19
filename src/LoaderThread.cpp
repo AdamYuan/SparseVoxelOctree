@@ -25,7 +25,10 @@ bool LoaderThread::TryJoin() {
 		return false;
 	if (!m_job_done)
 		return false;
-	m_condition_variable.notify_all();
+	{
+		std::unique_lock<std::mutex> lock{m_mutex};
+		m_condition_variable.notify_one();
+	}
 	m_thread.join();
 	return true;
 }
@@ -86,8 +89,10 @@ void LoaderThread::thread_func(const char *filename, uint32_t octree_level) {
 		// join to main thread and update octree
 		m_job_done = true;
 		{
-			std::unique_lock<std::mutex> lock{m_mutex};
-			m_condition_variable.wait(lock);
+			{
+				std::unique_lock<std::mutex> lock{m_mutex};
+				m_condition_variable.wait(lock);
+			}
 
 			if (m_main_queue->GetFamilyIndex() != m_loader_queue->GetFamilyIndex()) {
 				// TODO: Test queue ownership transfer
