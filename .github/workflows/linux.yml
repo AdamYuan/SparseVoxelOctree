@@ -22,8 +22,7 @@ jobs:
             build_type: "Release",
             cc: "gcc",
             cxx: "g++",
-            archiver: "7z a",
-            generators: "Ninja"
+            archiver: "7z a"
           }
 
     steps:
@@ -32,10 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install ninja-build cmake xorg-dev
-          ninja --version
-          cmake --version
-          gcc --version
+          sudo apt-get install xorg-dev
           
       - name: Configure
         shell: bash
@@ -46,7 +42,6 @@ jobs:
             -S . \
             -B . \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
-            -G "${{ matrix.config.generators }}" \
             -DCMAKE_INSTALL_PREFIX:PATH=instdir
 
       - name: Build

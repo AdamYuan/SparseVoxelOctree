@@ -40,11 +40,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-
-        # - name: Install dependencies
-        # run: |
-        #   choco install cmake
-        #   cmake --version
           
       - name: Configure
         shell: bash
