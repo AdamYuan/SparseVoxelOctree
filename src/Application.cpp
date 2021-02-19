@@ -444,7 +444,7 @@ void Application::ui_menubar() {
 	}
 
 	// Status bar
-	float indent_w = ImGui::GetWindowContentRegionWidth();
+	float indent_w = ImGui::GetWindowContentRegionWidth(), spacing = ImGui::GetStyle().ItemSpacing.x;
 
 	char buf[128];
 	if (m_ui_state == UIStates::kOctreeTracer) {
@@ -453,12 +453,12 @@ void Application::ui_menubar() {
 		ImGui::SameLine(indent_w);
 		ImGui::TextUnformatted(buf);
 
-		indent_w -= 8;
+		indent_w -= spacing;
 		ImGui::SameLine(indent_w);
 		ImGui::Separator();
 
 		sprintf(buf, ICON_FA_CUBE " %d", m_octree->GetLevel());
-		indent_w -= ImGui::CalcTextSize(buf).x + 8;
+		indent_w -= ImGui::CalcTextSize(buf).x + spacing;
 		ImGui::SameLine(indent_w);
 		ImGui::TextUnformatted(buf);
 
@@ -470,7 +470,7 @@ void Application::ui_menubar() {
 
 		sprintf(buf, ICON_FA_DATABASE " %.0f/%.0f MB", m_octree->GetRange() / 1000000.0f,
 		        m_octree->GetBuffer()->GetSize() / 1000000.0f);
-		indent_w -= ImGui::CalcTextSize(buf).x + 8;
+		indent_w -= ImGui::CalcTextSize(buf).x + spacing;
 		ImGui::SameLine(indent_w);
 		ImGui::TextUnformatted(buf);
 
@@ -485,12 +485,12 @@ void Application::ui_menubar() {
 		ImGui::SameLine(indent_w);
 		ImGui::TextUnformatted(buf);
 
-		indent_w -= 8;
+		indent_w -= spacing;
 		ImGui::SameLine(indent_w);
 		ImGui::Separator();
 
 		sprintf(buf, ICON_FA_BOLT " %u", m_path_tracer->m_bounce);
-		indent_w -= ImGui::CalcTextSize(buf).x + 8;
+		indent_w -= ImGui::CalcTextSize(buf).x + spacing;
 		ImGui::SameLine(indent_w);
 		ImGui::TextUnformatted(buf);
 
@@ -501,7 +501,7 @@ void Application::ui_menubar() {
 		}
 
 		sprintf(buf, ICON_FA_STOPWATCH " %u sec", uint32_t(m_path_tracer_thread->GetRenderTime()));
-		indent_w -= ImGui::CalcTextSize(buf).x + 8;
+		indent_w -= ImGui::CalcTextSize(buf).x + spacing;
 		ImGui::SameLine(indent_w);
 		ImGui::TextUnformatted(buf);
 
@@ -512,7 +512,7 @@ void Application::ui_menubar() {
 		}
 
 		if (m_path_tracer_queue->GetFamilyIndex() == m_main_queue->GetFamilyIndex()) {
-			indent_w -= ImGui::CalcTextSize(ICON_FA_EXCLAMATION_TRIANGLE).x + 8;
+			indent_w -= ImGui::CalcTextSize(ICON_FA_EXCLAMATION_TRIANGLE).x + spacing;
 			ImGui::SameLine(indent_w);
 			ImGui::TextUnformatted(ICON_FA_EXCLAMATION_TRIANGLE);
 
