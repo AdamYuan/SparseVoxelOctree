@@ -78,5 +78,5 @@ jobs:
         with:
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: ./${{ matrix.config.artifact }}
-          asset_name: ${{ matrix.config.artifact }}.zip
-          asset_content_type: application/zip 
+          asset_name: ${{ matrix.config.artifact }}
+          asset_content_type: application/x-7z-compressed
