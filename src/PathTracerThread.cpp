@@ -75,7 +75,6 @@ void PathTracerThread::path_tracer_thread_func() {
 		while (m_pause) {
 			std::unique_lock<std::mutex> lock{m_pause_mutex};
 			m_pause_condition_variable.wait(lock);
-			lock.unlock();
 		}
 
 		if (!m_run)
@@ -138,7 +137,6 @@ void PathTracerThread::viewer_thread_func() {
 		{
 			std::unique_lock<std::mutex> lock{m_viewer_mutex};
 			m_viewer_condition_variable.wait(lock);
-			m_viewer_mutex.unlock();
 		}
 
 		if (!m_run)
