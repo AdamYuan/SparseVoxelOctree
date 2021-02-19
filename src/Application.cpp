@@ -224,6 +224,7 @@ Application::Application() {
 	}
 
 	m_log_sink = std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(kLogLimit);
+	m_log_sink->set_pattern("%H:%M:%S.%e"); // only display time
 	spdlog::default_logger()->sinks().push_back(m_log_sink);
 
 	create_window();
@@ -419,27 +420,45 @@ void Application::ui_menubar() {
 	}
 
 	if (ImGui::BeginMenu("Log")) {
-		ImGui::BeginChild("LogChild", {kWidth / 2.0f, kHeight / 2.0f}, false, ImGuiWindowFlags_HorizontalScrollbar);
-
 		const auto &logs_raw = m_log_sink->last_raw();
+		const auto &logs_time = m_log_sink->last_formatted();
 
 		static constexpr ImU32 kLogColors[7] = {0xffffffffu, 0xffffffffu, 0xff00bd00u, 0xff00ffffu,
 		                                        0xff0000ffu, 0xff0000ffu, 0xffffffffu};
 
 		static constexpr const char *kLogLevelStrs[7] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "CRITICAL", "OFF"};
 
-		for (const auto &log : logs_raw) {
-			ImGui::PushStyleColor(ImGuiCol_Text, kLogColors[log.level]);
-			ImGui::TextUnformatted(kLogLevelStrs[log.level]);
-			ImGui::PopStyleColor();
+		ImGuiTableFlags flags =
+		    ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg;
+		if (ImGui::BeginTable("Log Table", 4, flags, {kWidth / 2.0f, kHeight / 2.0f})) {
+			ImGui::TableSetupColumn("Time");
+			ImGui::TableSetupColumn("Level");
+			ImGui::TableSetupColumn("Thread");
+			ImGui::TableSetupColumn("Text");
+			ImGui::TableSetupScrollFreeze(0, 1); // Make row always visible
+			ImGui::TableHeadersRow();
 
-			ImGui::SameLine();
+			for (uint32_t i = 0; i < logs_raw.size(); ++i) {
+				const auto &log = logs_raw[i];
+				ImGui::TableNextRow();
 
-			ImGui::TextUnformatted(log.payload.begin(), log.payload.end());
+				ImGui::TableSetColumnIndex(0);
+				ImGui::TextUnformatted(logs_time[i].c_str());
+
+				ImGui::TableSetColumnIndex(1);
+				ImGui::PushStyleColor(ImGuiCol_Text, kLogColors[log.level]);
+				ImGui::TextUnformatted(kLogLevelStrs[log.level]);
+				ImGui::PopStyleColor();
+
+				ImGui::TableSetColumnIndex(2);
+				ImGui::Text("%lu", log.thread_id);
+
+				ImGui::TableSetColumnIndex(3);
+				ImGui::TextUnformatted(log.payload.begin(), log.payload.end());
+			}
+
+			ImGui::EndTable();
 		}
-
-		ImGui::EndChild();
-
 		ImGui::EndMenu();
 	}
 
