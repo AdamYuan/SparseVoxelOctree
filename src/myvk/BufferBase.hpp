@@ -11,7 +11,7 @@ struct BufferSubresourceRange {
 
 class BufferBase : public DeviceObjectBase {
 protected:
-	VkBuffer m_buffer{nullptr};
+	VkBuffer m_buffer{VK_NULL_HANDLE};
 	VkDeviceSize m_size{0};
 
 public:

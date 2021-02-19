@@ -22,7 +22,7 @@ class CommandBuffer : public DeviceObjectBase {
 private:
 	std::shared_ptr<CommandPool> m_command_pool_ptr;
 
-	VkCommandBuffer m_command_buffer{nullptr};
+	VkCommandBuffer m_command_buffer{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<CommandBuffer> Create(const std::shared_ptr<CommandPool> &command_pool,

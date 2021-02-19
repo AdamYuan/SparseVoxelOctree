@@ -10,7 +10,7 @@ namespace myvk {
 class PipelineBase : public DeviceObjectBase {
 protected:
 	std::shared_ptr<PipelineLayout> m_pipeline_layout_ptr;
-	VkPipeline m_pipeline{nullptr};
+	VkPipeline m_pipeline{VK_NULL_HANDLE};
 
 public:
 	VkPipeline GetHandle() const { return m_pipeline; }

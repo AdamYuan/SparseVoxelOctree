@@ -10,7 +10,7 @@ namespace myvk {
 class DescriptorSetLayout : public DeviceObjectBase {
 private:
 	std::shared_ptr<Device> m_device_ptr;
-	VkDescriptorSetLayout m_descriptor_set_layout{nullptr};
+	VkDescriptorSetLayout m_descriptor_set_layout{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<DescriptorSetLayout> Create(const std::shared_ptr<Device> &device,

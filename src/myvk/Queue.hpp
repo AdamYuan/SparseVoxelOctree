@@ -13,7 +13,7 @@ class Queue : public DeviceObjectBase { // only can be created with device creat
 protected:
 	std::shared_ptr<Device> m_device_ptr;
 
-	VkQueue m_queue{nullptr};
+	VkQueue m_queue{VK_NULL_HANDLE};
 	uint32_t m_family_index;
 
 	std::mutex m_mutex;

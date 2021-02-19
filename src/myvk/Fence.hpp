@@ -11,7 +11,7 @@ namespace myvk {
 class Fence : public DeviceObjectBase {
 private:
 	std::shared_ptr<Device> m_device_ptr;
-	VkFence m_fence{nullptr};
+	VkFence m_fence{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<Fence> Create(const std::shared_ptr<Device> &device, VkFenceCreateFlags flags = 0);

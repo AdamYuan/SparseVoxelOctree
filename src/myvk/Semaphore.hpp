@@ -11,7 +11,7 @@ class Semaphore : public DeviceObjectBase {
 private:
 	std::shared_ptr<Device> m_device_ptr;
 
-	VkSemaphore m_semaphore{nullptr};
+	VkSemaphore m_semaphore{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<Semaphore> Create(const std::shared_ptr<Device> &device);

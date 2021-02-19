@@ -18,7 +18,7 @@ private:
 	std::shared_ptr<Queue> m_graphics_queue_ptr;
 	std::shared_ptr<PresentQueue> m_present_queue_ptr;
 
-	VkSwapchainKHR m_swapchain{nullptr};
+	VkSwapchainKHR m_swapchain{VK_NULL_HANDLE};
 
 	uint32_t m_image_count;
 	VkFormat m_image_format;

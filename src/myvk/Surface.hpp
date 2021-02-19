@@ -12,7 +12,7 @@ private:
 	std::shared_ptr<Instance> m_instance_ptr;
 	GLFWwindow *m_window{nullptr};
 
-	VkSurfaceKHR m_surface{nullptr};
+	VkSurfaceKHR m_surface{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<Surface> Create(const std::shared_ptr<Instance> &instance, GLFWwindow *window);

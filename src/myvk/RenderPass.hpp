@@ -9,7 +9,7 @@ namespace myvk {
 class RenderPass : public DeviceObjectBase {
 private:
 	std::shared_ptr<Device> m_device_ptr;
-	VkRenderPass m_render_pass{nullptr};
+	VkRenderPass m_render_pass{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<RenderPass> Create(const std::shared_ptr<Device> &device,

@@ -9,7 +9,7 @@ namespace myvk {
 class ShaderModule : public DeviceObjectBase {
 private:
 	std::shared_ptr<Device> m_device_ptr;
-	VkShaderModule m_shader_module{nullptr};
+	VkShaderModule m_shader_module{VK_NULL_HANDLE};
 	VkShaderStageFlagBits m_stage;
 
 public:

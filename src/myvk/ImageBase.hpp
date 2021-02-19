@@ -7,7 +7,7 @@
 namespace myvk {
 class ImageBase : public DeviceObjectBase {
 protected:
-	VkImage m_image{nullptr};
+	VkImage m_image{VK_NULL_HANDLE};
 
 	VkExtent3D m_extent{};
 	VkImageType m_type{};

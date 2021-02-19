@@ -12,7 +12,7 @@ class Buffer : public BufferBase {
 private:
 	std::shared_ptr<Device> m_device_ptr;
 
-	VmaAllocation m_allocation{nullptr};
+	VmaAllocation m_allocation{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<Buffer> Create(const std::shared_ptr<Device> &device, const VkBufferCreateInfo &create_info,

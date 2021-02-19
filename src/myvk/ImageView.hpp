@@ -12,7 +12,7 @@ class ImageView : public DeviceObjectBase {
 private:
 	std::shared_ptr<ImageBase> m_image_ptr;
 
-	VkImageView m_image_view{nullptr};
+	VkImageView m_image_view{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<ImageView> Create(const std::shared_ptr<ImageBase> &image,

@@ -8,7 +8,7 @@ class QueryPool : public DeviceObjectBase {
 private:
 	std::shared_ptr<Device> m_device_ptr;
 
-	VkQueryPool m_query_pool{nullptr};
+	VkQueryPool m_query_pool{VK_NULL_HANDLE};
 	uint32_t m_count{0};
 
 public:

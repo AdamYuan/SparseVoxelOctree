@@ -9,7 +9,7 @@ namespace myvk {
 class DescriptorPool : public DeviceObjectBase {
 private:
 	std::shared_ptr<Device> m_device_ptr;
-	VkDescriptorPool m_descriptor_pool{nullptr};
+	VkDescriptorPool m_descriptor_pool{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<DescriptorPool> Create(const std::shared_ptr<Device> &device,

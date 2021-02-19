@@ -14,9 +14,9 @@ class Device {
 private:
 	std::shared_ptr<PhysicalDevice> m_physical_device_ptr;
 
-	VkDevice m_device{nullptr};
-	VkPipelineCache m_pipeline_cache{nullptr};
-	VmaAllocator m_allocator{nullptr};
+	VkDevice m_device{VK_NULL_HANDLE};
+	VkPipelineCache m_pipeline_cache{VK_NULL_HANDLE};
+	VmaAllocator m_allocator{VK_NULL_HANDLE};
 
 	VkResult create_allocator();
 

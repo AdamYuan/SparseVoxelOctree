@@ -15,7 +15,7 @@ private:
 	std::shared_ptr<Device> m_device_ptr;
 	std::vector<std::shared_ptr<DescriptorSetLayout>> m_descriptor_layout_ptrs;
 
-	VkPipelineLayout m_pipeline_layout{nullptr};
+	VkPipelineLayout m_pipeline_layout{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<PipelineLayout>

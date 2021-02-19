@@ -14,7 +14,7 @@ private:
 	std::shared_ptr<RenderPass> m_render_pass_ptr;
 	std::vector<std::shared_ptr<ImageView>> m_image_view_ptrs;
 
-	VkFramebuffer m_framebuffer{nullptr};
+	VkFramebuffer m_framebuffer{VK_NULL_HANDLE};
 
 	VkExtent2D m_extent{};
 	uint32_t m_layers{};

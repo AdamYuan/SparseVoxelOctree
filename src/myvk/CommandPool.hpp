@@ -12,7 +12,7 @@ class CommandPool : public DeviceObjectBase {
 private:
 	std::shared_ptr<Queue> m_queue_ptr;
 
-	VkCommandPool m_command_pool{nullptr};
+	VkCommandPool m_command_pool{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<CommandPool> Create(const std::shared_ptr<Queue> &queue, VkCommandPoolCreateFlags flags = 0);

@@ -16,7 +16,7 @@ private:
 	std::shared_ptr<DescriptorPool> m_descriptor_pool_ptr;
 	std::shared_ptr<DescriptorSetLayout> m_descriptor_set_layout_ptr;
 
-	VkDescriptorSet m_descriptor_set{nullptr};
+	VkDescriptorSet m_descriptor_set{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<DescriptorSet> Create(const std::shared_ptr<DescriptorPool> &descriptor_pool,

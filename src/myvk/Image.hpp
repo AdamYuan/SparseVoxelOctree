@@ -9,7 +9,7 @@ class Image : public ImageBase {
 private:
 	std::shared_ptr<Device> m_device_ptr;
 
-	VmaAllocation m_allocation{nullptr};
+	VmaAllocation m_allocation{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<Image> Create(const std::shared_ptr<Device> &device, VmaMemoryUsage memory_usage,

@@ -8,7 +8,7 @@ class Sampler : public DeviceObjectBase {
 private:
 	std::shared_ptr<Device> m_device_ptr;
 
-	VkSampler m_sampler{nullptr};
+	VkSampler m_sampler{VK_NULL_HANDLE};
 
 public:
 	static std::shared_ptr<Sampler> Create(const std::shared_ptr<Device> &device,

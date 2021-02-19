@@ -12,7 +12,7 @@ class PhysicalDevice {
 private:
 	std::shared_ptr<Instance> m_instance_ptr;
 
-	VkPhysicalDevice m_physical_device{nullptr};
+	VkPhysicalDevice m_physical_device{VK_NULL_HANDLE};
 	VkPhysicalDeviceProperties m_properties;
 	VkPhysicalDeviceMemoryProperties m_memory_properties;
 	VkPhysicalDeviceFeatures m_features;
