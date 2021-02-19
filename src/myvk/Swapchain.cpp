@@ -125,8 +125,8 @@ std::shared_ptr<Swapchain> Swapchain::Create(const std::shared_ptr<Queue> &graph
 VkResult Swapchain::AcquireNextImage(uint32_t *p_image_index, const std::shared_ptr<Semaphore> &signal_semaphore,
                                      const std::shared_ptr<Fence> &signal_fence) const {
 	return vkAcquireNextImageKHR(GetDevicePtr()->GetHandle(), m_swapchain, UINT64_MAX,
-	                             signal_semaphore ? signal_semaphore->GetHandle() : nullptr,
-	                             signal_fence ? signal_fence->GetHandle() : nullptr, p_image_index);
+	                             signal_semaphore ? signal_semaphore->GetHandle() : VK_NULL_HANDLE,
+	                             signal_fence ? signal_fence->GetHandle() : VK_NULL_HANDLE, p_image_index);
 }
 
 VkResult Swapchain::Present(uint32_t image_index, const SemaphoreGroup &wait_semaphores) const {

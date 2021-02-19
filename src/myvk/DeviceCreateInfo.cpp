@@ -56,7 +56,7 @@ void DeviceCreateInfo::Initialize(const std::shared_ptr<PhysicalDevice> &physica
 	std::vector<VqsQueueRequirements> vqs_queue_requirements;
 	for (const auto &i : queue_requirements) {
 		vqs_queue_requirements.push_back(
-		    {i.m_required_flags, i.m_priority, i.m_surface_ptr ? i.m_surface_ptr->GetHandle() : nullptr});
+		    {i.m_required_flags, i.m_priority, i.m_surface_ptr ? i.m_surface_ptr->GetHandle() : VK_NULL_HANDLE});
 		m_out_queues.push_back(i.m_out_queue);
 		m_out_present_queues.push_back(i.m_out_present_queue);
 		m_surface_ptrs.push_back(i.m_surface_ptr);
