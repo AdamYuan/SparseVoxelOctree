@@ -1,5 +1,6 @@
 #include "Config.hpp"
 #include "PathTracerThread.hpp"
+#include <spdlog/spdlog.h>
 
 std::shared_ptr<PathTracerThread> PathTracerThread::Create(const std::shared_ptr<PathTracerViewer> &path_tracer_viewer,
                                                            const std::shared_ptr<myvk::Queue> &m_path_tracer_queue,
@@ -60,6 +61,8 @@ void PathTracerThread::UpdateViewer() {
 }
 
 void PathTracerThread::path_tracer_thread_func() {
+	spdlog::info("Enter path tracer thread");
+
 	std::shared_ptr<myvk::Device> device = m_main_queue->GetDevicePtr();
 	std::shared_ptr<PathTracer> path_tracer = m_path_tracer_viewer_ptr->GetPathTracerPtr();
 
@@ -78,7 +81,7 @@ void PathTracerThread::path_tracer_thread_func() {
 		}
 
 		if (!m_run)
-			return;
+			break;
 
 		{
 			std::lock_guard<std::mutex> lock{m_target_mutex};
@@ -91,9 +94,13 @@ void PathTracerThread::path_tracer_thread_func() {
 			UpdateViewer();
 		}
 	}
+
+	spdlog::info("Quit path tracer thread");
 }
 
 void PathTracerThread::viewer_thread_func() {
+	spdlog::info("Enter path tracer viewer thread");
+
 	std::shared_ptr<myvk::Device> device = m_main_queue->GetDevicePtr();
 	std::shared_ptr<PathTracer> path_tracer = m_path_tracer_viewer_ptr->GetPathTracerPtr();
 
@@ -140,7 +147,7 @@ void PathTracerThread::viewer_thread_func() {
 		}
 
 		if (!m_run)
-			return;
+			break;
 
 		// release pt queue ownership
 		if (m_path_tracer_queue->GetFamilyIndex() != m_main_queue->GetFamilyIndex()) {
@@ -193,4 +200,6 @@ void PathTracerThread::viewer_thread_func() {
 			m_target_mutex.unlock();
 		}
 	}
+
+	spdlog::info("Quit path tracer viewer thread");
 }

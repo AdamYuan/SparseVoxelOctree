@@ -34,6 +34,8 @@ bool LoaderThread::TryJoin() {
 }
 
 void LoaderThread::thread_func(const char *filename, uint32_t octree_level) {
+	spdlog::info("Enter loader thread");
+
 	std::shared_ptr<myvk::Device> device = m_main_queue->GetDevicePtr();
 	std::shared_ptr<myvk::CommandPool> main_command_pool = myvk::CommandPool::Create(m_main_queue);
 	std::shared_ptr<myvk::CommandPool> loader_command_pool = myvk::CommandPool::Create(m_loader_queue);
@@ -115,4 +117,6 @@ void LoaderThread::thread_func(const char *filename, uint32_t octree_level) {
 		}
 	}
 	m_job_done = true;
+
+	spdlog::info("Quit loader thread");
 }
