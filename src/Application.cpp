@@ -686,7 +686,7 @@ void Application::ui_loading_modal() {
 	                               ImGuiWindowFlags_NoMove)) {
 		ImGui::Spinner("##spinner", 12, 6, ImGui::GetColorU32(ImGuiCol_ButtonHovered));
 		ImGui::SameLine();
-		ImGui::TextUnformatted(m_loader_thread->GetDetail());
+		ImGui::TextUnformatted(m_loader_thread->GetNotification());
 
 		ImGui::EndPopup();
 	}

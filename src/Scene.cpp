@@ -375,7 +375,8 @@ void Scene::create_descriptors(const std::shared_ptr<myvk::Device> &device) {
 	}
 }
 
-std::shared_ptr<Scene> Scene::Create(const std::shared_ptr<myvk::Queue> &graphics_queue, const char *filename) {
+std::shared_ptr<Scene> Scene::Create(const std::shared_ptr<myvk::Queue> &graphics_queue, const char *filename,
+                                     const char **notification_ptr) {
 	std::shared_ptr<Scene> ret = std::make_shared<Scene>();
 
 	std::string base_dir = get_base_dir(filename);
@@ -383,13 +384,19 @@ std::shared_ptr<Scene> Scene::Create(const std::shared_ptr<myvk::Queue> &graphic
 	std::vector<Mesh> meshes;
 	std::vector<std::string> texture_filenames;
 
+	if (notification_ptr)
+		*notification_ptr = "Loading Mesh";
 	if (!load_meshes(filename, base_dir.c_str(), &meshes, &texture_filenames)) {
 		spdlog::error("Failed to load meshes");
 		return nullptr;
 	}
 	spdlog::info("Meshes loaded from {}", filename);
 
+	if (notification_ptr)
+		*notification_ptr = "Optimizing Mesh and Creating Buffers";
 	ret->load_buffers_and_draw_cmd(graphics_queue, meshes);
+	if (notification_ptr)
+		*notification_ptr = "Loading Textures";
 	ret->load_textures(graphics_queue, texture_filenames);
 	ret->process_texture_errors();
 	ret->create_descriptors(graphics_queue->GetDevicePtr());

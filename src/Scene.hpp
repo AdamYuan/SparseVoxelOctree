@@ -52,7 +52,8 @@ private:
 	void create_descriptors(const std::shared_ptr<myvk::Device> &device);
 
 public:
-	static std::shared_ptr<Scene> Create(const std::shared_ptr<myvk::Queue> &graphics_queue, const char *filename);
+	static std::shared_ptr<Scene> Create(const std::shared_ptr<myvk::Queue> &graphics_queue, const char *filename,
+	                                     const char **notification_ptr = nullptr);
 
 	static VkVertexInputBindingDescription GetVertexBindingDescription();
 
@@ -64,9 +65,7 @@ public:
 
 	const std::shared_ptr<myvk::DescriptorSet> &GetDescriptorSet() const { return m_descriptor_set; }
 
-	const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayout() const {
-		return m_descriptor_set_layout;
-	}
+	const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayout() const { return m_descriptor_set_layout; }
 
 	void CmdDraw(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
 	             const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout,
