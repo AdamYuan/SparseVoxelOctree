@@ -82,7 +82,7 @@ void DeviceCreateInfo::fetch_queues(const std::shared_ptr<Device> &device) const
 		if (queue_map.find(queue_id) != queue_map.end())
 			continue;
 		std::shared_ptr<PresentQueue> present_queue =
-		    PresentQueue::create(device, i.surface_ptr, i.family_index, i.queue_index);
+		    PresentQueue::create(device, i.surface, i.family_index, i.queue_index);
 		queue_map[queue_id].first = present_queue;
 		queue_map[queue_id].second = present_queue;
 	}

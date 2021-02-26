@@ -44,7 +44,7 @@ public:
 	const std::mutex &GetTargetMutex() const { return m_target_mutex; }
 
 	bool IsPause() const { return m_pause; }
-	bool IsRunning() const { return m_path_tracer_thread.joinable(); }
+	bool IsRunning() const { return m_path_tracer_thread.joinable() || m_viewer_thread.joinable(); }
 };
 
 #endif

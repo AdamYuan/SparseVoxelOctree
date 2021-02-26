@@ -14,14 +14,14 @@ std::shared_ptr<LoaderThread> LoaderThread::Create(const std::shared_ptr<Octree>
 }
 
 void LoaderThread::Launch(const char *filename, uint32_t octree_level) {
-	if (m_thread.joinable())
+	if (IsRunning())
 		return;
 	m_job_done = false;
 	m_thread = std::thread(&LoaderThread::thread_func, this, filename, octree_level);
 }
 
 bool LoaderThread::TryJoin() {
-	if (!m_thread.joinable())
+	if (!IsRunning())
 		return false;
 	if (!m_job_done)
 		return false;
@@ -34,8 +34,8 @@ bool LoaderThread::TryJoin() {
 }
 
 void LoaderThread::thread_func(const char *filename, uint32_t octree_level) {
-	m_notification = "";
 	spdlog::info("Enter loader thread");
+	m_notification = "";
 
 	std::shared_ptr<myvk::Device> device = m_main_queue->GetDevicePtr();
 	std::shared_ptr<myvk::CommandPool> main_command_pool = myvk::CommandPool::Create(m_main_queue);

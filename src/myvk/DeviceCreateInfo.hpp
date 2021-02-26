@@ -2,7 +2,7 @@
 #define MYVK_QUEUE_QUERY_HPP
 
 #include "PhysicalDevice.hpp"
-#include <functional>
+#include "QueueSelector.hpp"
 #include <memory>
 #include <vector>
 #include <volk.h>
@@ -12,19 +12,6 @@ class Queue;
 class PresentQueue;
 class Device;
 class Surface;
-
-struct QueueSelection {
-	std::shared_ptr<Queue> *target;
-	uint32_t family_index, queue_index;
-};
-struct PresentQueueSelection {
-	std::shared_ptr<PresentQueue> *target;
-	std::shared_ptr<Surface> surface_ptr;
-	uint32_t family_index, queue_index;
-};
-using QueueSelectorFunc =
-    std::function<bool(const std::shared_ptr<PhysicalDevice> &, std::vector<QueueSelection> *const,
-                       std::vector<PresentQueueSelection> *const)>;
 
 class DeviceCreateInfo {
 private:

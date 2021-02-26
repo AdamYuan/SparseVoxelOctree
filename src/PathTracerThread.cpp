@@ -15,7 +15,7 @@ std::shared_ptr<PathTracerThread> PathTracerThread::Create(const std::shared_ptr
 PathTracerThread::~PathTracerThread() { StopAndJoin(); }
 
 void PathTracerThread::Launch() {
-	if (m_path_tracer_thread.joinable())
+	if (IsRunning())
 		return;
 	m_run = true;
 	m_pause = false;
@@ -46,7 +46,7 @@ void PathTracerThread::SetPause(bool pause) {
 }
 
 void PathTracerThread::StopAndJoin() {
-	if (!m_path_tracer_thread.joinable())
+	if (!IsRunning())
 		return;
 	m_run = false;
 	SetPause(false);

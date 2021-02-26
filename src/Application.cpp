@@ -188,7 +188,7 @@ void Application::initialize_vulkan() {
 					    main_queue.family_index = i;
 					    main_queue.queue_index = 0;
 
-					    if (physical_device->GetSurfaceSupport(i, present_queue.surface_ptr)) {
+					    if (physical_device->GetSurfaceSupport(i, present_queue.surface)) {
 						    present_queue.family_index = i;
 						    present_queue.queue_index = 0;
 						    break;
@@ -199,7 +199,7 @@ void Application::initialize_vulkan() {
 			    // present queue fallback
 			    if (present_queue.family_index == UINT32_MAX)
 				    for (uint32_t i = 0; i < families.size(); ++i) {
-					    if (physical_device->GetSurfaceSupport(i, present_queue.surface_ptr)) {
+					    if (physical_device->GetSurfaceSupport(i, present_queue.surface)) {
 						    present_queue.family_index = i;
 						    present_queue.queue_index = 0;
 						    break;
@@ -488,12 +488,21 @@ void Application::ui_menubar() {
 
 		static constexpr ImU32 kLogColors[7] = {0xffffffffu, 0xffffffffu, 0xff00bd00u, 0xff00ffffu,
 		                                        0xff0000ffu, 0xff0000ffu, 0xffffffffu};
-
 		static constexpr const char *kLogLevelStrs[7] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "CRITICAL", "OFF"};
+		static bool log_level_disable[7] = {};
 
 		ImGuiTableFlags flags =
 		    ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg;
 		if (ImGui::BeginTable("Log Table", 4, flags, {kWidth * 0.5f, kHeight * 0.5f})) {
+			if (ImGui::IsMouseReleased(1))
+				ImGui::OpenPopup("Filter");
+			if (ImGui::BeginPopup("Filter", ImGuiWindowFlags_NoMove)) {
+				for (uint32_t i = 0; i < 6; ++i) {
+					if (ImGui::MenuItem(kLogLevelStrs[i], nullptr, !log_level_disable[i]))
+						log_level_disable[i] ^= 1;
+				}
+				ImGui::EndPopup();
+			}
 			ImGui::TableSetupColumn("Time");
 			ImGui::TableSetupColumn("Level");
 			ImGui::TableSetupColumn("Thread");
@@ -503,6 +512,9 @@ void Application::ui_menubar() {
 
 			for (uint32_t i = 0; i < logs_raw.size(); ++i) {
 				const auto &log = logs_raw[i];
+				if (log_level_disable[log.level])
+					continue;
+
 				ImGui::TableNextRow();
 
 				ImGui::TableSetColumnIndex(0);

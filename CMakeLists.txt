@@ -162,6 +162,8 @@ add_executable(SparseVoxelOctree
 	src/myvk/PhysicalDevice.hpp
 	src/myvk/Queue.cpp
 	src/myvk/Queue.hpp
+	src/myvk/QueueSelector.cpp
+	src/myvk/QueueSelector.hpp
 	src/myvk/DeviceCreateInfo.cpp
 	src/myvk/DeviceCreateInfo.hpp
 	src/myvk/Surface.cpp

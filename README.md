@@ -14,6 +14,7 @@ make
 
 ## Built With
 * [volk](https://github.com/zeux/volk) - Vulkan meta-loader
+* [VulkanMemoryAllocator](https://gpuopen.com/vulkan-memory-allocator/) - Vulkan memory allocation
 * [GLFW](http://www.glfw.org/) - Window creation and management
 * [GLM](https://glm.g-truc.net/) - Maths calculations
 * [stb_image](https://github.com/nothings/stb/blob/master/stb_image.h) - Image loading
@@ -23,6 +24,7 @@ make
 * [ImGui](https://github.com/ocornut/imgui) - UI rendering
 * [tinyfiledialogs](https://sourceforge.net/projects/tinyfiledialogs/) - Call native file dialog (require Zenity on linux)
 * [spdlog](https://github.com/gabime/spdlog) - Logging system
+* [FontAwesome](https://fontawesome.com/) - Icon font
 
 ## Improvements
 The new Vulkan version is much faster than the old OpenGL version, given the comparison below:
