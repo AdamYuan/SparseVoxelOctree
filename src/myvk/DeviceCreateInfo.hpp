@@ -1,9 +1,10 @@
 #ifndef MYVK_QUEUE_QUERY_HPP
 #define MYVK_QUEUE_QUERY_HPP
 
+#include "PhysicalDevice.hpp"
+#include <functional>
 #include <memory>
 #include <vector>
-#include <vk_queue_selector.h>
 #include <volk.h>
 
 namespace myvk {
@@ -11,37 +12,27 @@ class Queue;
 class PresentQueue;
 class Device;
 class Surface;
-class PhysicalDevice;
 
-class QueueRequirement {
-private:
-	VkQueueFlags m_required_flags;
-	float m_priority;
-	std::shared_ptr<Queue> *m_out_queue;
-	std::shared_ptr<Surface> m_surface_ptr;
-	std::shared_ptr<PresentQueue> *m_out_present_queue;
-
-	friend class DeviceCreateInfo;
-
-public:
-	QueueRequirement(VkQueueFlags flags, std::shared_ptr<Queue> *out_queue, float priority = 1.0f);
-
-	QueueRequirement(VkQueueFlags flags, std::shared_ptr<Queue> *out_queue,
-	                 std::shared_ptr<Surface> present_queue_surface, std::shared_ptr<PresentQueue> *out_present_queue,
-	                 float priority = 1.0f);
+struct QueueSelection {
+	std::shared_ptr<Queue> *target;
+	uint32_t family_index, queue_index;
 };
+struct PresentQueueSelection {
+	std::shared_ptr<PresentQueue> *target;
+	std::shared_ptr<Surface> surface_ptr;
+	uint32_t family_index, queue_index;
+};
+using QueueSelectorFunc =
+    std::function<bool(const std::shared_ptr<PhysicalDevice> &, std::vector<QueueSelection> *const,
+                       std::vector<PresentQueueSelection> *const)>;
 
 class DeviceCreateInfo {
 private:
 	std::shared_ptr<PhysicalDevice> m_physical_device_ptr;
-
-	std::vector<std::shared_ptr<Queue> *> m_out_queues;
-	std::vector<std::shared_ptr<Surface>> m_surface_ptrs;
-	std::vector<std::shared_ptr<PresentQueue> *> m_out_present_queues;
-	VqsQuery m_query{nullptr};
-
+	std::vector<QueueSelection> m_queue_selections;
+	std::vector<PresentQueueSelection> m_present_queue_selections;
 	std::vector<const char *> m_extensions;
-	bool m_extensions_support{true};
+	bool m_extension_support{true}, m_queue_support{true};
 
 	bool m_use_allocator{true}, m_use_pipeline_cache{true};
 
@@ -54,14 +45,11 @@ private:
 
 public:
 	void Initialize(const std::shared_ptr<PhysicalDevice> &physical_device,
-	                const std::vector<QueueRequirement> &queue_requirements,
-	                const std::vector<const char *> &extensions, bool use_allocator = true,
-	                bool use_pipeline_cache = true);
+	                const QueueSelectorFunc &queue_selector_func, const std::vector<const char *> &extensions,
+	                bool use_allocator = true, bool use_pipeline_cache = true);
 
-	bool QueueSupport() const { return m_query; }
-	bool ExtensionSupport() const { return m_extensions_support; }
-
-	~DeviceCreateInfo();
+	bool QueueSupport() const { return m_queue_support; }
+	bool ExtensionSupport() const { return m_extension_support; }
 };
 } // namespace myvk
 

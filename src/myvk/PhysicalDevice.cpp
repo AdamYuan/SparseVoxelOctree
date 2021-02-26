@@ -1,4 +1,5 @@
 #include "PhysicalDevice.hpp"
+#include "Surface.hpp"
 
 namespace myvk {
 void PhysicalDevice::initialize(const std::shared_ptr<Instance> &instance, VkPhysicalDevice physical_device) {
@@ -7,6 +8,12 @@ void PhysicalDevice::initialize(const std::shared_ptr<Instance> &instance, VkPhy
 	vkGetPhysicalDeviceProperties(physical_device, &m_properties);
 	vkGetPhysicalDeviceMemoryProperties(physical_device, &m_memory_properties);
 	vkGetPhysicalDeviceFeatures(physical_device, &m_features);
+	{
+		uint32_t count;
+		vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &count, nullptr);
+		m_queue_family_properties.resize(count);
+		vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &count, m_queue_family_properties.data());
+	}
 }
 
 std::vector<std::shared_ptr<PhysicalDevice>> PhysicalDevice::Fetch(const std::shared_ptr<Instance> &instance) {
@@ -22,5 +29,13 @@ std::vector<std::shared_ptr<PhysicalDevice>> PhysicalDevice::Fetch(const std::sh
 		ret[i]->initialize(instance, devices[i]);
 	}
 	return ret;
+}
+
+bool PhysicalDevice::GetSurfaceSupport(uint32_t queue_family_index, const std::shared_ptr<Surface> &surface) {
+	VkBool32 support;
+	if (vkGetPhysicalDeviceSurfaceSupportKHR(m_physical_device, queue_family_index, surface->GetHandle(), &support) !=
+	    VK_SUCCESS)
+		return false;
+	return support;
 }
 } // namespace myvk

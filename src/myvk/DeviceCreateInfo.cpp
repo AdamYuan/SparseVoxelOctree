@@ -1,27 +1,15 @@
 #include "DeviceCreateInfo.hpp"
 
-#include "PhysicalDevice.hpp"
 #include "Queue.hpp"
 #include "Surface.hpp"
-#include "vk_queue_selector.h"
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
 
 namespace myvk {
-QueueRequirement::QueueRequirement(VkQueueFlags flags, std::shared_ptr<Queue> *out_queue, float priority)
-    : m_required_flags{flags}, m_priority{priority}, m_surface_ptr{nullptr}, m_out_queue{out_queue},
-      m_out_present_queue{nullptr} {}
-
-QueueRequirement::QueueRequirement(VkQueueFlags flags, std::shared_ptr<Queue> *out_queue,
-                                   std::shared_ptr<Surface> present_queue_surface,
-                                   std::shared_ptr<PresentQueue> *out_present_queue, float priority)
-    : m_required_flags{flags}, m_priority{priority}, m_surface_ptr{std::move(present_queue_surface)},
-      m_out_queue{out_queue}, m_out_present_queue{out_present_queue} {}
-
 void DeviceCreateInfo::Initialize(const std::shared_ptr<PhysicalDevice> &physical_device,
-                                  const std::vector<QueueRequirement> &queue_requirements,
+                                  const QueueSelectorFunc &queue_selector_func,
                                   const std::vector<const char *> &extensions, bool use_allocator,
                                   bool use_pipeline_cache) {
 	m_physical_device_ptr = physical_device;
@@ -41,96 +29,79 @@ void DeviceCreateInfo::Initialize(const std::shared_ptr<PhysicalDevice> &physica
 		for (const VkExtensionProperties &i : extension_properties) {
 			extension_set.erase(i.extensionName);
 		}
-		m_extensions_support = extension_set.empty();
+		m_extension_support = extension_set.empty();
 	}
 
 	// PROCESS QUEUES
-	if (m_query) {
-		vqsDestroyQuery(m_query);
-		m_query = nullptr;
-	}
-	m_out_queues.clear();
-	m_out_present_queues.clear();
-	m_surface_ptrs.clear();
-
-	std::vector<VqsQueueRequirements> vqs_queue_requirements;
-	for (const auto &i : queue_requirements) {
-		vqs_queue_requirements.push_back(
-		    {i.m_required_flags, i.m_priority, i.m_surface_ptr ? i.m_surface_ptr->GetHandle() : VK_NULL_HANDLE});
-		m_out_queues.push_back(i.m_out_queue);
-		m_out_present_queues.push_back(i.m_out_present_queue);
-		m_surface_ptrs.push_back(i.m_surface_ptr);
-	}
-
-	VqsVulkanFunctions vk_funcs{};
-	vk_funcs.vkGetPhysicalDeviceQueueFamilyProperties = vkGetPhysicalDeviceQueueFamilyProperties;
-	vk_funcs.vkGetPhysicalDeviceSurfaceSupportKHR = vkGetPhysicalDeviceSurfaceSupportKHR;
-
-	VqsQueryCreateInfo create_info{};
-	create_info.physicalDevice = physical_device->GetHandle();
-	create_info.pVulkanFunctions = &vk_funcs;
-	create_info.queueRequirementCount = vqs_queue_requirements.size();
-	create_info.pQueueRequirements = vqs_queue_requirements.data();
-
-	if (vqsCreateQuery(&create_info, &m_query) != VK_SUCCESS) {
-		m_query = nullptr;
-	}
-	if (vqsPerformQuery(m_query) != VK_SUCCESS) {
-		m_query = nullptr;
-	}
+	m_queue_selections.clear();
+	m_present_queue_selections.clear();
+	m_queue_support = queue_selector_func(physical_device, &m_queue_selections, &m_present_queue_selections);
+	for (auto &i : m_queue_selections)
+		i.queue_index %= physical_device->GetQueueFamilyProperties()[i.family_index].queueCount;
+	for (auto &i : m_present_queue_selections)
+		i.queue_index %= physical_device->GetQueueFamilyProperties()[i.family_index].queueCount;
 }
 
 void DeviceCreateInfo::enumerate_device_queue_create_infos(std::vector<VkDeviceQueueCreateInfo> *out_create_infos,
                                                            std::vector<float> *out_priorities) const {
 	out_create_infos->clear();
 	out_priorities->clear();
-	uint32_t create_info_count, priority_count;
-	vqsEnumerateDeviceQueueCreateInfos(m_query, &create_info_count, nullptr, &priority_count, nullptr);
-	out_create_infos->resize(create_info_count);
-	out_priorities->resize(priority_count);
-	vqsEnumerateDeviceQueueCreateInfos(m_query, &create_info_count, out_create_infos->data(), &priority_count,
-	                                   out_priorities->data());
+
+	std::map<uint32_t, std::set<uint32_t>> queue_map;
+	for (const auto &i : m_present_queue_selections)
+		queue_map[i.family_index].insert(i.queue_index);
+	for (const auto &i : m_queue_selections)
+		queue_map[i.family_index].insert(i.queue_index);
+
+	if (queue_map.empty())
+		return;
+
+	uint32_t max_queue_count = 0;
+	for (const auto &i : queue_map) {
+		if (i.second.size() > max_queue_count)
+			max_queue_count = i.second.size();
+	}
+	out_priorities->resize(max_queue_count, 1.0f);
+
+	for (const auto &i : queue_map) {
+		VkDeviceQueueCreateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		info.queueFamilyIndex = i.first;
+		info.queueCount = i.second.size();
+		info.pQueuePriorities = out_priorities->data();
+		out_create_infos->push_back(info);
+	}
 }
 
 void DeviceCreateInfo::fetch_queues(const std::shared_ptr<Device> &device) const {
-	std::vector<VqsQueueSelection> selections(m_out_queues.size());
-	vqsGetQueueSelections(m_query, selections.data());
-
-	std::map<std::pair<uint32_t, uint32_t>, std::pair<std::shared_ptr<Queue>, std::shared_ptr<PresentQueue>>> queues;
+	std::map<std::pair<uint32_t, uint32_t>, std::pair<std::shared_ptr<Queue>, std::shared_ptr<PresentQueue>>> queue_map;
 
 	// process all present queue first
-	for (uint32_t i = 0; i < m_out_queues.size(); ++i) {
-		std::pair<uint32_t, uint32_t> queue_id = {selections[i].presentQueueFamilyIndex,
-		                                          selections[i].presentQueueIndex};
-		if (queues.find(queue_id) != queues.end())
+	for (const auto &i : m_present_queue_selections) {
+		std::pair<uint32_t, uint32_t> queue_id = {i.family_index, i.queue_index};
+		if (queue_map.find(queue_id) != queue_map.end())
 			continue;
-		if (m_out_present_queues[i]) {
-			std::shared_ptr<PresentQueue> present_queue = PresentQueue::create(
-			    device, m_surface_ptrs[i], selections[i].presentQueueFamilyIndex, selections[i].presentQueueIndex);
-			queues[queue_id].first = present_queue;
-			queues[queue_id].second = present_queue;
-		}
+		std::shared_ptr<PresentQueue> present_queue =
+		    PresentQueue::create(device, i.surface_ptr, i.family_index, i.queue_index);
+		queue_map[queue_id].first = present_queue;
+		queue_map[queue_id].second = present_queue;
 	}
 
 	// fallback as regular queue
-	for (uint32_t i = 0; i < m_out_queues.size(); ++i) {
-		std::pair<uint32_t, uint32_t> queue_id = {selections[i].queueFamilyIndex, selections[i].queueIndex};
-		if (queues.find(queue_id) != queues.end())
+	for (const auto &i : m_queue_selections) {
+		std::pair<uint32_t, uint32_t> queue_id = {i.family_index, i.queue_index};
+		if (queue_map.find(queue_id) != queue_map.end())
 			continue;
-		queues[queue_id].first = Queue::create(device, selections[i].queueFamilyIndex, selections[i].queueIndex);
+		queue_map[queue_id].first = Queue::create(device, i.family_index, i.queue_index);
 	}
 
-	for (uint32_t i = 0; i < m_out_queues.size(); ++i) {
-		(*m_out_queues[i]) = queues[{selections[i].queueFamilyIndex, selections[i].queueIndex}].first;
-		if (m_out_present_queues[i])
-			(*m_out_present_queues[i]) =
-			    queues[{selections[i].presentQueueFamilyIndex, selections[i].presentQueueIndex}].second;
+	// set queue target
+	for (const auto &i : m_queue_selections) {
+		(*i.target) = queue_map[{i.family_index, i.queue_index}].first;
 	}
-}
-
-DeviceCreateInfo::~DeviceCreateInfo() {
-	if (m_query)
-		vqsDestroyQuery(m_query);
+	for (const auto &i : m_present_queue_selections) {
+		(*i.target) = queue_map[{i.family_index, i.queue_index}].second;
+	}
 }
 
 } // namespace myvk

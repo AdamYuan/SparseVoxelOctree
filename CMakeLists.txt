@@ -87,7 +87,6 @@ add_executable(SparseVoxelOctree
 
 	# SINGLE HEADERS
 	dep/vk_mem_alloc.cpp
-	dep/vk_queue_selector.c
 	dep/stb_image.cpp
 	dep/tiny_obj_loader.cpp
 	dep/tinyfiledialogs.c

@@ -8,14 +8,17 @@
 #include <volk.h>
 
 namespace myvk {
+class Surface;
 class PhysicalDevice {
 private:
 	std::shared_ptr<Instance> m_instance_ptr;
 
 	VkPhysicalDevice m_physical_device{VK_NULL_HANDLE};
+
 	VkPhysicalDeviceProperties m_properties;
 	VkPhysicalDeviceMemoryProperties m_memory_properties;
 	VkPhysicalDeviceFeatures m_features;
+	std::vector<VkQueueFamilyProperties> m_queue_family_properties;
 
 	void initialize(const std::shared_ptr<Instance> &instance, VkPhysicalDevice physical_device);
 
@@ -31,6 +34,10 @@ public:
 	const VkPhysicalDeviceMemoryProperties &GetMemoryProperties() const { return m_memory_properties; }
 
 	const VkPhysicalDeviceFeatures &GetFeatures() const { return m_features; }
+
+	const std::vector<VkQueueFamilyProperties> &GetQueueFamilyProperties() const { return m_queue_family_properties; }
+
+	bool GetSurfaceSupport(uint32_t queue_family_index, const std::shared_ptr<Surface> &surface);
 };
 } // namespace myvk
 
