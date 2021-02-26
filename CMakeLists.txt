@@ -3,6 +3,10 @@ project(SparseVoxelOctree)
 
 set(CMAKE_CXX_STANDARD 14)
 
+if (NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE Release)
+endif ()
+
 # Windows' math include does not define constants by default.
 # Set this definition so it does.
 # Also set NOMINMAX so the min and max functions are not overwritten with macros.
@@ -11,9 +15,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
 	add_definitions(-DNOMINMAX)
 ENDIF()
 
-if (NOT CMAKE_BUILD_TYPE)
-	set(CMAKE_BUILD_TYPE Release)
-endif ()
+# Hide the console window in visual studio projects - Release
+if(MSVC)
+	set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
+endif()
 
 include_directories(
 	dep

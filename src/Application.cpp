@@ -488,7 +488,7 @@ void Application::ui_menubar() {
 
 		static constexpr ImU32 kLogColors[7] = {0xffffffffu, 0xffffffffu, 0xff00bd00u, 0xff00ffffu,
 		                                        0xff0000ffu, 0xff0000ffu, 0xffffffffu};
-		static constexpr const char *kLogLevelStrs[7] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "CRITICAL", "OFF"};
+		static constexpr const char *kLogLevelStrs[7] = {"Trace", "Debug", "Info", "Warn", "Error", "Critical", "Off"};
 		static bool log_level_disable[7] = {};
 
 		ImGuiTableFlags flags =
@@ -503,6 +503,7 @@ void Application::ui_menubar() {
 				}
 				ImGui::EndPopup();
 			}
+
 			ImGui::TableSetupColumn("Time");
 			ImGui::TableSetupColumn("Level");
 			ImGui::TableSetupColumn("Thread");
@@ -530,6 +531,19 @@ void Application::ui_menubar() {
 
 				ImGui::TableSetColumnIndex(3);
 				ImGui::TextUnformatted(log.payload.begin(), log.payload.end());
+
+				ImGui::PushID(i);
+				if (ImGui::BeginPopupContextItem("Copy")) {
+					if (ImGui::MenuItem(ICON_FA_COPY " Copy"))
+						ImGui::SetClipboardText(std::string{log.payload.begin(), log.payload.end()}.c_str());
+					ImGui::Separator();
+					for (uint32_t i = 0; i < 6; ++i) {
+						if (ImGui::MenuItem(kLogLevelStrs[i], nullptr, !log_level_disable[i]))
+							log_level_disable[i] ^= 1;
+					}
+					ImGui::EndPopup();
+				}
+				ImGui::PopID();
 			}
 
 			ImGui::EndTable();
