@@ -34,6 +34,7 @@ bool LoaderThread::TryJoin() {
 }
 
 void LoaderThread::thread_func(const char *filename, uint32_t octree_level) {
+	m_detail = "";
 	spdlog::info("Enter loader thread");
 
 	std::shared_ptr<myvk::Device> device = m_main_queue->GetDevicePtr();
@@ -41,6 +42,7 @@ void LoaderThread::thread_func(const char *filename, uint32_t octree_level) {
 	std::shared_ptr<myvk::CommandPool> loader_command_pool = myvk::CommandPool::Create(m_loader_queue);
 
 	std::shared_ptr<Scene> scene;
+	m_detail = "Loading Scene";
 	if ((scene = Scene::Create(m_loader_queue, filename))) {
 		std::shared_ptr<Voxelizer> voxelizer = Voxelizer::Create(scene, loader_command_pool, octree_level);
 		std::shared_ptr<OctreeBuilder> builder = OctreeBuilder::Create(voxelizer, loader_command_pool);
@@ -75,6 +77,7 @@ void LoaderThread::thread_func(const char *filename, uint32_t octree_level) {
 
 		command_buffer->End();
 
+		m_detail = "Voxelizing and Building Octree";
 		spdlog::info("Voxelize and Octree building BEGIN");
 
 		command_buffer->Submit(fence);

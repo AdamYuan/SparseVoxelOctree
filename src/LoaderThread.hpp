@@ -18,6 +18,8 @@ private:
 	bool m_job_done;
 	std::condition_variable m_condition_variable;
 
+	const char *m_detail = "";
+
 	void thread_func(const char *filename, uint32_t octree_level);
 
 public:
@@ -25,6 +27,8 @@ public:
 	                                            const std::shared_ptr<myvk::Queue> &loader_queue,
 	                                            const std::shared_ptr<myvk::Queue> &main_queue);
 	const std::shared_ptr<Octree> &GetOctreePtr() const { return m_octree_ptr; }
+
+	const char *GetDetail() const { return m_detail; }
 
 	void Launch(const char *filename, uint32_t octree_level);
 	bool TryJoin();

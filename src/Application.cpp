@@ -172,7 +172,6 @@ void Application::initialize_vulkan() {
 		    [&](const std::shared_ptr<myvk::PhysicalDevice> &physical_device,
 		        std::vector<myvk::QueueSelection> *const out_queue_selections,
 		        std::vector<myvk::PresentQueueSelection> *const out_present_queue_selections) -> bool {
-
 			    const auto &families = physical_device->GetQueueFamilyProperties();
 			    if (families.empty())
 				    return false;
@@ -494,7 +493,7 @@ void Application::ui_menubar() {
 
 		ImGuiTableFlags flags =
 		    ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg;
-		if (ImGui::BeginTable("Log Table", 4, flags, {kWidth / 2.0f, kHeight / 2.0f})) {
+		if (ImGui::BeginTable("Log Table", 4, flags, {kWidth * 0.5f, kHeight * 0.5f})) {
 			ImGui::TableSetupColumn("Time");
 			ImGui::TableSetupColumn("Level");
 			ImGui::TableSetupColumn("Thread");
@@ -679,12 +678,13 @@ void Application::ui_load_scene_modal() {
 }
 
 void Application::ui_loading_modal() {
+	ImGui::SetNextWindowPos({kWidth * 0.5f, kHeight * 0.5f}, ImGuiCond_Always, {0.5f, 0.5f});
 	if (ImGui::BeginPopupModal("Loading", nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
 		ImGui::Spinner("##spinner", 12, 6, ImGui::GetColorU32(ImGuiCol_ButtonHovered));
 		ImGui::SameLine();
-		ImGui::Text("Loading ...");
+		ImGui::TextUnformatted(m_loader_thread->GetDetail());
 
 		ImGui::EndPopup();
 	}
