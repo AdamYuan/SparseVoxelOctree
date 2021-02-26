@@ -664,13 +664,15 @@ void Application::ui_load_scene_modal() {
 		ui_file_open("OBJ Filename", "...##5", name_buf, kFilenameBufSize, "OBJ Filename", 1, kFilter);
 		ImGui::DragInt("Octree Level", &octree_leve, 1, 2, 12);
 
-		if (ImGui::Button("Load", ImVec2(256, 0))) {
+		float button_width = (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+
+		if (ImGui::Button("Load", {button_width, 0})) {
 			m_loader_thread->Launch(name_buf, octree_leve);
 			ImGui::CloseCurrentPopup();
 		}
 		ImGui::SetItemDefaultFocus();
 		ImGui::SameLine();
-		if (ImGui::Button("Cancel", ImVec2(256, 0)))
+		if (ImGui::Button("Cancel", {button_width, 0}))
 			ImGui::CloseCurrentPopup();
 
 		ImGui::EndPopup();
@@ -700,14 +702,16 @@ void Application::ui_start_path_tracer_modal() {
 
 		ImGui::DragFloat3("Sun Radiance", &m_path_tracer->m_sun_radiance[0], 0.1f, 0.0f, kMaxSunRadiance);
 
-		if (ImGui::Button("Start", ImVec2(256, 0))) {
+		float button_width = (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+
+		if (ImGui::Button("Start", {button_width, 0})) {
 			m_path_tracer_thread->Launch();
 
 			ImGui::CloseCurrentPopup();
 		}
 		ImGui::SetItemDefaultFocus();
 		ImGui::SameLine();
-		if (ImGui::Button("Cancel", ImVec2(256, 0)))
+		if (ImGui::Button("Cancel", {button_width, 0}))
 			ImGui::CloseCurrentPopup();
 
 		ImGui::EndPopup();
@@ -718,14 +722,17 @@ void Application::ui_stop_path_tracer_modal() {
 	if (ImGui::BeginPopupModal("Stop PathTracer", nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
-		ImGui::Text("Are you sure?");
-		if (ImGui::Button("Stop", ImVec2(64, 0))) {
+		ImGui::Text("Are you sure?\nThe render result might be lost.");
+
+		float button_width = (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+
+		if (ImGui::Button("Stop", {button_width, 0})) {
 			m_path_tracer_thread->StopAndJoin();
 			ImGui::CloseCurrentPopup();
 		}
 		ImGui::SetItemDefaultFocus();
 		ImGui::SameLine();
-		if (ImGui::Button("Cancel", ImVec2(64, 0)))
+		if (ImGui::Button("Cancel", {button_width, 0}))
 			ImGui::CloseCurrentPopup();
 
 		ImGui::EndPopup();
@@ -757,8 +764,10 @@ void Application::ui_export_exr_modal() {
 
 		ImGui::Checkbox("Export as FP16", &save_as_fp16);
 
+		float button_width = (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+
 		{
-			if (ImGui::Button("Export", ImVec2(256, 0))) {
+			if (ImGui::Button("Export", {button_width, 0})) {
 				bool tmp_pause = m_path_tracer_thread->IsPause();
 				m_path_tracer_thread->SetPause(true);
 
@@ -786,7 +795,7 @@ void Application::ui_export_exr_modal() {
 			}
 			ImGui::SetItemDefaultFocus();
 			ImGui::SameLine();
-			if (ImGui::Button("Cancel", ImVec2(256, 0))) {
+			if (ImGui::Button("Cancel", {button_width, 0})) {
 				ImGui::CloseCurrentPopup();
 			}
 		}
