@@ -124,10 +124,10 @@ void Application::draw_frame() {
 		m_octree_tracer->CmdBeamRenderPass(command_buffer, current_frame);
 	}
 	command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffers[image_index], {{{0.0f, 0.0f, 0.0f, 1.0f}}});
-	if (m_ui_state == UIStates::kOctreeTracer) {
-		m_octree_tracer->CmdDrawPipeline(command_buffer, current_frame);
-	} else if (m_ui_state == UIStates::kPathTracing) {
+	if (m_ui_state == UIStates::kPathTracing) {
 		m_path_tracer_viewer->CmdDrawPipeline(command_buffer);
+	} else if (!m_octree->Empty()) {
+		m_octree_tracer->CmdDrawPipeline(command_buffer, current_frame);
 	}
 	command_buffer->CmdNextSubpass();
 	m_imgui_renderer.CmdDrawPipeline(command_buffer, current_frame);
@@ -496,7 +496,7 @@ void Application::ui_menubar() {
 		if (ImGui::BeginTable("Log Table", 4, flags, {kWidth * 0.5f, kHeight * 0.5f})) {
 			if (ImGui::IsMouseReleased(1))
 				ImGui::OpenPopup("Filter");
-			if (ImGui::BeginPopup("Filter", ImGuiWindowFlags_NoMove)) {
+			if (ImGui::BeginPopup("Filter")) {
 				for (uint32_t i = 0; i < 6; ++i) {
 					if (ImGui::MenuItem(kLogLevelStrs[i], nullptr, !log_level_disable[i]))
 						log_level_disable[i] ^= 1;
@@ -519,18 +519,7 @@ void Application::ui_menubar() {
 				ImGui::TableNextRow();
 
 				ImGui::TableSetColumnIndex(0);
-				ImGui::TextUnformatted(logs_time[i].c_str());
-
-				ImGui::TableSetColumnIndex(1);
-				ImGui::PushStyleColor(ImGuiCol_Text, kLogColors[log.level]);
-				ImGui::TextUnformatted(kLogLevelStrs[log.level]);
-				ImGui::PopStyleColor();
-
-				ImGui::TableSetColumnIndex(2);
-				ImGui::Text("%lu", log.thread_id);
-
-				ImGui::TableSetColumnIndex(3);
-				ImGui::TextUnformatted(log.payload.begin(), log.payload.end());
+				ImGui::Selectable(logs_time[i].c_str(), false, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap);
 
 				ImGui::PushID(i);
 				if (ImGui::BeginPopupContextItem("Copy")) {
@@ -544,6 +533,17 @@ void Application::ui_menubar() {
 					ImGui::EndPopup();
 				}
 				ImGui::PopID();
+
+				ImGui::TableSetColumnIndex(1);
+				ImGui::PushStyleColor(ImGuiCol_Text, kLogColors[log.level]);
+				ImGui::TextUnformatted(kLogLevelStrs[log.level]);
+				ImGui::PopStyleColor();
+
+				ImGui::TableSetColumnIndex(2);
+				ImGui::Text("%lu", log.thread_id);
+
+				ImGui::TableSetColumnIndex(3);
+				ImGui::TextUnformatted(log.payload.begin(), log.payload.end());
 			}
 
 			ImGui::EndTable();
@@ -688,7 +688,7 @@ void Application::ui_load_scene_modal() {
 		constexpr const char *kFilter[] = {"*.obj"};
 
 		ui_file_open("OBJ Filename", "...##5", name_buf, kFilenameBufSize, "OBJ Filename", 1, kFilter);
-		ImGui::DragInt("Octree Level", &octree_leve, 1, 2, 12);
+		ImGui::DragInt("Octree Level", &octree_leve, 1, kOctreeLevelMin, kOctreeLevelMax);
 
 		float button_width = (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
 

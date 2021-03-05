@@ -113,10 +113,10 @@ void StyleCinder(ImGuiStyle *dst) {
 }
 
 bool DragAngle(const char *label, float *v_rad, float v_speed, float v_degrees_min, float v_degrees_max,
-               const char *format, float power) {
+               const char *format, ImGuiSliderFlags flags) {
 	float v_deg = (*v_rad) * 360.0f / (2 * IM_PI);
 	bool value_changed =
-	    DragScalar(label, ImGuiDataType_Float, &v_deg, v_speed, &v_degrees_min, &v_degrees_max, format, power);
+	    DragScalar(label, ImGuiDataType_Float, &v_deg, v_speed, &v_degrees_min, &v_degrees_max, format, flags);
 	*v_rad = v_deg * (2 * IM_PI) / 360.0f;
 	return value_changed;
 }
