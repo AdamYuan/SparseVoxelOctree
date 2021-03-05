@@ -1,7 +1,7 @@
 #include "Application.hpp"
 
 #include "Config.hpp"
-#include "ImGuiHelper.hpp"
+#include "UIHelper.hpp"
 #include <spdlog/spdlog.h>
 
 #include <font-awesome/IconsFontAwesome5.h>
@@ -10,6 +10,11 @@
 #include <imgui/imgui_internal.h>
 #include <tinyexr.h>
 #include <tinyfiledialogs.h>
+
+#include "UILoader.hpp"
+#include "UILog.hpp"
+#include "UIOctreeTracer.hpp"
+#include "UIPathTracer.hpp"
 
 #ifndef NDEBUG
 
@@ -41,8 +46,8 @@ void Application::create_window() {
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGui::LoadFontAwesome();
-	ImGui::StyleCinder();
+	UI::LoadFontAwesome();
+	UI::StyleCinder();
 	ImGui_ImplGlfw_InitForVulkan(m_window, true);
 }
 
@@ -365,479 +370,51 @@ void Application::ui_switch_state() {
 
 void Application::ui_render_main() {
 	if (m_ui_state == UIStates::kLoading) {
-		ImGui::OpenPopup("Loading");
-		ui_loading_modal();
+		ImGui::OpenPopup(UI::kLoaderLoadingModal);
+		UI::LoaderLoadingModal(m_loader_thread);
 	}
 	ui_menubar();
-}
 
-void Application::ui_push_disable() {
-	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-	ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-}
-
-void Application::ui_pop_disable() {
-	ImGui::PopItemFlag();
-	ImGui::PopStyleVar();
+	UI::LoaderLoadSceneModal(m_loader_thread);
+	UI::PathTracerStartModal(m_path_tracer_thread);
+	UI::PathTracerStopModal(m_path_tracer_thread);
+	UI::PathTracerExportEXRModal(m_path_tracer_thread);
 }
 
 void Application::ui_menubar() {
-	bool open_load_scene_popup = false, start_path_tracer_popup = false, stop_path_tracer_popup = false,
-	     open_export_exr_popup = false;
+	const char *open_modal = nullptr;
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::BeginMainMenuBar();
 
-	if (m_ui_state == UIStates::kPathTracing) {
-		if (ImGui::MenuItem(ICON_FA_FILE_EXPORT)) {
-			open_export_exr_popup = true;
-		}
-		if (ImGui::IsItemHovered()) {
-			ImGui::BeginTooltip();
-			ImGui::TextUnformatted("Export OpenEXR");
-			ImGui::EndTooltip();
-		}
-
-		if (ImGui::MenuItem(ICON_FA_STOP)) {
-			stop_path_tracer_popup = true;
-		}
-		if (ImGui::IsItemHovered()) {
-			ImGui::BeginTooltip();
-			ImGui::TextUnformatted("Stop Path Tracer");
-			ImGui::EndTooltip();
-		}
-
-		if (m_path_tracer_thread->IsPause()) {
-			if (ImGui::MenuItem(ICON_FA_PLAY)) {
-				m_path_tracer_thread->SetPause(false);
-			}
-			if (ImGui::IsItemHovered()) {
-				ImGui::BeginTooltip();
-				ImGui::TextUnformatted("Resume Path Tracer");
-				ImGui::EndTooltip();
-			}
-		} else {
-			if (ImGui::MenuItem(ICON_FA_PAUSE)) {
-				m_path_tracer_thread->SetPause(true);
-			}
-			if (ImGui::IsItemHovered()) {
-				ImGui::BeginTooltip();
-				ImGui::TextUnformatted("Pause Path Tracer");
-				ImGui::EndTooltip();
-			}
-		}
-	} else {
-		if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN))
-			open_load_scene_popup = true;
-		if (ImGui::IsItemHovered()) {
-			ImGui::BeginTooltip();
-			ImGui::TextUnformatted("Load Scene");
-			ImGui::EndTooltip();
-		}
-		if (m_ui_state == UIStates::kOctreeTracer) {
-			if (ImGui::MenuItem(ICON_FA_PLAY)) {
-				start_path_tracer_popup = true;
-			}
-			if (ImGui::IsItemHovered()) {
-				ImGui::BeginTooltip();
-				ImGui::TextUnformatted("Start Path Tracer");
-				ImGui::EndTooltip();
-			}
-		}
+	if (m_ui_state == UIStates::kPathTracing)
+		UI::PathTracerControlButtons(m_path_tracer_thread, &open_modal);
+	else {
+		UI::LoaderLoadButton(m_loader_thread, &open_modal);
+		if (m_ui_state == UIStates::kOctreeTracer)
+			UI::PathTracerStartButton(m_path_tracer_thread, &open_modal);
 	}
 
 	ImGui::Separator();
 
-	if (m_ui_state == UIStates::kPathTracing) {
-		if (ImGui::BeginMenu("View")) {
-			if (ImGui::MenuItem("Color", nullptr,
-			                    m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kColor)) {
-				m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kColor;
-				m_path_tracer_thread->UpdateViewer();
-			}
-			if (ImGui::MenuItem("Albedo", nullptr,
-			                    m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kAlbedo)) {
-				m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kAlbedo;
-				m_path_tracer_thread->UpdateViewer();
-			}
-			if (ImGui::MenuItem("Normal", nullptr,
-			                    m_path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kNormal)) {
-				m_path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kNormal;
-				m_path_tracer_thread->UpdateViewer();
-			}
+	if (m_ui_state == UIStates::kPathTracing)
+		UI::PathTracerMenuItems(m_path_tracer_thread);
+	else if (m_ui_state == UIStates::kOctreeTracer)
+		UI::OctreeTracerMenuItems(m_octree_tracer);
 
-			ImGui::EndMenu();
-		}
-	} else if (m_ui_state == UIStates::kOctreeTracer) {
-		if (ImGui::BeginMenu("Camera")) {
-			ImGui::DragAngle("FOV", &m_camera->m_fov, 1, 10, 179);
-			ImGui::DragFloat("Speed", &m_camera->m_speed, 0.005f, 0.005f, 0.2f);
-			ImGui::InputFloat3("Position", &m_camera->m_position[0]);
-			ImGui::DragAngle("Yaw", &m_camera->m_yaw, 1, 0, 360);
-			ImGui::DragAngle("Pitch", &m_camera->m_pitch, 1, -90, 90);
-			ImGui::EndMenu();
-		}
-
-		if (ImGui::BeginMenu("View")) {
-			if (ImGui::MenuItem("Diffuse", nullptr, m_octree_tracer->m_view_type == OctreeTracer::ViewTypes::kDiffuse))
-				m_octree_tracer->m_view_type = OctreeTracer::ViewTypes::kDiffuse;
-			if (ImGui::MenuItem("Normal", nullptr, m_octree_tracer->m_view_type == OctreeTracer::ViewTypes::kNormal))
-				m_octree_tracer->m_view_type = OctreeTracer::ViewTypes::kNormal;
-			if (ImGui::MenuItem("Iterations", nullptr,
-			                    m_octree_tracer->m_view_type == OctreeTracer::ViewTypes::kIteration))
-				m_octree_tracer->m_view_type = OctreeTracer::ViewTypes::kIteration;
-
-			ImGui::Checkbox("Beam Optimization", &m_octree_tracer->m_beam_enable);
-			ImGui::EndMenu();
-		}
-	}
-
-	if (ImGui::BeginMenu("Log")) {
-		const auto &logs_raw = m_log_sink->last_raw();
-		const auto &logs_time = m_log_sink->last_formatted();
-
-		static constexpr ImU32 kLogColors[7] = {0xffffffffu, 0xffffffffu, 0xff00bd00u, 0xff00ffffu,
-		                                        0xff0000ffu, 0xff0000ffu, 0xffffffffu};
-		static constexpr const char *kLogLevelStrs[7] = {"Trace", "Debug", "Info", "Warn", "Error", "Critical", "Off"};
-		static bool log_level_disable[7] = {};
-
-		ImGuiTableFlags flags =
-		    ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg;
-		if (ImGui::BeginTable("Log Table", 4, flags, {kWidth * 0.5f, kHeight * 0.5f})) {
-			if (ImGui::IsMouseReleased(1))
-				ImGui::OpenPopup("Filter");
-			if (ImGui::BeginPopup("Filter")) {
-				for (uint32_t i = 0; i < 6; ++i) {
-					if (ImGui::MenuItem(kLogLevelStrs[i], nullptr, !log_level_disable[i]))
-						log_level_disable[i] ^= 1;
-				}
-				ImGui::EndPopup();
-			}
-
-			ImGui::TableSetupColumn("Time");
-			ImGui::TableSetupColumn("Level");
-			ImGui::TableSetupColumn("Thread");
-			ImGui::TableSetupColumn("Text");
-			ImGui::TableSetupScrollFreeze(0, 1); // Make row always visible
-			ImGui::TableHeadersRow();
-
-			for (uint32_t i = 0; i < logs_raw.size(); ++i) {
-				const auto &log = logs_raw[i];
-				if (log_level_disable[log.level])
-					continue;
-
-				ImGui::TableNextRow();
-
-				ImGui::TableSetColumnIndex(0);
-				ImGui::Selectable(logs_time[i].c_str(), false, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap);
-
-				ImGui::PushID(i);
-				if (ImGui::BeginPopupContextItem("Copy")) {
-					if (ImGui::MenuItem(ICON_FA_COPY " Copy"))
-						ImGui::SetClipboardText(std::string{log.payload.begin(), log.payload.end()}.c_str());
-					ImGui::Separator();
-					for (uint32_t i = 0; i < 6; ++i) {
-						if (ImGui::MenuItem(kLogLevelStrs[i], nullptr, !log_level_disable[i]))
-							log_level_disable[i] ^= 1;
-					}
-					ImGui::EndPopup();
-				}
-				ImGui::PopID();
-
-				ImGui::TableSetColumnIndex(1);
-				ImGui::PushStyleColor(ImGuiCol_Text, kLogColors[log.level]);
-				ImGui::TextUnformatted(kLogLevelStrs[log.level]);
-				ImGui::PopStyleColor();
-
-				ImGui::TableSetColumnIndex(2);
-				ImGui::Text("%lu", log.thread_id);
-
-				ImGui::TableSetColumnIndex(3);
-				ImGui::TextUnformatted(log.payload.begin(), log.payload.end());
-			}
-
-			ImGui::EndTable();
-		}
-		ImGui::EndMenu();
-	}
+	UI::LogMenuItem(m_log_sink);
 
 	// Status bar
-	float indent_w = ImGui::GetWindowContentRegionWidth(), spacing = ImGui::GetStyle().ItemSpacing.x;
-
-	char buf[128];
-	if (m_ui_state == UIStates::kOctreeTracer) {
-		sprintf(buf, "FPS %.1f", ImGui::GetIO().Framerate);
-		indent_w -= ImGui::CalcTextSize(buf).x;
-		ImGui::SameLine(indent_w);
-		ImGui::TextUnformatted(buf);
-
-		indent_w -= spacing;
-		ImGui::SameLine(indent_w);
-		ImGui::Separator();
-
-		sprintf(buf, ICON_FA_CUBE " %d", m_octree->GetLevel());
-		indent_w -= ImGui::CalcTextSize(buf).x + spacing;
-		ImGui::SameLine(indent_w);
-		ImGui::TextUnformatted(buf);
-
-		if (ImGui::IsItemHovered()) {
-			ImGui::BeginTooltip();
-			ImGui::TextUnformatted("Octree Level");
-			ImGui::EndTooltip();
-		}
-
-		sprintf(buf, ICON_FA_DATABASE " %.0f/%.0f MB", m_octree->GetRange() / 1000000.0f,
-		        m_octree->GetBuffer()->GetSize() / 1000000.0f);
-		indent_w -= ImGui::CalcTextSize(buf).x + spacing;
-		ImGui::SameLine(indent_w);
-		ImGui::TextUnformatted(buf);
-
-		if (ImGui::IsItemHovered()) {
-			ImGui::BeginTooltip();
-			ImGui::TextUnformatted("Octree Used Size / Allocated Size");
-			ImGui::EndTooltip();
-		}
-	} else if (m_ui_state == UIStates::kPathTracing) {
-		sprintf(buf, "SPP %u", m_path_tracer_thread->GetSPP());
-		indent_w -= ImGui::CalcTextSize(buf).x;
-		ImGui::SameLine(indent_w);
-		ImGui::TextUnformatted(buf);
-
-		indent_w -= spacing;
-		ImGui::SameLine(indent_w);
-		ImGui::Separator();
-
-		sprintf(buf, ICON_FA_BOLT " %u", m_path_tracer->m_bounce);
-		indent_w -= ImGui::CalcTextSize(buf).x + spacing;
-		ImGui::SameLine(indent_w);
-		ImGui::TextUnformatted(buf);
-
-		if (ImGui::IsItemHovered()) {
-			ImGui::BeginTooltip();
-			ImGui::TextUnformatted("Bounce");
-			ImGui::EndTooltip();
-		}
-
-		sprintf(buf, ICON_FA_STOPWATCH " %u sec", uint32_t(m_path_tracer_thread->GetRenderTime()));
-		indent_w -= ImGui::CalcTextSize(buf).x + spacing;
-		ImGui::SameLine(indent_w);
-		ImGui::TextUnformatted(buf);
-
-		if (ImGui::IsItemHovered()) {
-			ImGui::BeginTooltip();
-			ImGui::TextUnformatted("Render Time");
-			ImGui::EndTooltip();
-		}
-
-		if (m_path_tracer_queue->GetFamilyIndex() == m_main_queue->GetFamilyIndex()) {
-			indent_w -= ImGui::CalcTextSize(ICON_FA_EXCLAMATION_TRIANGLE).x + spacing;
-			ImGui::SameLine(indent_w);
-			ImGui::TextUnformatted(ICON_FA_EXCLAMATION_TRIANGLE);
-
-			if (ImGui::IsItemHovered()) {
-				ImGui::BeginTooltip();
-				ImGui::TextUnformatted("Async path tracing queue not available");
-				ImGui::EndTooltip();
-			}
-		}
-	}
+	if (m_ui_state == UIStates::kOctreeTracer)
+		UI::OctreeTracerRightStatus(m_octree_tracer);
+	else if (m_ui_state == UIStates::kPathTracing)
+		UI::PathTracerRightStatus(m_path_tracer_thread);
 
 	ImGui::EndMainMenuBar();
 	ImGui::PopStyleVar();
 
-	if (open_load_scene_popup)
-		ImGui::OpenPopup("Load Scene");
-	if (open_export_exr_popup)
-		ImGui::OpenPopup("Export OpenEXR");
-	if (start_path_tracer_popup)
-		ImGui::OpenPopup("Start PathTracer");
-	if (stop_path_tracer_popup)
-		ImGui::OpenPopup("Stop PathTracer");
-
-	ui_load_scene_modal();
-	ui_export_exr_modal();
-	ui_start_path_tracer_modal();
-	ui_stop_path_tracer_modal();
-}
-
-bool Application::ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
-                               int filter_num, const char *const *filter_patterns) {
-	bool ret = ImGui::InputText(label, buf, buf_size);
-	ImGui::SameLine();
-
-	if (ImGui::Button(btn)) {
-		const char *filename = tinyfd_openFileDialog(title, "", filter_num, filter_patterns, nullptr, false);
-		if (filename)
-			strcpy(buf, filename);
-		ret = true;
-	}
-	return ret;
-}
-
-bool Application::ui_file_save(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
-                               int filter_num, const char *const *filter_patterns) {
-	bool ret = ImGui::InputText(label, buf, buf_size);
-	ImGui::SameLine();
-
-	if (ImGui::Button(btn)) {
-		const char *filename = tinyfd_saveFileDialog(title, "", filter_num, filter_patterns, nullptr);
-		if (filename)
-			strcpy(buf, filename);
-		ret = true;
-	}
-	return ret;
-}
-
-void Application::ui_load_scene_modal() {
-	if (ImGui::BeginPopupModal("Load Scene", nullptr,
-	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
-	                               ImGuiWindowFlags_NoMove)) {
-		static char name_buf[kFilenameBufSize];
-		static int octree_leve = 10;
-
-		constexpr const char *kFilter[] = {"*.obj"};
-
-		ui_file_open("OBJ Filename", "...##5", name_buf, kFilenameBufSize, "OBJ Filename", 1, kFilter);
-		ImGui::DragInt("Octree Level", &octree_leve, 1, kOctreeLevelMin, kOctreeLevelMax);
-
-		float button_width = (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
-
-		if (ImGui::Button("Load", {button_width, 0})) {
-			m_loader_thread->Launch(name_buf, octree_leve);
-			ImGui::CloseCurrentPopup();
-		}
-		ImGui::SetItemDefaultFocus();
-		ImGui::SameLine();
-		if (ImGui::Button("Cancel", {button_width, 0}))
-			ImGui::CloseCurrentPopup();
-
-		ImGui::EndPopup();
-	}
-}
-
-void Application::ui_loading_modal() {
-	ImGui::SetNextWindowPos({kWidth * 0.5f, kHeight * 0.5f}, ImGuiCond_Always, {0.5f, 0.5f});
-	if (ImGui::BeginPopupModal("Loading", nullptr,
-	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
-	                               ImGuiWindowFlags_NoMove)) {
-		ImGui::Spinner("##spinner", 12, 6, ImGui::GetColorU32(ImGuiCol_ButtonHovered));
-		ImGui::SameLine();
-		ImGui::TextUnformatted(m_loader_thread->GetNotification());
-
-		ImGui::EndPopup();
-	}
-}
-
-void Application::ui_start_path_tracer_modal() {
-	if (ImGui::BeginPopupModal("Start PathTracer", nullptr,
-	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
-	                               ImGuiWindowFlags_NoMove)) {
-		int bounce = m_path_tracer->m_bounce;
-		if (ImGui::DragInt("Bounce", &bounce, 1, kMinBounce, kMaxBounce))
-			m_path_tracer->m_bounce = bounce;
-
-		ImGui::DragFloat3("Sun Radiance", &m_path_tracer->m_sun_radiance[0], 0.1f, 0.0f, kMaxSunRadiance);
-
-		float button_width = (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
-
-		if (ImGui::Button("Start", {button_width, 0})) {
-			m_path_tracer_thread->Launch();
-
-			ImGui::CloseCurrentPopup();
-		}
-		ImGui::SetItemDefaultFocus();
-		ImGui::SameLine();
-		if (ImGui::Button("Cancel", {button_width, 0}))
-			ImGui::CloseCurrentPopup();
-
-		ImGui::EndPopup();
-	}
-}
-
-void Application::ui_stop_path_tracer_modal() {
-	if (ImGui::BeginPopupModal("Stop PathTracer", nullptr,
-	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
-	                               ImGuiWindowFlags_NoMove)) {
-		ImGui::Text("Are you sure?\nThe render result might be lost.");
-
-		float button_width = (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
-
-		if (ImGui::Button("Stop", {button_width, 0})) {
-			m_path_tracer_thread->StopAndJoin();
-			ImGui::CloseCurrentPopup();
-		}
-		ImGui::SetItemDefaultFocus();
-		ImGui::SameLine();
-		if (ImGui::Button("Cancel", {button_width, 0}))
-			ImGui::CloseCurrentPopup();
-
-		ImGui::EndPopup();
-	}
-}
-
-void Application::ui_export_exr_modal() {
-	if (ImGui::BeginPopupModal("Export OpenEXR", nullptr,
-	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
-	                               ImGuiWindowFlags_NoMove)) {
-		constexpr const char *kChannels[] = {"Color", "Albedo", "Normal"};
-		static const char *const *current_channel = kChannels + 0;
-		if (ImGui::BeginCombo("Channel", *current_channel)) {
-			for (int n = 0; n < IM_ARRAYSIZE(kChannels); n++) {
-				bool is_selected = (current_channel == kChannels + n);
-				if (ImGui::Selectable(kChannels[n], is_selected))
-					current_channel = kChannels + n;
-				if (is_selected)
-					ImGui::SetItemDefaultFocus();
-			}
-			ImGui::EndCombo();
-		}
-
-		static char exr_name_buf[kFilenameBufSize]{};
-		static bool save_as_fp16{false};
-
-		constexpr const char *kFilter[] = {"*.exr"};
-		ui_file_save("OpenEXR Filename", "...##0", exr_name_buf, kFilenameBufSize, "Export OpenEXR", 1, kFilter);
-
-		ImGui::Checkbox("Export as FP16", &save_as_fp16);
-
-		float button_width = (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
-
-		{
-			if (ImGui::Button("Export", {button_width, 0})) {
-				bool tmp_pause = m_path_tracer_thread->IsPause();
-				m_path_tracer_thread->SetPause(true);
-
-				std::vector<float> pixels;
-				{
-					std::lock_guard<std::mutex> lock_guard{m_path_tracer_thread->GetTargetMutex()};
-					if (current_channel == kChannels + 0) // color
-						pixels = m_path_tracer->ExtractColorImage(m_path_tracer_command_pool);
-					else if (current_channel == kChannels + 1) // albedo
-						pixels = m_path_tracer->ExtractAlbedoImage(m_path_tracer_command_pool);
-					else // normal
-						pixels = m_path_tracer->ExtractNormalImage(m_path_tracer_command_pool);
-				}
-
-				m_path_tracer_thread->SetPause(tmp_pause);
-
-				char *err{nullptr};
-				if (SaveEXR(pixels.data(), kWidth, kHeight, 3, save_as_fp16, exr_name_buf, (const char **)&err) < 0)
-					spdlog::error("{}", err);
-				else
-					spdlog::info("Saved EXR image to {}", exr_name_buf);
-				free(err);
-
-				ImGui::CloseCurrentPopup();
-			}
-			ImGui::SetItemDefaultFocus();
-			ImGui::SameLine();
-			if (ImGui::Button("Cancel", {button_width, 0})) {
-				ImGui::CloseCurrentPopup();
-			}
-		}
-
-		ImGui::EndPopup();
-	}
+	if (open_modal)
+		ImGui::OpenPopup(open_modal);
 }
 
 void Application::glfw_key_callback(GLFWwindow *window, int key, int, int action, int) {

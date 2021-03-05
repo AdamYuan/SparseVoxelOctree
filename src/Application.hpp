@@ -97,27 +97,7 @@ private:
 
 	void ui_render_main();
 
-	static void ui_push_disable();
-
-	static void ui_pop_disable();
-
 	void ui_menubar();
-
-	void ui_load_scene_modal();
-
-	void ui_export_exr_modal();
-
-	void ui_start_path_tracer_modal();
-
-	void ui_stop_path_tracer_modal();
-
-	void ui_loading_modal();
-
-	static bool ui_file_open(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
-	                         int filter_num, const char *const *filter_patterns);
-
-	static bool ui_file_save(const char *label, const char *btn, char *buf, size_t buf_size, const char *title,
-	                         int filter_num, const char *const *filter_patterns);
 
 	static void glfw_key_callback(GLFWwindow *window, int key, int, int action, int);
 

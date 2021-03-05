@@ -29,6 +29,8 @@ public:
 	                                                const std::shared_ptr<myvk::Queue> &path_tracer_queue,
 	                                                const std::shared_ptr<myvk::Queue> &main_queue);
 	const std::shared_ptr<PathTracerViewer> &GetPathTracerViewerPtr() const { return m_path_tracer_viewer_ptr; }
+	const std::shared_ptr<myvk::Queue> &GetPathTracerQueue() const { return m_path_tracer_queue; }
+	const std::shared_ptr<myvk::Queue> &GetMainQueue() const { return m_main_queue; }
 	~PathTracerThread();
 
 	void Launch();

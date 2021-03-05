@@ -27,6 +27,8 @@ public:
 	                                            const std::shared_ptr<myvk::Queue> &loader_queue,
 	                                            const std::shared_ptr<myvk::Queue> &main_queue);
 	const std::shared_ptr<Octree> &GetOctreePtr() const { return m_octree_ptr; }
+	const std::shared_ptr<myvk::Queue> &GetLoaderQueue() const { return m_loader_queue; }
+	const std::shared_ptr<myvk::Queue> &GetMainQueue() const { return m_main_queue; }
 
 	const char *GetNotification() const { return m_notification; }
 

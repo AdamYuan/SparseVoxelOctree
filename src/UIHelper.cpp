@@ -1,8 +1,10 @@
-#include "ImGuiHelper.hpp"
+#include "UIHelper.hpp"
+
 #include <font-awesome/IconsFontAwesome5.h>
 #include <font-awesome/fa_solid_900.inl>
+#include <tinyfiledialogs.h>
 
-namespace ImGui {
+namespace UI {
 void LoadFontAwesome() {
 	ImGuiIO &io = ImGui::GetIO();
 	io.Fonts->AddFontDefault();
@@ -16,7 +18,7 @@ void LoadFontAwesome() {
 	                                         &icons_config, icons_ranges);
 }
 bool Spinner(const char *label, float radius, int thickness, const ImU32 &color) {
-	ImGuiWindow *window = GetCurrentWindow();
+	ImGuiWindow *window = ImGui::GetCurrentWindow();
 	if (window->SkipItems)
 		return false;
 
@@ -28,8 +30,8 @@ bool Spinner(const char *label, float radius, int thickness, const ImU32 &color)
 	ImVec2 size((radius)*2, (radius + style.FramePadding.y) * 2);
 
 	const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
-	ItemSize(bb, style.FramePadding.y);
-	if (!ItemAdd(bb, id))
+	ImGui::ItemSize(bb, style.FramePadding.y);
+	if (!ImGui::ItemAdd(bb, id))
 		return false;
 
 	// Render
@@ -116,8 +118,35 @@ bool DragAngle(const char *label, float *v_rad, float v_speed, float v_degrees_m
                const char *format, ImGuiSliderFlags flags) {
 	float v_deg = (*v_rad) * 360.0f / (2 * IM_PI);
 	bool value_changed =
-	    DragScalar(label, ImGuiDataType_Float, &v_deg, v_speed, &v_degrees_min, &v_degrees_max, format, flags);
+	    ImGui::DragScalar(label, ImGuiDataType_Float, &v_deg, v_speed, &v_degrees_min, &v_degrees_max, format, flags);
 	*v_rad = v_deg * (2 * IM_PI) / 360.0f;
 	return value_changed;
 }
-} // namespace ImGui
+
+bool FileOpen(const char *label, const char *btn, char *buf, size_t buf_size, const char *title, int filter_num,
+              const char *const *filter_patterns) {
+	bool ret = ImGui::InputText(label, buf, buf_size);
+	ImGui::SameLine();
+
+	if (ImGui::Button(btn)) {
+		const char *filename = tinyfd_openFileDialog(title, "", filter_num, filter_patterns, nullptr, false);
+		if (filename)
+			strcpy(buf, filename);
+		ret = true;
+	}
+	return ret;
+}
+bool FileSave(const char *label, const char *btn, char *buf, size_t buf_size, const char *title, int filter_num,
+              const char *const *filter_patterns) {
+	bool ret = ImGui::InputText(label, buf, buf_size);
+	ImGui::SameLine();
+
+	if (ImGui::Button(btn)) {
+		const char *filename = tinyfd_saveFileDialog(title, "", filter_num, filter_patterns, nullptr);
+		if (filename)
+			strcpy(buf, filename);
+		ret = true;
+	}
+	return ret;
+}
+} // namespace UI
