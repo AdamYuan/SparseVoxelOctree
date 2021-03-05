@@ -120,8 +120,6 @@ add_executable(SparseVoxelOctree
 	src/Camera.hpp
 	src/ImGuiRenderer.cpp
 	src/ImGuiRenderer.hpp
-	src/ImGuiHelper.cpp
-	src/ImGuiHelper.hpp
 	src/Scene.cpp
 	src/Scene.hpp
 	src/Counter.cpp
@@ -144,6 +142,16 @@ add_executable(SparseVoxelOctree
 	src/LoaderThread.hpp
 	src/PathTracerThread.cpp
 	src/PathTracerThread.hpp
+	src/UIHelper.cpp
+	src/UIHelper.hpp
+	src/UILog.cpp
+	src/UILog.hpp
+	src/UILoader.cpp
+	src/UILoader.hpp
+	src/UIPathTracer.cpp
+	src/UIPathTracer.hpp
+	src/UIOctreeTracer.cpp
+	src/UIOctreeTracer.hpp
 
 	# MYVK
 	src/myvk/DeviceObjectBase.hpp
