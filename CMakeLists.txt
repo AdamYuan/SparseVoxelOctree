@@ -30,6 +30,7 @@ include_directories(
 
 add_subdirectory(dep/glfw)
 add_subdirectory(dep/spdlog)
+add_subdirectory(dep/freetype)
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
   set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
@@ -220,6 +221,6 @@ if(OpenMP_CXX_FOUND)
 	target_link_libraries(SparseVoxelOctree PRIVATE OpenMP::OpenMP_CXX)
 endif()
 find_package(Threads REQUIRED)
-target_link_libraries(SparseVoxelOctree PRIVATE glfw spdlog volk Threads::Threads)
+target_link_libraries(SparseVoxelOctree PRIVATE glfw spdlog freetype volk Threads::Threads)
 
 install(TARGETS SparseVoxelOctree RUNTIME DESTINATION)
