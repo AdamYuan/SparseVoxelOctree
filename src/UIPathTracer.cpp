@@ -196,7 +196,7 @@ void PathTracerExportEXRModal(const std::shared_ptr<PathTracerThread> &path_trac
 		static bool save_as_fp16{false};
 
 		constexpr const char *kFilter[] = {"*.exr"};
-		UI::FileSave("OpenEXR Filename", "...##0", exr_name_buf, kFilenameBufSize, "Export OpenEXR", 1, kFilter);
+		UI::FileSave("OpenEXR Filename", "...", exr_name_buf, kFilenameBufSize, "Export OpenEXR", 1, kFilter);
 
 		ImGui::Checkbox("Export as FP16", &save_as_fp16);
 

@@ -1,7 +1,6 @@
 #include "UILog.hpp"
 
 #include "Config.hpp"
-
 #include <font-awesome/IconsFontAwesome5.h>
 #include <imgui/imgui.h>
 

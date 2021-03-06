@@ -1,16 +1,13 @@
 #include "Application.hpp"
 
 #include "Config.hpp"
-#include "UIHelper.hpp"
 #include <spdlog/spdlog.h>
 
-#include <font-awesome/IconsFontAwesome5.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_internal.h>
-#include <tinyexr.h>
-#include <tinyfiledialogs.h>
 
+#include "UIHelper.hpp"
 #include "UILoader.hpp"
 #include "UILog.hpp"
 #include "UIOctreeTracer.hpp"

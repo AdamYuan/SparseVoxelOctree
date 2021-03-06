@@ -2,6 +2,7 @@
 
 #include <font-awesome/IconsFontAwesome5.h>
 #include <font-awesome/fa_solid_900.inl>
+#include <imgui/imgui_internal.h>
 #include <tinyfiledialogs.h>
 
 namespace UI {
