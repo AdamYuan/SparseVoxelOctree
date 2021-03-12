@@ -126,7 +126,8 @@ void Application::draw_frame() {
 	m_frame_manager.AfterAcquire(image_index);
 
 	uint32_t current_frame = m_frame_manager.GetCurrentFrame();
-	m_camera->UpdateFrameUniformBuffer(current_frame);
+	if (m_ui_state == UIStates::kOctreeTracer)
+		m_camera->UpdateFrameUniformBuffer(current_frame);
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_command_buffers[current_frame];
 
 	command_buffer->Reset();
@@ -311,7 +312,7 @@ Application::Application() {
 	create_framebuffers();
 	m_imgui_renderer.Initialize(m_main_command_pool, m_render_pass, 1, kFrameCount);
 
-	m_camera = Camera::Create(m_device, kFrameCount);
+	m_camera = Camera::Create(m_device, kFrameCount + 1); // reserve a camera buffer for path tracer
 	m_camera->m_position = glm::vec3(1.5);
 	m_frame_manager.Initialize(m_swapchain, kFrameCount);
 	m_octree = Octree::Create(m_device);

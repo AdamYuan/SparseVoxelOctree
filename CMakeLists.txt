@@ -48,7 +48,6 @@ IF(GLSLC)
 	endfunction()
 
 	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/quad.vert ${CMAKE_SOURCE_DIR}/src/spirv/quad.vert.u32)
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/quad_sampler.frag ${CMAKE_SOURCE_DIR}/src/spirv/quad_sampler.frag.u32)
 
 	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/sobol.comp ${CMAKE_SOURCE_DIR}/src/spirv/sobol.comp.u32)
 
@@ -65,13 +64,14 @@ IF(GLSLC)
 	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer_beam.frag ${CMAKE_SOURCE_DIR}/src/spirv/octree_tracer_beam.frag.u32)
 
 	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/path_tracer.comp ${CMAKE_SOURCE_DIR}/src/spirv/path_tracer.comp.u32)
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/path_tracer_viewer.frag ${CMAKE_SOURCE_DIR}/src/spirv/path_tracer_viewer.frag.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/path_tracer_viewer_gen.frag ${CMAKE_SOURCE_DIR}/src/spirv/path_tracer_viewer_gen.frag.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/path_tracer_viewer_main.vert ${CMAKE_SOURCE_DIR}/src/spirv/path_tracer_viewer_main.vert.u32)
+	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/path_tracer_viewer_main.frag ${CMAKE_SOURCE_DIR}/src/spirv/path_tracer_viewer_main.frag.u32)
 ENDIF()
 
 add_executable(SparseVoxelOctree
 	# SPIRV SHADERS
 	src/spirv/quad.vert.u32
-	src/spirv/quad_sampler.frag.u32
 
 	src/spirv/sobol.comp.u32
 
@@ -88,7 +88,9 @@ add_executable(SparseVoxelOctree
 	src/spirv/octree_tracer_beam.frag.u32
 
 	src/spirv/path_tracer.comp.u32
-	src/spirv/path_tracer_viewer.frag.u32
+	src/spirv/path_tracer_viewer_gen.frag.u32
+	src/spirv/path_tracer_viewer_main.vert.u32
+	src/spirv/path_tracer_viewer_main.frag.u32
 
 	# SINGLE HEADERS
 	dep/vk_mem_alloc.cpp

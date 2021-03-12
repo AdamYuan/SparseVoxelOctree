@@ -1,6 +1,7 @@
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
 
+#include "Config.hpp"
 #include "myvk/Buffer.hpp"
 #include "myvk/DescriptorSet.hpp"
 #include <cinttypes>
@@ -14,7 +15,7 @@ class Camera {
 public:
 	glm::vec3 m_position{0.0f, 0.0f, 0.0f};
 	float m_yaw{0.0f}, m_pitch{0.0f};
-	float m_sensitive{0.005f}, m_speed{0.0625f}, m_fov{PIF / 3.0f};
+	float m_sensitive{0.005f}, m_speed{0.0625f}, m_fov{PIF / 3.0f}, m_aspect_ratio{float(kWidth) / float(kHeight)};
 
 private:
 	glm::dvec2 m_last_mouse_pos{0.0, 0.0};

@@ -1,5 +1,4 @@
 #include "Camera.hpp"
-#include "Config.hpp"
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -76,7 +75,7 @@ void Camera::Control(GLFWwindow *window, float delta) {
 
 Camera::UniformData Camera::fetch_uniform_data() const {
 	UniformData data = {};
-	data.m_projection = glm::perspective(m_fov, kCamAspectRatio, kCamNear, kCamFar);
+	data.m_projection = glm::perspective(m_fov, m_aspect_ratio, kCamNear, kCamFar);
 	data.m_projection[1][1] *= -1;
 	data.m_inv_projection = glm::inverse(data.m_projection);
 	data.m_inv_view = glm::rotate(glm::identity<glm::mat4>(), -m_pitch, glm::vec3(1.0f, 0.0f, 0.0f));

@@ -4,24 +4,26 @@
 
 inline static constexpr uint32_t group_8(uint32_t x) { return (x >> 3u) + ((x & 0x7u) ? 1u : 0u); }
 
-void PathTracer::create_images(const std::shared_ptr<myvk::Device> &device) {
-	m_color_image = myvk::Image::CreateTexture2D(device, {kWidth, kHeight}, 1, VK_FORMAT_R32G32B32A32_SFLOAT,
+void PathTracer::create_target_images(const std::shared_ptr<myvk::Device> &device) {
+	m_color_image = myvk::Image::CreateTexture2D(device, {m_width, m_height}, 1, VK_FORMAT_R32G32B32A32_SFLOAT,
 	                                             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 	                                                 VK_IMAGE_USAGE_STORAGE_BIT);
-	m_albedo_image = myvk::Image::CreateTexture2D(device, {kWidth, kHeight}, 1, VK_FORMAT_R8G8B8A8_UNORM,
+	m_albedo_image = myvk::Image::CreateTexture2D(device, {m_width, m_height}, 1, VK_FORMAT_R8G8B8A8_UNORM,
 	                                              VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 	                                                  VK_IMAGE_USAGE_STORAGE_BIT);
-	m_normal_image = myvk::Image::CreateTexture2D(device, {kWidth, kHeight}, 1, VK_FORMAT_R8G8B8A8_SNORM,
+	m_normal_image = myvk::Image::CreateTexture2D(device, {m_width, m_height}, 1, VK_FORMAT_R8G8B8A8_SNORM,
 	                                              VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 	                                                  VK_IMAGE_USAGE_STORAGE_BIT);
-	m_noise_image = myvk::Image::CreateTexture2D(device, {kNoiseSize, kNoiseSize}, 1, VK_FORMAT_R8G8_UNORM,
-	                                             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
 	m_color_image_view = myvk::ImageView::Create(m_color_image, VK_IMAGE_VIEW_TYPE_2D);
 	m_albedo_image_view = myvk::ImageView::Create(m_albedo_image, VK_IMAGE_VIEW_TYPE_2D);
 	m_normal_image_view = myvk::ImageView::Create(m_normal_image, VK_IMAGE_VIEW_TYPE_2D);
-	m_noise_image_view = myvk::ImageView::Create(m_noise_image, VK_IMAGE_VIEW_TYPE_2D);
+}
 
+void PathTracer::create_noise_images(const std::shared_ptr<myvk::Device> &device) {
+	m_noise_image = myvk::Image::CreateTexture2D(device, {kNoiseSize, kNoiseSize}, 1, VK_FORMAT_R8G8_UNORM,
+	                                             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+	m_noise_image_view = myvk::ImageView::Create(m_noise_image, VK_IMAGE_VIEW_TYPE_2D);
 	m_noise_sampler = myvk::Sampler::Create(device, VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 }
 
@@ -166,7 +168,8 @@ std::shared_ptr<PathTracer> PathTracer::Create(const std::shared_ptr<Octree> &oc
 	ret->m_sun_radiance = glm::vec3(kDefaultSunRadiance);
 
 	ret->m_sobol.Initialize(command_pool->GetDevicePtr());
-	ret->create_images(command_pool->GetDevicePtr());
+	ret->create_target_images(command_pool->GetDevicePtr());
+	ret->create_noise_images(command_pool->GetDevicePtr());
 	ret->set_noise_image(command_pool);
 	ret->create_descriptor(command_pool->GetDevicePtr());
 	ret->create_pipeline(command_pool->GetDevicePtr());
@@ -175,19 +178,30 @@ std::shared_ptr<PathTracer> PathTracer::Create(const std::shared_ptr<Octree> &oc
 }
 
 void PathTracer::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool) {
+	{
+		float tmp = m_camera_ptr->m_aspect_ratio;
+		m_camera_ptr->m_aspect_ratio = m_width / float(m_height);
+		m_camera_ptr->UpdateFrameUniformBuffer(kFrameCount);
+		m_camera_ptr->m_aspect_ratio = tmp;
+	}
 	m_sobol.Reset(command_pool, (m_bounce + 1) * 2);
+	create_target_images(command_pool->GetDevicePtr());
 	clear_target_images(command_pool);
+	m_target_descriptor_set->UpdateStorageImage(m_color_image_view, 0);
+	m_target_descriptor_set->UpdateStorageImage(m_albedo_image_view, 1);
+	m_target_descriptor_set->UpdateStorageImage(m_normal_image_view, 2);
 }
 
 void PathTracer::CmdRender(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) {
-	command_buffer->CmdBindDescriptorSets({m_octree_ptr->GetDescriptorSet(), m_camera_ptr->GetFrameDescriptorSet(0),
-	                                       m_sobol.GetDescriptorSet(), m_target_descriptor_set, m_noise_descriptor_set},
+	command_buffer->CmdBindDescriptorSets({m_octree_ptr->GetDescriptorSet(),
+	                                       m_camera_ptr->GetFrameDescriptorSet(kFrameCount), m_sobol.GetDescriptorSet(),
+	                                       m_target_descriptor_set, m_noise_descriptor_set},
 	                                      m_pipeline);
 	command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &m_bounce);
 	command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t),
 	                                 3 * sizeof(float), &m_sun_radiance[0]);
 	command_buffer->CmdBindPipeline(m_pipeline);
-	command_buffer->CmdDispatch(group_8(kWidth), group_8(kHeight), 1);
+	command_buffer->CmdDispatch(group_8(m_width), group_8(m_height), 1);
 
 	command_buffer->CmdPipelineBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {},
 	                                   {}, {});
@@ -222,7 +236,7 @@ void PathTracer::extract_target_image_to_buffer(const std::shared_ptr<myvk::Comm
 }
 
 std::vector<float> PathTracer::ExtractColorImage(const std::shared_ptr<myvk::CommandPool> &command_pool) const {
-	constexpr uint32_t kSize = kWidth * kHeight;
+	const uint32_t kSize = m_width * m_height;
 	std::shared_ptr<myvk::Buffer> staging_buffer =
 	    myvk::Buffer::Create(command_pool->GetDevicePtr(), kSize * 4 * sizeof(float), VMA_MEMORY_USAGE_CPU_ONLY,
 	                         VK_BUFFER_USAGE_TRANSFER_DST_BIT);
@@ -242,7 +256,7 @@ std::vector<float> PathTracer::ExtractColorImage(const std::shared_ptr<myvk::Com
 }
 
 std::vector<float> PathTracer::ExtractAlbedoImage(const std::shared_ptr<myvk::CommandPool> &command_pool) const {
-	constexpr uint32_t kSize = kWidth * kHeight;
+	const uint32_t kSize = m_width * m_height;
 	std::shared_ptr<myvk::Buffer> staging_buffer =
 	    myvk::Buffer::Create(command_pool->GetDevicePtr(), kSize * sizeof(uint32_t), VMA_MEMORY_USAGE_CPU_ONLY,
 	                         VK_BUFFER_USAGE_TRANSFER_DST_BIT);
@@ -263,7 +277,7 @@ std::vector<float> PathTracer::ExtractAlbedoImage(const std::shared_ptr<myvk::Co
 }
 
 std::vector<float> PathTracer::ExtractNormalImage(const std::shared_ptr<myvk::CommandPool> &command_pool) const {
-	constexpr uint32_t kSize = kWidth * kHeight;
+	const uint32_t kSize = m_width * m_height;
 	std::shared_ptr<myvk::Buffer> staging_buffer =
 	    myvk::Buffer::Create(command_pool->GetDevicePtr(), kSize * sizeof(uint32_t), VMA_MEMORY_USAGE_CPU_ONLY,
 	                         VK_BUFFER_USAGE_TRANSFER_DST_BIT);

@@ -22,7 +22,6 @@ void PathTracerThread::Launch() {
 	m_spp = 0;
 	m_time = glfwGetTime();
 
-	m_path_tracer_viewer_ptr->GetPathTracerPtr()->GetCameraPtr()->UpdateFrameUniformBuffer(0);
 	m_path_tracer_viewer_ptr->GetPathTracerPtr()->Reset(myvk::CommandPool::Create(m_path_tracer_queue));
 	m_path_tracer_viewer_ptr->Reset(myvk::CommandPool::Create(m_main_queue));
 

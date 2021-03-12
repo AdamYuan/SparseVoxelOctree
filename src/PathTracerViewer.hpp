@@ -39,7 +39,7 @@ public:
 	                                                uint32_t subpass);
 	const std::shared_ptr<PathTracer> &GetPathTracerPtr() const { return m_path_tracer_ptr; }
 
-	void Reset(const std::shared_ptr<myvk::CommandPool> &command_pool) const;
+	void Reset(const std::shared_ptr<myvk::CommandPool> &command_pool);
 
 	void CmdGenRenderPass(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
 

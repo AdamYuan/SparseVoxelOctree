@@ -2,6 +2,7 @@
 #define PATH_TRACER_HPP
 
 #include "Camera.hpp"
+#include "Config.hpp"
 #include "Octree.hpp"
 #include "Sobol.hpp"
 #include "myvk/Image.hpp"
@@ -25,7 +26,8 @@ private:
 	std::shared_ptr<myvk::PipelineLayout> m_pipeline_layout;
 	std::shared_ptr<myvk::ComputePipeline> m_pipeline;
 
-	void create_images(const std::shared_ptr<myvk::Device> &device);
+	void create_target_images(const std::shared_ptr<myvk::Device> &device);
+	void create_noise_images(const std::shared_ptr<myvk::Device> &device);
 	void create_descriptor(const std::shared_ptr<myvk::Device> &device);
 	void create_pipeline(const std::shared_ptr<myvk::Device> &device);
 
@@ -37,6 +39,7 @@ private:
 	                                           const std::shared_ptr<myvk::BufferBase> &buffer);
 
 public:
+	uint32_t m_width{kWidth}, m_height{kHeight};
 	uint32_t m_bounce;
 	glm::vec3 m_sun_radiance;
 

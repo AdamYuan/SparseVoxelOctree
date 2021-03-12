@@ -5,10 +5,11 @@
 
 constexpr const char *kAppName = "Vulkan SVO";
 constexpr uint32_t kWidth = 1280, kHeight = 720;
+constexpr uint32_t kMinWidth = 256, kMinHeight = 256;
+constexpr uint32_t kMaxWidth = 3840, kMaxHeight = 3840;
 constexpr uint32_t kFrameCount = 3;
 
 constexpr float kCamNear = 1.0f / 512.0f, kCamFar = 4.0f;
-constexpr float kCamAspectRatio = kWidth / (float)kHeight;
 
 constexpr uint32_t kFilenameBufSize = 512;
 

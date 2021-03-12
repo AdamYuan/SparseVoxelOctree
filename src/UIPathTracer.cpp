@@ -4,6 +4,7 @@
 #include "UIHelper.hpp"
 #include <font-awesome/IconsFontAwesome5.h>
 #include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 #include <spdlog/spdlog.h>
 #include <tinyexr.h>
 
@@ -91,6 +92,18 @@ void PathTracerRightStatus(const std::shared_ptr<PathTracerThread> &path_tracer_
 	ImGui::SameLine(indent_w);
 	ImGui::Separator();
 
+	sprintf(buf, ICON_FA_IMAGE " %ux%u", path_tracer_thread->GetPathTracerViewerPtr()->GetPathTracerPtr()->m_width,
+	        path_tracer_thread->GetPathTracerViewerPtr()->GetPathTracerPtr()->m_height);
+	indent_w -= ImGui::CalcTextSize(buf).x + spacing;
+	ImGui::SameLine(indent_w);
+	ImGui::TextUnformatted(buf);
+
+	if (ImGui::IsItemHovered()) {
+		ImGui::BeginTooltip();
+		ImGui::TextUnformatted("Resolution");
+		ImGui::EndTooltip();
+	}
+
 	sprintf(buf, ICON_FA_BOLT " %u", path_tracer_thread->GetPathTracerViewerPtr()->GetPathTracerPtr()->m_bounce);
 	indent_w -= ImGui::CalcTextSize(buf).x + spacing;
 	ImGui::SameLine(indent_w);
@@ -131,6 +144,17 @@ void PathTracerStartModal(const std::shared_ptr<PathTracerThread> &path_tracer_t
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
 		const auto &path_tracer = path_tracer_thread->GetPathTracerViewerPtr()->GetPathTracerPtr();
+
+		int width = path_tracer->m_width;
+		ImGui::PushMultiItemsWidths(2, ImGui::CalcItemWidth());
+		if (ImGui::DragInt("Width", &width, 1, kMinWidth, kMaxWidth))
+			path_tracer->m_width = width;
+		ImGui::PopItemWidth();
+		ImGui::SameLine();
+		int height = path_tracer->m_height;
+		if (ImGui::DragInt("Height", &height, 1, kMinHeight, kMaxHeight))
+			path_tracer->m_height = height;
+		ImGui::PopItemWidth();
 
 		int bounce = path_tracer->m_bounce;
 		if (ImGui::DragInt("Bounce", &bounce, 1, kMinBounce, kMaxBounce))
@@ -224,7 +248,8 @@ void PathTracerExportEXRModal(const std::shared_ptr<PathTracerThread> &path_trac
 				path_tracer_thread->SetPause(tmp_pause);
 
 				char *err{nullptr};
-				if (SaveEXR(pixels.data(), kWidth, kHeight, 3, save_as_fp16, exr_name_buf, (const char **)&err) < 0)
+				if (SaveEXR(pixels.data(), path_tracer->m_width, path_tracer->m_height, 3, save_as_fp16, exr_name_buf,
+				            (const char **)&err) < 0)
 					spdlog::error("{}", err);
 				else
 					spdlog::info("Saved EXR image to {}", exr_name_buf);

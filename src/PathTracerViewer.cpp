@@ -46,14 +46,14 @@ void PathTracerViewer::create_render_pass(const std::shared_ptr<myvk::Device> &d
 void PathTracerViewer::create_gen_graphics_pipeline(const std::shared_ptr<myvk::Device> &device) {
 	m_gen_pipeline_layout = myvk::PipelineLayout::Create(device, {m_path_tracer_ptr->GetTargetDescriptorSetLayout()},
 	                                                     {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t)}});
-	constexpr uint32_t kPathTracerViewerFragSpirv[] = {
-#include "spirv/path_tracer_viewer.frag.u32"
+	constexpr uint32_t kPathTracerViewerGenFragSpirv[] = {
+#include "spirv/path_tracer_viewer_gen.frag.u32"
 	};
 
 	std::shared_ptr<myvk::ShaderModule> vert_shader_module, frag_shader_module;
 	vert_shader_module = myvk::ShaderModule::Create(device, kQuadVertSpv, sizeof(kQuadVertSpv));
 	frag_shader_module =
-	    myvk::ShaderModule::Create(device, kPathTracerViewerFragSpirv, sizeof(kPathTracerViewerFragSpirv));
+	    myvk::ShaderModule::Create(device, kPathTracerViewerGenFragSpirv, sizeof(kPathTracerViewerGenFragSpirv));
 
 	VkPipelineShaderStageCreateInfo shader_stages[] = {
 	    vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
@@ -67,24 +67,10 @@ void PathTracerViewer::create_gen_graphics_pipeline(const std::shared_ptr<myvk::
 	input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	input_assembly.primitiveRestartEnable = VK_FALSE;
 
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)kWidth;
-	viewport.height = (float)kHeight;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor = {};
-	scissor.offset = {0, 0};
-	scissor.extent = {kWidth, kHeight};
-
 	VkPipelineViewportStateCreateInfo viewport_state = {};
 	viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewport_state.viewportCount = 1;
-	viewport_state.pViewports = &viewport;
 	viewport_state.scissorCount = 1;
-	viewport_state.pScissors = &scissor;
 
 	VkPipelineRasterizationStateCreateInfo rasterizer = {};
 	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -115,6 +101,12 @@ void PathTracerViewer::create_gen_graphics_pipeline(const std::shared_ptr<myvk::
 	color_blend.attachmentCount = 1;
 	color_blend.pAttachments = &color_blend_attachment;
 
+	VkDynamicState dynamic_states[2] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+	VkPipelineDynamicStateCreateInfo dynamic_state = {};
+	dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamic_state.dynamicStateCount = 2;
+	dynamic_state.pDynamicStates = dynamic_states;
+
 	VkGraphicsPipelineCreateInfo pipeline_info = {};
 	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipeline_info.stageCount = 2;
@@ -126,7 +118,7 @@ void PathTracerViewer::create_gen_graphics_pipeline(const std::shared_ptr<myvk::
 	pipeline_info.pMultisampleState = &multisampling;
 	pipeline_info.pDepthStencilState = nullptr;
 	pipeline_info.pColorBlendState = &color_blend;
-	pipeline_info.pDynamicState = nullptr;
+	pipeline_info.pDynamicState = &dynamic_state;
 	pipeline_info.subpass = 0;
 
 	m_gen_graphics_pipeline = myvk::GraphicsPipeline::Create(m_gen_pipeline_layout, m_gen_render_pass, pipeline_info);
@@ -151,11 +143,21 @@ void PathTracerViewer::create_main_graphics_pipeline(const std::shared_ptr<myvk:
                                                      uint32_t subpass) {
 	std::shared_ptr<myvk::Device> device = render_pass->GetDevicePtr();
 
-	m_main_pipeline_layout = myvk::PipelineLayout::Create(device, {m_descriptor_set_layout}, {});
+	m_main_pipeline_layout = myvk::PipelineLayout::Create(device, {m_descriptor_set_layout},
+	                                                      {{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 6}});
+
+	constexpr uint32_t kPathTracerViewerMainVertSpirv[] = {
+#include "spirv/path_tracer_viewer_main.vert.u32"
+	};
+	constexpr uint32_t kPathTracerViewerMainFragSpirv[] = {
+#include "spirv/path_tracer_viewer_main.frag.u32"
+	};
 
 	std::shared_ptr<myvk::ShaderModule> vert_shader_module, frag_shader_module;
-	vert_shader_module = myvk::ShaderModule::Create(device, kQuadVertSpv, sizeof(kQuadVertSpv));
-	frag_shader_module = myvk::ShaderModule::Create(device, kQuadSamplerFragSpv, sizeof(kQuadSamplerFragSpv));
+	vert_shader_module =
+	    myvk::ShaderModule::Create(device, kPathTracerViewerMainVertSpirv, sizeof(kPathTracerViewerMainVertSpirv));
+	frag_shader_module =
+	    myvk::ShaderModule::Create(device, kPathTracerViewerMainFragSpirv, sizeof(kPathTracerViewerMainFragSpirv));
 
 	VkPipelineShaderStageCreateInfo shader_stages[] = {
 	    vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
@@ -241,11 +243,10 @@ std::shared_ptr<PathTracerViewer> PathTracerViewer::Create(const std::shared_ptr
 	ret->m_path_tracer_ptr = path_tracer;
 
 	ret->m_image = myvk::Image::CreateTexture2D(
-	    render_pass->GetDevicePtr(), {kWidth, kHeight}, 1, VK_FORMAT_R8G8B8A8_UNORM,
+	    render_pass->GetDevicePtr(), {path_tracer->m_width, path_tracer->m_height}, 1, VK_FORMAT_R8G8B8A8_UNORM,
 	    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 	ret->m_image_view = myvk::ImageView::Create(ret->m_image, VK_IMAGE_VIEW_TYPE_2D);
-	ret->m_sampler =
-	    myvk::Sampler::Create(render_pass->GetDevicePtr(), VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	ret->m_sampler = myvk::Sampler::CreateClampToBorder(render_pass->GetDevicePtr(), VK_FILTER_NEAREST, {});
 	ret->create_render_pass(render_pass->GetDevicePtr());
 	ret->m_gen_framebuffer = myvk::Framebuffer::Create(ret->m_gen_render_pass, ret->m_image_view);
 	ret->create_gen_graphics_pipeline(render_pass->GetDevicePtr());
@@ -256,7 +257,15 @@ std::shared_ptr<PathTracerViewer> PathTracerViewer::Create(const std::shared_ptr
 	return ret;
 }
 
-void PathTracerViewer::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool) const {
+void PathTracerViewer::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool) {
+	m_image = myvk::Image::CreateTexture2D(
+	    m_gen_render_pass->GetDevicePtr(), {m_path_tracer_ptr->m_width, m_path_tracer_ptr->m_height}, 1,
+	    VK_FORMAT_R8G8B8A8_UNORM,
+	    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	m_image_view = myvk::ImageView::Create(m_image, VK_IMAGE_VIEW_TYPE_2D);
+	m_gen_framebuffer = myvk::Framebuffer::Create(m_gen_render_pass, m_image_view);
+	m_descriptor_set->UpdateCombinedImageSampler(m_sampler, m_image_view, 0);
+
 	std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
 	command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	command_buffer->CmdPipelineBarrier(
@@ -276,10 +285,26 @@ void PathTracerViewer::Reset(const std::shared_ptr<myvk::CommandPool> &command_p
 }
 
 void PathTracerViewer::CmdGenRenderPass(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)m_path_tracer_ptr->m_width;
+	viewport.height = (float)m_path_tracer_ptr->m_height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	VkRect2D scissor = {};
+	scissor.offset = {0, 0};
+	scissor.extent = {m_path_tracer_ptr->m_width, m_path_tracer_ptr->m_height};
+
 	uint32_t view_type_u32 = (uint32_t)m_view_type;
 	command_buffer->CmdBeginRenderPass(m_gen_render_pass, m_gen_framebuffer, {{{0.0f, 0.0f, 0.0f, 1.0f}}});
 	command_buffer->CmdBindPipeline(m_gen_graphics_pipeline);
 	command_buffer->CmdBindDescriptorSets({m_path_tracer_ptr->GetTargetDescriptorSet()}, m_gen_graphics_pipeline);
+
+	command_buffer->CmdSetScissor({scissor});
+	command_buffer->CmdSetViewport({viewport});
+
 	command_buffer->CmdPushConstants(m_gen_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t),
 	                                 &view_type_u32);
 	command_buffer->CmdDraw(3, 1, 0, 0);
@@ -289,5 +314,20 @@ void PathTracerViewer::CmdGenRenderPass(const std::shared_ptr<myvk::CommandBuffe
 void PathTracerViewer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
 	command_buffer->CmdBindPipeline(m_main_graphics_pipeline);
 	command_buffer->CmdBindDescriptorSets({m_descriptor_set}, m_main_graphics_pipeline);
+	// calculate align
+	uint32_t pw_sh = m_path_tracer_ptr->m_width * kHeight, ph_sw = m_path_tracer_ptr->m_height * kWidth;
+	float texcoords[6] = {0.0f, 0.0f, 2.0f, 0.0f, 0.0f, 2.0f};
+	if (pw_sh < ph_sw) {
+		float x = 0.5f * ph_sw / float(pw_sh) - 0.5f;
+		texcoords[0] = texcoords[4] = -x;
+		texcoords[2] = 2.0f + x * 3.0f;
+	} else if (pw_sh > ph_sw) {
+		float x = 0.5f * pw_sh / float(ph_sw) - 0.5f;
+		texcoords[1] = texcoords[3] = -x;
+		texcoords[5] = 2.0f + x * 3.0f;
+	}
+
+	command_buffer->CmdPushConstants(m_main_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(texcoords),
+	                                 texcoords);
 	command_buffer->CmdDraw(3, 1, 0, 0);
 }
