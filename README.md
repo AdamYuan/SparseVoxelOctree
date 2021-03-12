@@ -45,6 +45,11 @@ The new Vulkan version is much faster than the old OpenGL version, given the com
 
 In addition, the new Vulkan version has some advanced features such as asynchronous model loading and asynchronous path tracing.
 
+## TODOs
+- [ ] Allow window resizing
+- [ ] Gradient-domain path tracing ?
+- [ ] Build SVO contours ?
+
 ## Reference
 * https://www.seas.upenn.edu/~pcozzi/OpenGLInsights/OpenGLInsights-SparseVoxelization.pdf - Voxelization and SVO building
 * https://research.nvidia.com/publication/efficient-sparse-voxel-octrees - SVO ray march
