@@ -105,7 +105,7 @@ void OctreeBuilder::Build(Octree *octree, const Voxelizer &voxelizer, int octree
 		{
 			m_modify_arg_shader.Use();
 			glDispatchCompute(1, 1, 1);
-			glMemoryBarrier(GL_SHADER_STORAGE_BUFFER | GL_COMMAND_BARRIER_BIT);
+			glMemoryBarrier(GL_SHADER_STORAGE_BUFFER_BIT | GL_COMMAND_BARRIER_BIT);
 
 			m_alloc_node_shader.Use();
 			glDispatchComputeIndirect(0);
