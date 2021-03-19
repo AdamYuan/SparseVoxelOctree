@@ -108,8 +108,7 @@ std::shared_ptr<Swapchain> Swapchain::Create(const std::shared_ptr<Queue> &graph
 	create_info.oldSwapchain = VK_NULL_HANDLE;
 
 	// set constants
-	ret->m_image_format = surface_format.format;
-	ret->m_extent = extent;
+	ret->m_swapchain_create_info = create_info;
 
 	if (vkCreateSwapchainKHR(graphics_queue->GetDevicePtr()->GetHandle(), &create_info, nullptr, &ret->m_swapchain) !=
 	    VK_SUCCESS)
@@ -118,6 +117,47 @@ std::shared_ptr<Swapchain> Swapchain::Create(const std::shared_ptr<Queue> &graph
 	// get image count
 	vkGetSwapchainImagesKHR(graphics_queue->GetDevicePtr()->GetHandle(), ret->m_swapchain, &ret->m_image_count,
 	                        nullptr);
+
+	return ret;
+}
+
+std::shared_ptr<Swapchain> Swapchain::Create(const std::shared_ptr<Swapchain> &old_swapchain) {
+	std::shared_ptr<Swapchain> ret = std::make_shared<Swapchain>();
+	ret->m_graphics_queue_ptr = old_swapchain->m_graphics_queue_ptr;
+	ret->m_present_queue_ptr = old_swapchain->m_present_queue_ptr;
+	ret->m_swapchain_create_info = old_swapchain->m_swapchain_create_info;
+
+	VkPhysicalDevice physical_device = old_swapchain->GetDevicePtr()->GetPhysicalDevicePtr()->GetHandle();
+
+	VkSurfaceCapabilitiesKHR capabilities;
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, ret->m_present_queue_ptr->GetSurfacePtr()->GetHandle(),
+	                                          &capabilities);
+
+	// query extent
+	VkExtent2D extent = capabilities.currentExtent;
+	if (capabilities.currentExtent.width == UINT32_MAX) {
+		int width, height;
+		glfwGetWindowSize(ret->m_present_queue_ptr->GetSurfacePtr()->GetGlfwWindow(), &width, &height);
+		extent = {(uint32_t)width, (uint32_t)height};
+
+		extent.width = std::min(extent.width, capabilities.maxImageExtent.width);
+		extent.width = std::max(extent.width, capabilities.minImageExtent.width);
+		extent.height = std::min(extent.height, capabilities.maxImageExtent.height);
+		extent.height = std::max(extent.height, capabilities.minImageExtent.height);
+	}
+
+	// create swapchain
+	VkSwapchainCreateInfoKHR &create_info = ret->m_swapchain_create_info;
+	create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	create_info.imageExtent = extent;
+	create_info.oldSwapchain = old_swapchain->GetHandle();
+
+	if (vkCreateSwapchainKHR(old_swapchain->GetDevicePtr()->GetHandle(), &create_info, nullptr, &ret->m_swapchain) !=
+	    VK_SUCCESS)
+		return nullptr;
+
+	// get image count
+	vkGetSwapchainImagesKHR(old_swapchain->GetDevicePtr()->GetHandle(), ret->m_swapchain, &ret->m_image_count, nullptr);
 
 	return ret;
 }

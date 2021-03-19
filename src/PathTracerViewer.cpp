@@ -171,24 +171,10 @@ void PathTracerViewer::create_main_graphics_pipeline(const std::shared_ptr<myvk:
 	input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	input_assembly.primitiveRestartEnable = VK_FALSE;
 
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)kWidth;
-	viewport.height = (float)kHeight;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor = {};
-	scissor.offset = {0, 0};
-	scissor.extent = {kWidth, kHeight};
-
 	VkPipelineViewportStateCreateInfo viewport_state = {};
 	viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewport_state.viewportCount = 1;
-	viewport_state.pViewports = &viewport;
 	viewport_state.scissorCount = 1;
-	viewport_state.pScissors = &scissor;
 
 	VkPipelineRasterizationStateCreateInfo rasterizer = {};
 	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -219,6 +205,12 @@ void PathTracerViewer::create_main_graphics_pipeline(const std::shared_ptr<myvk:
 	color_blend.attachmentCount = 1;
 	color_blend.pAttachments = &color_blend_attachment;
 
+	VkDynamicState dynamic_states[2] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+	VkPipelineDynamicStateCreateInfo dynamic_state = {};
+	dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamic_state.dynamicStateCount = 2;
+	dynamic_state.pDynamicStates = dynamic_states;
+
 	VkGraphicsPipelineCreateInfo pipeline_info = {};
 	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipeline_info.stageCount = 2;
@@ -230,7 +222,7 @@ void PathTracerViewer::create_main_graphics_pipeline(const std::shared_ptr<myvk:
 	pipeline_info.pMultisampleState = &multisampling;
 	pipeline_info.pDepthStencilState = nullptr;
 	pipeline_info.pColorBlendState = &color_blend;
-	pipeline_info.pDynamicState = nullptr;
+	pipeline_info.pDynamicState = &dynamic_state;
 	pipeline_info.subpass = subpass;
 
 	m_main_graphics_pipeline = myvk::GraphicsPipeline::Create(m_main_pipeline_layout, render_pass, pipeline_info);
@@ -285,24 +277,17 @@ void PathTracerViewer::Reset(const std::shared_ptr<myvk::CommandPool> &command_p
 }
 
 void PathTracerViewer::CmdGenRenderPass(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)m_path_tracer_ptr->m_width;
-	viewport.height = (float)m_path_tracer_ptr->m_height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor = {};
-	scissor.offset = {0, 0};
-	scissor.extent = {m_path_tracer_ptr->m_width, m_path_tracer_ptr->m_height};
-
 	uint32_t view_type_u32 = (uint32_t)m_view_type;
 	command_buffer->CmdBeginRenderPass(m_gen_render_pass, m_gen_framebuffer, {{{0.0f, 0.0f, 0.0f, 1.0f}}});
 	command_buffer->CmdBindPipeline(m_gen_graphics_pipeline);
 	command_buffer->CmdBindDescriptorSets({m_path_tracer_ptr->GetTargetDescriptorSet()}, m_gen_graphics_pipeline);
 
+	VkRect2D scissor = {};
+	scissor.extent = {m_path_tracer_ptr->m_width, m_path_tracer_ptr->m_height};
 	command_buffer->CmdSetScissor({scissor});
+	VkViewport viewport = {};
+	viewport.width = (float)m_path_tracer_ptr->m_width;
+	viewport.height = (float)m_path_tracer_ptr->m_height;
 	command_buffer->CmdSetViewport({viewport});
 
 	command_buffer->CmdPushConstants(m_gen_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t),
@@ -314,8 +299,17 @@ void PathTracerViewer::CmdGenRenderPass(const std::shared_ptr<myvk::CommandBuffe
 void PathTracerViewer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
 	command_buffer->CmdBindPipeline(m_main_graphics_pipeline);
 	command_buffer->CmdBindDescriptorSets({m_descriptor_set}, m_main_graphics_pipeline);
+
+	VkRect2D scissor = {};
+	scissor.extent = {m_width, m_height};
+	command_buffer->CmdSetScissor({scissor});
+	VkViewport viewport = {};
+	viewport.width = m_width;
+	viewport.height = m_height;
+	command_buffer->CmdSetViewport({viewport});
+
 	// calculate align
-	uint32_t pw_sh = m_path_tracer_ptr->m_width * kHeight, ph_sw = m_path_tracer_ptr->m_height * kWidth;
+	uint32_t pw_sh = m_path_tracer_ptr->m_width * m_height, ph_sw = m_path_tracer_ptr->m_height * m_width;
 	float texcoords[6] = {0.0f, 0.0f, 2.0f, 0.0f, 0.0f, 2.0f};
 	if (pw_sh < ph_sw) {
 		float x = 0.5f * ph_sw / float(pw_sh) - 0.5f;

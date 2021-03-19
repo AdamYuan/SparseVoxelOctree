@@ -17,7 +17,7 @@ void LogMenuItem(const std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> &log_s
 
 		ImGuiTableFlags flags =
 		    ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg;
-		if (ImGui::BeginTable("Log Table", 4, flags, {kWidth * 0.5f, kHeight * 0.5f})) {
+		if (ImGui::BeginTable("Log Table", 4, flags, {ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f})) {
 			if (ImGui::IsMouseReleased(1))
 				ImGui::OpenPopup("Filter");
 			if (ImGui::BeginPopup("Filter")) {

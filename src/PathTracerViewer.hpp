@@ -11,6 +11,8 @@ public:
 	enum class ViewTypes { kColor = 0, kAlbedo, kNormal } m_view_type = ViewTypes::kColor;
 
 private:
+	uint32_t m_width{kDefaultWidth}, m_height{kDefaultHeight};
+
 	std::shared_ptr<PathTracer> m_path_tracer_ptr;
 
 	std::shared_ptr<myvk::Image> m_image;
@@ -38,6 +40,11 @@ public:
 	                                                const std::shared_ptr<myvk::RenderPass> &render_pass,
 	                                                uint32_t subpass);
 	const std::shared_ptr<PathTracer> &GetPathTracerPtr() const { return m_path_tracer_ptr; }
+
+	void Resize(uint32_t width, uint32_t height) {
+		m_width = width;
+		m_height = height;
+	}
 
 	void Reset(const std::shared_ptr<myvk::CommandPool> &command_pool);
 

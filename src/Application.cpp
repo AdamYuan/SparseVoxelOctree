@@ -35,11 +35,12 @@ void Application::create_window() {
 	glfwInit();
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-	m_window = glfwCreateWindow(kWidth, kHeight, kAppName, nullptr, nullptr);
+	m_window = glfwCreateWindow(kDefaultWidth, kDefaultHeight, kAppName, nullptr, nullptr);
 	glfwSetWindowUserPointer(m_window, this);
 	glfwSetKeyCallback(m_window, glfw_key_callback);
+	glfwSetFramebufferSizeCallback(m_window, glfw_framebuffer_resize_callback);
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -50,7 +51,7 @@ void Application::create_window() {
 
 void Application::create_render_pass() {
 	VkAttachmentDescription color_attachment = {};
-	color_attachment.format = m_swapchain->GetImageFormat();
+	color_attachment.format = m_frame_manager.GetSwapchain()->GetImageFormat();
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -113,18 +114,27 @@ void Application::create_render_pass() {
 }
 
 void Application::create_framebuffers() {
-	m_framebuffers.resize(m_swapchain->GetImageCount());
-	for (uint32_t i = 0; i < m_swapchain->GetImageCount(); ++i) {
-		m_framebuffers[i] = myvk::Framebuffer::Create(m_render_pass, m_swapchain_image_views[i]);
+	m_framebuffers.resize(m_frame_manager.GetSwapchain()->GetImageCount());
+	for (uint32_t i = 0; i < m_frame_manager.GetSwapchain()->GetImageCount(); ++i) {
+		m_framebuffers[i] = myvk::Framebuffer::Create(m_render_pass, m_frame_manager.GetSwapchainImageViews()[i]);
 	}
 }
 
-void Application::draw_frame() {
-	m_frame_manager.BeforeAcquire();
-	uint32_t image_index;
-	m_swapchain->AcquireNextImage(&image_index, m_frame_manager.GetAcquireDoneSemaphorePtr(), nullptr);
-	m_frame_manager.AfterAcquire(image_index);
+void Application::resize() {
+	for (uint32_t i = 0; i < m_frame_manager.GetSwapchain()->GetImageCount(); ++i) {
+		m_framebuffers[i] = myvk::Framebuffer::Create(m_render_pass, m_frame_manager.GetSwapchainImageViews()[i]);
+	}
+	VkExtent2D extent = m_frame_manager.GetSwapchain()->GetExtent();
+	m_camera->m_aspect_ratio = extent.width / float(extent.height);
+	m_path_tracer_viewer->Resize(extent.width, extent.height);
+	m_octree_tracer->Resize(extent.width, extent.height);
+}
 
+void Application::draw_frame() {
+	if (!m_frame_manager.AcquireNextImage())
+		return;
+
+	uint32_t image_index = m_frame_manager.GetCurrentImageIndex();
 	uint32_t current_frame = m_frame_manager.GetCurrentFrame();
 	if (m_ui_state == UIStates::kOctreeTracer)
 		m_camera->UpdateFrameUniformBuffer(current_frame);
@@ -147,11 +157,7 @@ void Application::draw_frame() {
 	command_buffer->CmdEndRenderPass();
 	command_buffer->End();
 
-	m_frame_manager.BeforeSubmit();
-	command_buffer->Submit(
-	    {{m_frame_manager.GetAcquireDoneSemaphorePtr(), VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT}},
-	    {m_frame_manager.GetRenderDoneSemaphorePtr()}, m_frame_manager.GetFrameFencePtr());
-	m_swapchain->Present(image_index, {m_frame_manager.GetRenderDoneSemaphorePtr()});
+	m_frame_manager.SubmitAndPresent(command_buffer);
 }
 
 void Application::initialize_vulkan() {
@@ -278,14 +284,6 @@ void Application::initialize_vulkan() {
 		spdlog::warn("Async path tracing queue not available, the main thread might be blocked when path tracing");
 	}
 
-	m_swapchain = myvk::Swapchain::Create(m_main_queue, m_present_queue, false);
-	spdlog::info("Swapchain image count: {}", m_swapchain->GetImageCount());
-
-	m_swapchain_images = myvk::SwapchainImage::Create(m_swapchain);
-	m_swapchain_image_views.resize(m_swapchain->GetImageCount());
-	for (uint32_t i = 0; i < m_swapchain->GetImageCount(); ++i)
-		m_swapchain_image_views[i] = myvk::ImageView::Create(m_swapchain_images[i]);
-
 	m_main_command_pool = myvk::CommandPool::Create(m_main_queue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	m_path_tracer_command_pool =
 	    myvk::CommandPool::Create(m_path_tracer_queue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -305,6 +303,9 @@ Application::Application() {
 
 	create_window();
 	initialize_vulkan();
+	m_frame_manager.Initialize(m_main_queue, m_present_queue, false, kFrameCount);
+	m_frame_manager.SetResizeFunc([&]() { resize(); });
+
 	glfwSetWindowTitle(
 	    m_window,
 	    (std::string{kAppName} + " | " + m_device->GetPhysicalDevicePtr()->GetProperties().deviceName).c_str());
@@ -314,7 +315,6 @@ Application::Application() {
 
 	m_camera = Camera::Create(m_device, kFrameCount + 1); // reserve a camera buffer for path tracer
 	m_camera->m_position = glm::vec3(1.5);
-	m_frame_manager.Initialize(m_swapchain, kFrameCount);
 	m_octree = Octree::Create(m_device);
 	m_octree_tracer = OctreeTracer::Create(m_octree, m_camera, m_render_pass, 0, kFrameCount);
 	m_path_tracer = PathTracer::Create(m_octree, m_camera, m_path_tracer_command_pool);
@@ -422,4 +422,9 @@ void Application::glfw_key_callback(GLFWwindow *window, int key, int, int action
 		if (action == GLFW_PRESS && key == GLFW_KEY_X)
 			app->m_ui_display_flag ^= 1u;
 	}
+}
+
+void Application::glfw_framebuffer_resize_callback(GLFWwindow *window, int width, int height) {
+	auto *app = (Application *)glfwGetWindowUserPointer(window);
+	app->m_frame_manager.Resize();
 }

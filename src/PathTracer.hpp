@@ -39,7 +39,7 @@ private:
 	                                           const std::shared_ptr<myvk::BufferBase> &buffer);
 
 public:
-	uint32_t m_width{kWidth}, m_height{kHeight};
+	uint32_t m_width{kDefaultWidth}, m_height{kDefaultHeight};
 	uint32_t m_bounce;
 	glm::vec3 m_sun_radiance;
 

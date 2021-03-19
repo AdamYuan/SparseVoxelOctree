@@ -10,7 +10,6 @@
 #include "myvk/Image.hpp"
 #include "myvk/ImageView.hpp"
 #include "myvk/Sampler.hpp"
-#include "myvk/Swapchain.hpp"
 
 class ImGuiRenderer {
 private:

@@ -54,12 +54,9 @@ private:
 	std::shared_ptr<myvk::CommandPool> m_main_command_pool, m_path_tracer_command_pool;
 
 	// frame objects
-	std::shared_ptr<myvk::Swapchain> m_swapchain;
-	std::vector<std::shared_ptr<myvk::SwapchainImage>> m_swapchain_images;
-	std::vector<std::shared_ptr<myvk::ImageView>> m_swapchain_image_views;
+	myvk::FrameManager m_frame_manager;
 	std::vector<std::shared_ptr<myvk::Framebuffer>> m_framebuffers;
 	std::vector<std::shared_ptr<myvk::CommandBuffer>> m_frame_command_buffers;
-	myvk::FrameManager m_frame_manager;
 
 	// render pass
 	std::shared_ptr<myvk::RenderPass> m_render_pass;
@@ -91,6 +88,8 @@ private:
 
 	void create_framebuffers();
 
+	void resize();
+
 	void draw_frame();
 
 	void ui_switch_state();
@@ -100,6 +99,7 @@ private:
 	void ui_menubar();
 
 	static void glfw_key_callback(GLFWwindow *window, int key, int, int action, int);
+	static void glfw_framebuffer_resize_callback(GLFWwindow *window, int width, int height);
 
 public:
 	Application();

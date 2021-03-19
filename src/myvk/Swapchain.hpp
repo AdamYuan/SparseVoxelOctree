@@ -20,13 +20,14 @@ private:
 
 	VkSwapchainKHR m_swapchain{VK_NULL_HANDLE};
 
+	VkSwapchainCreateInfoKHR m_swapchain_create_info;
 	uint32_t m_image_count;
-	VkFormat m_image_format;
-	VkExtent2D m_extent;
 
 public:
 	static std::shared_ptr<Swapchain> Create(const std::shared_ptr<Queue> &graphics_queue,
 	                                         const std::shared_ptr<PresentQueue> &present_queue, bool use_vsync);
+
+	static std::shared_ptr<Swapchain> Create(const std::shared_ptr<Swapchain> &old_swapchain);
 
 	VkResult AcquireNextImage(uint32_t *p_image_index, const std::shared_ptr<Semaphore> &signal_semaphore,
 	                          const std::shared_ptr<Fence> &signal_fence) const;
@@ -43,9 +44,11 @@ public:
 
 	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_graphics_queue_ptr->GetDevicePtr(); };
 
-	VkFormat GetImageFormat() const { return m_image_format; }
+	VkFormat GetImageFormat() const { return m_swapchain_create_info.imageFormat; }
 
-	VkExtent2D GetExtent() const { return m_extent; }
+	VkColorSpaceKHR GetImageColorSpace() const { return m_swapchain_create_info.imageColorSpace; }
+
+	VkExtent2D GetExtent() const { return m_swapchain_create_info.imageExtent; }
 
 	~Swapchain();
 };

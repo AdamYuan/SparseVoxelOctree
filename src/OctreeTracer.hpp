@@ -15,6 +15,8 @@ public:
 	bool m_beam_enable{true};
 
 private:
+	uint32_t m_width{kDefaultWidth}, m_height{kDefaultHeight};
+
 	std::shared_ptr<Octree> m_octree_ptr;
 	std::shared_ptr<Camera> m_camera_ptr;
 
@@ -56,6 +58,8 @@ public:
 	                                            uint32_t frame_count);
 	const std::shared_ptr<Octree> &GetOctreePtr() const { return m_octree_ptr; }
 	const std::shared_ptr<Camera> &GetCameraPtr() const { return m_camera_ptr; }
+
+	void Resize(uint32_t width, uint32_t height);
 
 	void CmdBeamRenderPass(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame) const;
 
