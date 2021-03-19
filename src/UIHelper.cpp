@@ -115,6 +115,10 @@ void StyleCinder(ImGuiStyle *dst) {
 	colors[ImGuiCol_TabUnfocusedActive] = ImLerp(colors[ImGuiCol_TabActive], colors[ImGuiCol_TitleBg], 0.40f);
 }
 
+void SetNextWindowCentering() {
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, {0.5f, 0.5f});
+}
+
 bool DragAngle(const char *label, float *v_rad, float v_speed, float v_degrees_min, float v_degrees_max,
                const char *format, ImGuiSliderFlags flags) {
 	float v_deg = (*v_rad) * 360.0f / (2 * IM_PI);

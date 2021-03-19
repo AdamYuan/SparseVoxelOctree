@@ -140,6 +140,7 @@ void PathTracerRightStatus(const std::shared_ptr<PathTracerThread> &path_tracer_
 	}
 }
 void PathTracerStartModal(const std::shared_ptr<PathTracerThread> &path_tracer_thread) {
+	UI::SetNextWindowCentering();
 	if (ImGui::BeginPopupModal(kPathTracerStartModal, nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
@@ -178,6 +179,7 @@ void PathTracerStartModal(const std::shared_ptr<PathTracerThread> &path_tracer_t
 	}
 }
 void PathTracerStopModal(const std::shared_ptr<PathTracerThread> &path_tracer_thread) {
+	UI::SetNextWindowCentering();
 	if (ImGui::BeginPopupModal(kPathTracerStopModal, nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
@@ -198,6 +200,7 @@ void PathTracerStopModal(const std::shared_ptr<PathTracerThread> &path_tracer_th
 	}
 }
 void PathTracerExportEXRModal(const std::shared_ptr<PathTracerThread> &path_tracer_thread) {
+	UI::SetNextWindowCentering();
 	if (ImGui::BeginPopupModal(kPathTracerExportEXRModal, nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {

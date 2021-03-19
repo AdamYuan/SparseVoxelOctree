@@ -46,7 +46,10 @@ The new Vulkan version is much faster than the old OpenGL version, given the com
 In addition, the new Vulkan version has some advanced features such as asynchronous model loading and asynchronous path tracing.
 
 ## TODOs
-- [ ] Allow window resizing
+### v1.0
+- [x] Allow window resizing
+- [ ] Test queue ownership transfer
+### v2.0
 - [ ] Gradient-domain path tracing ?
 - [ ] Build SVO contours ?
 

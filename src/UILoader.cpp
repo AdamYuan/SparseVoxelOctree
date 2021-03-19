@@ -17,6 +17,7 @@ void LoaderLoadButton(const std::shared_ptr<LoaderThread> &loader_thread, const 
 	}
 }
 void LoaderLoadSceneModal(const std::shared_ptr<LoaderThread> &loader_thread) {
+	UI::SetNextWindowCentering();
 	if (ImGui::BeginPopupModal(kLoaderLoadSceneModal, nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
@@ -43,7 +44,7 @@ void LoaderLoadSceneModal(const std::shared_ptr<LoaderThread> &loader_thread) {
 	}
 }
 void LoaderLoadingModal(const std::shared_ptr<LoaderThread> &loader_thread) {
-	ImGui::SetNextWindowPos({ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f}, ImGuiCond_Always, {0.5f, 0.5f});
+	UI::SetNextWindowCentering();
 	if (ImGui::BeginPopupModal(kLoaderLoadingModal, nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
