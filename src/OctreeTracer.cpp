@@ -2,6 +2,7 @@
 #include "OctreeTracer.hpp"
 #include "QuadSpirv.hpp"
 #include "myvk/ShaderModule.hpp"
+#include <spdlog/spdlog.h>
 
 constexpr uint32_t get_beam_size(uint32_t x) { return (x + (kBeamSize - 1)) / kBeamSize + 1; }
 
@@ -266,13 +267,18 @@ void OctreeTracer::Resize(uint32_t width, uint32_t height) {
 	m_width = width;
 	m_height = height;
 
-	for (auto &i : m_frame_resources) {
-		i.m_beam_image = myvk::Image::CreateTexture2D(
-		    i.m_beam_image->GetDevicePtr(), {get_beam_size(m_width), get_beam_size(m_height)}, 1, VK_FORMAT_R32_SFLOAT,
-		    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-		i.m_beam_image_view = myvk::ImageView::Create(i.m_beam_image, VK_IMAGE_VIEW_TYPE_2D);
-		i.m_beam_framebuffer = myvk::Framebuffer::Create(m_beam_render_pass, i.m_beam_image_view);
-		i.m_descriptor_set->UpdateCombinedImageSampler(i.m_beam_sampler, i.m_beam_image_view, 0);
+	uint32_t beam_width = get_beam_size(m_width), beam_height = get_beam_size(m_height);
+	if (m_frame_resources[0].m_beam_image->GetExtent().width != beam_width ||
+	    m_frame_resources[0].m_beam_image->GetExtent().height != beam_height) {
+		spdlog::info("Beam image resize {}x{}", beam_width, beam_height);
+		for (auto &i : m_frame_resources) {
+			i.m_beam_image = myvk::Image::CreateTexture2D(
+			    i.m_beam_image->GetDevicePtr(), {beam_width, beam_height}, 1,
+			    VK_FORMAT_R32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+			i.m_beam_image_view = myvk::ImageView::Create(i.m_beam_image, VK_IMAGE_VIEW_TYPE_2D);
+			i.m_beam_framebuffer = myvk::Framebuffer::Create(m_beam_render_pass, i.m_beam_image_view);
+			i.m_descriptor_set->UpdateCombinedImageSampler(i.m_beam_sampler, i.m_beam_image_view, 0);
+		}
 	}
 }
 
