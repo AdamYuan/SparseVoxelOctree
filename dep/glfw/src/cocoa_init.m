@@ -428,9 +428,6 @@ static GLFWbool initializeTIS(void)
 {
     if (_glfw.hints.init.ns.menubar)
     {
-        // In case we are unbundled, make us a proper UI application
-        [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-
         // Menu bar setup must go between sharedApplication and finishLaunching
         // in order to properly emulate the behavior of NSApplicationMain
 
@@ -449,6 +446,11 @@ static GLFWbool initializeTIS(void)
 {
     _glfw.ns.finishedLaunching = GLFW_TRUE;
     _glfwPlatformPostEmptyEvent();
+
+    // In case we are unbundled, make us a proper UI application
+    if (_glfw.hints.init.ns.menubar)
+        [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+
     [NSApp stop:nil];
 }
 
@@ -461,6 +463,32 @@ static GLFWbool initializeTIS(void)
 }
 
 @end // GLFWApplicationDelegate
+
+
+//////////////////////////////////////////////////////////////////////////
+//////                       GLFW internal API                      //////
+//////////////////////////////////////////////////////////////////////////
+
+void* _glfwLoadLocalVulkanLoaderNS(void)
+{
+    CFBundleRef bundle = CFBundleGetMainBundle();
+    if (!bundle)
+        return NULL;
+
+    CFURLRef url =
+        CFBundleCopyAuxiliaryExecutableURL(bundle, CFSTR("libvulkan.1.dylib"));
+    if (!url)
+        return NULL;
+
+    char path[PATH_MAX];
+    void* handle = NULL;
+
+    if (CFURLGetFileSystemRepresentation(url, true, (UInt8*) path, sizeof(path) - 1))
+        handle = _glfw_dlopen(path);
+
+    CFRelease(url);
+    return handle;
+}
 
 
 //////////////////////////////////////////////////////////////////////////

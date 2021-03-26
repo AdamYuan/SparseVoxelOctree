@@ -1,11 +1,15 @@
 cmake_minimum_required(VERSION 3.0)
 
-project(GLFW VERSION 3.3.1 LANGUAGES C)
+project(GLFW VERSION 3.3.3 LANGUAGES C)
 
 set(CMAKE_LEGACY_CYGWIN_WIN32 OFF)
 
 if (POLICY CMP0054)
     cmake_policy(SET CMP0054 NEW)
+endif()
+
+if (POLICY CMP0069)
+    cmake_policy(SET CMP0069 NEW)
 endif()
 
 if (POLICY CMP0077)
@@ -15,7 +19,10 @@ endif()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
-option(GLFW_INSTALL "Generate installation target" OFF)
+option(GLFW_BUILD_EXAMPLES "Build the GLFW example programs" ON)
+option(GLFW_BUILD_TESTS "Build the GLFW test programs" ON)
+option(GLFW_BUILD_DOCS "Build the GLFW documentation" ON)
+option(GLFW_INSTALL "Generate installation target" ON)
 option(GLFW_VULKAN_STATIC "Assume the Vulkan loader is linked with the application" OFF)
 
 include(GNUInstallDirs)
@@ -53,6 +60,11 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${GLFW_SOURCE_DIR}/CMake/modules")
 
 find_package(Threads REQUIRED)
+
+if (GLFW_BUILD_DOCS)
+    set(DOXYGEN_SKIP_DOT TRUE)
+    find_package(Doxygen)
+endif()
 
 #--------------------------------------------------------------------
 # Set compiler specific flags
@@ -120,6 +132,9 @@ if (MINGW)
     if (_GLFW_HAS_64ASLR)
         set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--high-entropy-va ${CMAKE_SHARED_LINKER_FLAGS}")
     endif()
+
+    # Clear flags again to avoid breaking later tests
+    set(CMAKE_REQUIRED_FLAGS)
 endif()
 
 #--------------------------------------------------------------------
@@ -236,7 +251,7 @@ if (_GLFW_WAYLAND)
     find_package(WaylandScanner REQUIRED)
     find_package(WaylandProtocols 1.15 REQUIRED)
 
-    list(APPEND glfw_PKG_DEPS "wayland-egl")
+    list(APPEND glfw_PKG_DEPS "wayland-client")
 
     list(APPEND glfw_INCLUDE_DIRS "${Wayland_INCLUDE_DIRS}")
     list(APPEND glfw_LIBRARIES "${Wayland_LIBRARIES}" "${CMAKE_THREAD_LIBS_INIT}")
@@ -321,6 +336,18 @@ configure_file(src/glfw3.pc.in src/glfw3.pc @ONLY)
 # Add subdirectories
 #--------------------------------------------------------------------
 add_subdirectory(src)
+
+if (GLFW_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+
+if (GLFW_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
+
+if (DOXYGEN_FOUND AND GLFW_BUILD_DOCS)
+    add_subdirectory(docs)
+endif()
 
 #--------------------------------------------------------------------
 # Install files other than the library

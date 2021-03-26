@@ -101,7 +101,7 @@ located in the `deps/` directory.
    functions
  - [linmath.h](https://github.com/datenwolf/linmath.h) for linear algebra in
    examples
- - [Nuklear](https://github.com/vurtun/nuklear) for test and example UI
+ - [Nuklear](https://github.com/Immediate-Mode-UI/Nuklear) for test and example UI
  - [stb\_image\_write](https://github.com/nothings/stb) for writing images to disk
 
 The documentation is generated with [Doxygen](http://doxygen.org/) if CMake can
@@ -118,39 +118,47 @@ information on what to include when reporting a bug.
 
 ## Changelog
 
- - Bugfix: The CMake config-file package used an absolute path and was not
-   relocatable (#1470)
- - Bugfix: Video modes with a duplicate screen area were discarded (#1555,#1556)
- - Bugfix: Compiling with -Wextra-semi caused warnings (#1440)
- - Bugfix: Built-in mappings failed because some OEMs re-used VID/PID (#1583)
- - [Win32] Bugfix: `GLFW_INCLUDE_VULKAN` plus `VK_USE_PLATFORM_WIN32_KHR` caused
-   symbol redefinition (#1524)
- - [Win32] Bugfix: The cursor position event was emitted before its cursor enter
-   event (#1490)
- - [Win32] Bugfix: The window hint `GLFW_MAXIMIZED` did not move or resize the
-   window (#1499)
- - [Win32] Bugfix: Disabled cursor mode interfered with some non-client actions
- - [Cocoa] Removed dependency on the CoreVideo framework
- - [Cocoa] Bugfix: `glfwSetWindowSize` used a bottom-left anchor point (#1553)
- - [Cocoa] Bugfix: Window remained on screen after destruction until event poll
-   (#1412)
- - [Cocoa] Bugfix: Event processing before window creation would assert (#1543)
- - [Cocoa] Bugfix: Undecorated windows could not be iconified on recent macOS
- - [X11] Bugfix: The CMake files did not check for the XInput headers (#1480)
- - [X11] Bugfix: Key names were not updated when the keyboard layout changed
-   (#1462,#1528)
- - [X11] Bugfix: Decorations could not be enabled after window creation (#1566)
- - [X11] Bugfix: Content scale fallback value could be inconsistent (#1578)
- - [X11] Bugfix: `glfwMaximizeWindow` had no effect on hidden windows
- - [X11] Bugfix: Clearing `GLFW_FLOATING` on a hidden window caused invalid read
- - [X11] Bugfix: Changing `GLFW_FLOATING` on a hidden window could silently fail
- - [X11] Bugfix: Disabled cursor mode was interrupted by indicator windows
- - [X11] Bugfix: Monitor physical dimensions could be reported as zero mm
- - [X11] Bugfix: Window position events were not emitted during resizing (#1613)
- - [Wayland] Bugfix: The `GLFW_HAND_CURSOR` shape used the wrong image (#1432)
- - [NSGL] Bugfix: `GLFW_COCOA_RETINA_FRAMEBUFFER` had no effect on newer
-   macOS versions (#1442)
- - [NSGL] Bugfix: Workaround for swap interval on 10.14 broke on 10.12 (#1483)
+ - Bugfix: Some extension loader headers did not prevent default OpenGL header
+   inclusion (#1695)
+ - [Win32] Disabled framebuffer transparency on Windows 7 when DWM windows are
+   opaque (#1512)
+ - [Win32] Bugfix: Non-BMP Unicode codepoint input was reported as UTF-16
+ - [Win32] Bugfix: Monitor functions could return invalid values after
+   configuration change (#1761)
+ - [Win32] Bugfix: Initialization would segfault on Windows 8 (not 8.1) (#1775)
+ - [Win32] Bugfix: Duplicate size events were not filtered (#1610)
+ - [Win32] Bugfix: Full screen windows were incorrectly resized by DPI changes
+   (#1582)
+ - [Win32] Bugfix: `GLFW_SCALE_TO_MONITOR` had no effect on systems older than
+   Windows 10 version 1703 (#1511)
+ - [Cocoa] Changed `EGLNativeWindowType` from `NSView` to `CALayer` (#1169)
+ - [Cocoa] Bugfix: Non-BMP Unicode codepoint input was reported as UTF-16
+   (#1635)
+ - [Cocoa] Bugfix: Failing to retrieve the refresh rate of built-in displays
+   could leak memory
+ - [Cocoa] Bugfix: Objective-C files were compiled as C with CMake 3.19 (#1787)
+ - [Cocoa] Bugfix: Duplicate video modes were not filtered out (#1830)
+ - [Cocoa] Bugfix: Menubar was not clickable on macOS 10.15+ until it lost and
+   regained focus (#1648,#1802)
+ - [Cocoa] Bugfix: Monitor name query could segfault on macOS 11 (#1809,#1833)
+ - [Cocoa] Bugfix: The install name of the installed dylib was relative (#1504)
+ - [X11] Bugfix: IME input of CJK was broken for "C" locale (#1587,#1636)
+ - [X11] Bugfix: Xlib errors caused by other parts of the application could be
+   reported as GLFW errors
+ - [X11] Bugfix: A handle race condition could cause a `BadWindow` error (#1633)
+ - [X11] Bugfix: XKB path used keysyms instead of physical locations for
+   non-printable keys (#1598)
+ - [X11] Bugfix: Function keys were mapped to `GLFW_KEY_UNKNOWN` for some layout
+   combinaitons (#1598)
+ - [X11] Bugfix: Keys pressed simultaneously with others were not always
+   reported (#1112,#1415,#1472,#1616)
+ - [Wayland] Bugfix: Repeated keys could be reported with `NULL` window (#1704)
+ - [Wayland] Bugfix: Retrieving partial framebuffer size would segfault
+ - [Wayland] Bugfix: Scrolling offsets were inverted compared to other platforms
+   (#1463)
+ - [Wayland] Bugfix: Client-Side Decorations were destroyed in the wrong worder
+   (#1798)
+ - [Wayland] Bugfix: Monitors physical size could report zero (#1784,#1792)
 
 
 ## Contact
@@ -176,13 +184,16 @@ GLFW exists because people around the world donated their time and lent their
 skills.
 
  - Bobyshev Alexander
+ - Laurent Aphecetche
  - Matt Arsenault
+ - ashishgamedev
  - David Avedissian
  - Keith Bauer
  - John Bartholomew
  - Coşku Baş
  - Niklas Behrens
  - Andrew Belt
+ - Nevyn Bengtsson
  - Niklas Bergström
  - Denis Bernard
  - Doug Binks
@@ -191,6 +202,7 @@ skills.
  - Rok Breulj
  - Kai Burjack
  - Martin Capitanio
+ - Nicolas Caramelli
  - David Carlier
  - Arturo Castro
  - Chi-kwan Chan
@@ -229,6 +241,7 @@ skills.
  - Eloi Marín Gratacós
  - Stefan Gustavson
  - Jonathan Hale
+ - hdf89shfdfs
  - Sylvain Hellegouarch
  - Matthew Henry
  - heromyth
@@ -244,6 +257,7 @@ skills.
  - Cem Karan
  - Osman Keskin
  - Josh Kilmer
+ - Byunghoon Kim
  - Cameron King
  - Peter Knut
  - Christoph Kubisch
@@ -251,14 +265,18 @@ skills.
  - Rokas Kupstys
  - Konstantin Käfer
  - Eric Larson
+ - Francis Lecavalier
+ - Jong Won Lee
  - Robin Leffmann
  - Glenn Lewis
  - Shane Liesegang
  - Anders Lindqvist
  - Leon Linhart
+ - Marco Lizza
  - Eyal Lotem
  - Aaron Loucks
  - Luflosi
+ - lukect
  - Tristam MacDonald
  - Hans Mackowiak
  - Дмитри Малышев
@@ -286,6 +304,7 @@ skills.
  - ndogxj
  - Kristian Nielsen
  - Kamil Nowakowski
+ - onox
  - Denis Ovod
  - Ozzy
  - Andri Pálsson
@@ -293,6 +312,7 @@ skills.
  - Braden Pellett
  - Christopher Pelloux
  - Arturo J. Pérez
+ - Vladimir Perminov
  - Anthony Pesch
  - Orson Peters
  - Emmanuel Gil Peyrot
@@ -310,8 +330,10 @@ skills.
  - Eddie Ringle
  - Max Risuhin
  - Jorge Rodriguez
+ - Luca Rood
  - Ed Ropple
  - Aleksey Rybalkin
+ - Mikko Rytkönen
  - Riku Salminen
  - Brandon Schaefer
  - Sebastian Schuberth
@@ -319,6 +341,7 @@ skills.
  - Matt Sealey
  - Steve Sexton
  - Arkady Shapkin
+ - Ali Sherief
  - Yoshiki Shibukawa
  - Dmitri Shuralyov
  - Daniel Skorupski
@@ -351,14 +374,19 @@ skills.
  - Torsten Walluhn
  - Patrick Walton
  - Xo Wang
+ - Waris
  - Jay Weisskopf
  - Frank Wille
+ - Richard A. Wilkes
+ - Tatsuya Yatagawa
  - Ryogo Yoshimura
  - Lukas Zanner
  - Andrey Zholos
+ - Aihui Zhu
  - Santi Zupancic
  - Jonas Ådahl
  - Lasse Öörni
+ - Leonard König
  - All the unmentioned and anonymous contributors in the GLFW community, for bug
    reports, patches, feedback, testing and encouragement
 

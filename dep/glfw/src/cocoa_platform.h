@@ -61,6 +61,7 @@ typedef void* id;
 #endif
 
 typedef VkFlags VkMacOSSurfaceCreateFlagsMVK;
+typedef VkFlags VkMetalSurfaceCreateFlagsEXT;
 
 typedef struct VkMacOSSurfaceCreateInfoMVK
 {
@@ -70,7 +71,16 @@ typedef struct VkMacOSSurfaceCreateInfoMVK
     const void*                     pView;
 } VkMacOSSurfaceCreateInfoMVK;
 
+typedef struct VkMetalSurfaceCreateInfoEXT
+{
+    VkStructureType                 sType;
+    const void*                     pNext;
+    VkMetalSurfaceCreateFlagsEXT    flags;
+    const void*                     pLayer;
+} VkMetalSurfaceCreateInfoEXT;
+
 typedef VkResult (APIENTRY *PFN_vkCreateMacOSSurfaceMVK)(VkInstance,const VkMacOSSurfaceCreateInfoMVK*,const VkAllocationCallbacks*,VkSurfaceKHR*);
+typedef VkResult (APIENTRY *PFN_vkCreateMetalSurfaceEXT)(VkInstance,const VkMetalSurfaceCreateInfoEXT*,const VkAllocationCallbacks*,VkSurfaceKHR*);
 
 #include "posix_thread.h"
 #include "cocoa_joystick.h"
@@ -82,7 +92,7 @@ typedef VkResult (APIENTRY *PFN_vkCreateMacOSSurfaceMVK)(VkInstance,const VkMacO
 #define _glfw_dlclose(handle) dlclose(handle)
 #define _glfw_dlsym(handle, name) dlsym(handle, name)
 
-#define _GLFW_EGL_NATIVE_WINDOW  ((EGLNativeWindowType) window->ns.view)
+#define _GLFW_EGL_NATIVE_WINDOW  ((EGLNativeWindowType) window->ns.layer)
 #define _GLFW_EGL_NATIVE_DISPLAY EGL_DEFAULT_DISPLAY
 
 #define _GLFW_PLATFORM_WINDOW_STATE         _GLFWwindowNS  ns
@@ -111,6 +121,7 @@ typedef struct _GLFWwindowNS
     id              layer;
 
     GLFWbool        maximized;
+    GLFWbool        occluded;
     GLFWbool        retina;
 
     // Cached window properties to filter out duplicate events
@@ -196,4 +207,6 @@ void _glfwSetVideoModeNS(_GLFWmonitor* monitor, const GLFWvidmode* desired);
 void _glfwRestoreVideoModeNS(_GLFWmonitor* monitor);
 
 float _glfwTransformYNS(float y);
+
+void* _glfwLoadLocalVulkanLoaderNS(void);
 

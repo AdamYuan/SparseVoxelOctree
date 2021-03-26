@@ -128,6 +128,7 @@ typedef enum VkStructureType
     VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR = 1000006000,
     VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR = 1000009000,
     VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK = 1000123000,
+    VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT = 1000217000,
     VK_STRUCTURE_TYPE_MAX_ENUM = 0x7FFFFFFF
 } VkStructureType;
 
@@ -341,9 +342,9 @@ struct _GLFWcontext
     int                 robustness;
     int                 release;
 
-    PFNGLGETSTRINGIPROC GetStringi;
+    PFNGLGETSTRINGIPROC  GetStringi;
     PFNGLGETINTEGERVPROC GetIntegerv;
-    PFNGLGETSTRINGPROC  GetString;
+    PFNGLGETSTRINGPROC   GetString;
 
     _GLFWmakecontextcurrentfun  makeCurrent;
     _GLFWswapbuffersfun         swapBuffers;
@@ -395,23 +396,23 @@ struct _GLFWwindow
     _GLFWcontext        context;
 
     struct {
-        GLFWwindowposfun        pos;
-        GLFWwindowsizefun       size;
-        GLFWwindowclosefun      close;
-        GLFWwindowrefreshfun    refresh;
-        GLFWwindowfocusfun      focus;
-        GLFWwindowiconifyfun    iconify;
-        GLFWwindowmaximizefun   maximize;
-        GLFWframebuffersizefun  fbsize;
+        GLFWwindowposfun          pos;
+        GLFWwindowsizefun         size;
+        GLFWwindowclosefun        close;
+        GLFWwindowrefreshfun      refresh;
+        GLFWwindowfocusfun        focus;
+        GLFWwindowiconifyfun      iconify;
+        GLFWwindowmaximizefun     maximize;
+        GLFWframebuffersizefun    fbsize;
         GLFWwindowcontentscalefun scale;
-        GLFWmousebuttonfun      mouseButton;
-        GLFWcursorposfun        cursorPos;
-        GLFWcursorenterfun      cursorEnter;
-        GLFWscrollfun           scroll;
-        GLFWkeyfun              key;
-        GLFWcharfun             character;
-        GLFWcharmodsfun         charmods;
-        GLFWdropfun             drop;
+        GLFWmousebuttonfun        mouseButton;
+        GLFWcursorposfun          cursorPos;
+        GLFWcursorenterfun        cursorEnter;
+        GLFWscrollfun             scroll;
+        GLFWkeyfun                key;
+        GLFWcharfun               character;
+        GLFWcharmodsfun           charmods;
+        GLFWdropfun               drop;
     } callbacks;
 
     // This is defined in the window API's platform.h
@@ -556,6 +557,7 @@ struct _GLFWlibrary
         GLFWbool        KHR_win32_surface;
 #elif defined(_GLFW_COCOA)
         GLFWbool        MVK_macos_surface;
+        GLFWbool        EXT_metal_surface;
 #elif defined(_GLFW_X11)
         GLFWbool        KHR_xlib_surface;
         GLFWbool        KHR_xcb_surface;

@@ -322,6 +322,14 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     _glfwInputWindowFocus(window, GLFW_FALSE);
 }
 
+- (void)windowDidChangeOcclusionState:(NSNotification* )notification
+{
+    if ([window->ns.object occlusionState] & NSWindowOcclusionStateVisible)
+        window->ns.occluded = GLFW_FALSE;
+    else
+        window->ns.occluded = GLFW_TRUE;
+}
+
 @end
 
 
@@ -723,14 +731,24 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     else
         characters = (NSString*) string;
 
-    const NSUInteger length = [characters length];
-    for (NSUInteger i = 0;  i < length;  i++)
+    NSRange range = NSMakeRange(0, [characters length]);
+    while (range.length)
     {
-        const unichar codepoint = [characters characterAtIndex:i];
-        if ((codepoint & 0xff00) == 0xf700)
-            continue;
+        uint32_t codepoint = 0;
 
-        _glfwInputChar(window, codepoint, mods, plain);
+        if ([characters getBytes:&codepoint
+                       maxLength:sizeof(codepoint)
+                      usedLength:NULL
+                        encoding:NSUTF32StringEncoding
+                         options:0
+                           range:range
+                  remainingRange:&range])
+        {
+            if (codepoint >= 0xf700 && codepoint <= 0xf7ff)
+                continue;
+
+            _glfwInputChar(window, codepoint, mods, plain);
+        }
     }
 }
 
@@ -901,6 +919,11 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
         }
         else if (ctxconfig->source == GLFW_EGL_CONTEXT_API)
         {
+            // EGL implementation on macOS use CALayer* EGLNativeWindowType so we
+            // need to get the layer for EGL window surface creation.
+            [window->ns.view setWantsLayer:YES];
+            window->ns.layer = [window->ns.view layer];
+
             if (!_glfwInitEGL())
                 return GLFW_FALSE;
             if (!_glfwCreateContextEGL(window, ctxconfig, fbconfig))
@@ -1516,6 +1539,13 @@ const char* _glfwPlatformGetScancodeName(int scancode)
 {
     @autoreleasepool {
 
+    if (scancode < 0 || scancode > 0xff ||
+        _glfw.ns.keycodes[scancode] == GLFW_KEY_UNKNOWN)
+    {
+        _glfwInputError(GLFW_INVALID_VALUE, "Invalid scancode");
+        return NULL;
+    }
+
     const int key = _glfw.ns.keycodes[scancode];
 
     UInt32 deadKeyState = 0;
@@ -1689,11 +1719,16 @@ const char* _glfwPlatformGetClipboardString(void)
 
 void _glfwPlatformGetRequiredInstanceExtensions(char** extensions)
 {
-    if (!_glfw.vk.KHR_surface || !_glfw.vk.MVK_macos_surface)
-        return;
-
-    extensions[0] = "VK_KHR_surface";
-    extensions[1] = "VK_MVK_macos_surface";
+    if (_glfw.vk.KHR_surface && _glfw.vk.EXT_metal_surface)
+    {
+        extensions[0] = "VK_KHR_surface";
+        extensions[1] = "VK_EXT_metal_surface";
+    }
+    else if (_glfw.vk.KHR_surface && _glfw.vk.MVK_macos_surface)
+    {
+        extensions[0] = "VK_KHR_surface";
+        extensions[1] = "VK_MVK_macos_surface";
+    }
 }
 
 int _glfwPlatformGetPhysicalDevicePresentationSupport(VkInstance instance,
@@ -1711,19 +1746,6 @@ VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,
     @autoreleasepool {
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= 101100
-    VkResult err;
-    VkMacOSSurfaceCreateInfoMVK sci;
-    PFN_vkCreateMacOSSurfaceMVK vkCreateMacOSSurfaceMVK;
-
-    vkCreateMacOSSurfaceMVK = (PFN_vkCreateMacOSSurfaceMVK)
-        vkGetInstanceProcAddr(instance, "vkCreateMacOSSurfaceMVK");
-    if (!vkCreateMacOSSurfaceMVK)
-    {
-        _glfwInputError(GLFW_API_UNAVAILABLE,
-                        "Cocoa: Vulkan instance missing VK_MVK_macos_surface extension");
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-
     // HACK: Dynamically load Core Animation to avoid adding an extra
     //       dependency for the majority who don't use MoltenVK
     NSBundle* bundle = [NSBundle bundleWithPath:@"/System/Library/Frameworks/QuartzCore.framework"];
@@ -1749,11 +1771,49 @@ VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,
     [window->ns.view setLayer:window->ns.layer];
     [window->ns.view setWantsLayer:YES];
 
-    memset(&sci, 0, sizeof(sci));
-    sci.sType = VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK;
-    sci.pView = window->ns.view;
+    VkResult err;
 
-    err = vkCreateMacOSSurfaceMVK(instance, &sci, allocator, surface);
+    if (_glfw.vk.EXT_metal_surface)
+    {
+        VkMetalSurfaceCreateInfoEXT sci;
+
+        PFN_vkCreateMetalSurfaceEXT vkCreateMetalSurfaceEXT;
+        vkCreateMetalSurfaceEXT = (PFN_vkCreateMetalSurfaceEXT)
+            vkGetInstanceProcAddr(instance, "vkCreateMetalSurfaceEXT");
+        if (!vkCreateMetalSurfaceEXT)
+        {
+            _glfwInputError(GLFW_API_UNAVAILABLE,
+                            "Cocoa: Vulkan instance missing VK_EXT_metal_surface extension");
+            return VK_ERROR_EXTENSION_NOT_PRESENT;
+        }
+
+        memset(&sci, 0, sizeof(sci));
+        sci.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
+        sci.pLayer = window->ns.layer;
+
+        err = vkCreateMetalSurfaceEXT(instance, &sci, allocator, surface);
+    }
+    else
+    {
+        VkMacOSSurfaceCreateInfoMVK sci;
+
+        PFN_vkCreateMacOSSurfaceMVK vkCreateMacOSSurfaceMVK;
+        vkCreateMacOSSurfaceMVK = (PFN_vkCreateMacOSSurfaceMVK)
+            vkGetInstanceProcAddr(instance, "vkCreateMacOSSurfaceMVK");
+        if (!vkCreateMacOSSurfaceMVK)
+        {
+            _glfwInputError(GLFW_API_UNAVAILABLE,
+                            "Cocoa: Vulkan instance missing VK_MVK_macos_surface extension");
+            return VK_ERROR_EXTENSION_NOT_PRESENT;
+        }
+
+        memset(&sci, 0, sizeof(sci));
+        sci.sType = VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK;
+        sci.pView = window->ns.view;
+
+        err = vkCreateMacOSSurfaceMVK(instance, &sci, allocator, surface);
+    }
+
     if (err)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
