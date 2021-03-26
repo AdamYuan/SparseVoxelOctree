@@ -21,8 +21,8 @@ std::shared_ptr<Device> Device::Create(const DeviceCreateInfo &device_create_inf
 
 	if (ret->create_device(queue_create_infos, device_create_info.m_extensions) != VK_SUCCESS)
 		return nullptr;
-	device_create_info.fetch_queues(ret);
 	volkLoadDevice(ret->m_device);
+	device_create_info.fetch_queues(ret);
 
 	if (device_create_info.m_use_allocator && ret->create_allocator() != VK_SUCCESS)
 		return nullptr;

@@ -27,7 +27,7 @@ std::shared_ptr<Instance> Instance::CreateWithGlfwExtensions(bool use_validation
 
 	if (vkCreateInstance(&create_info, nullptr, &ret->m_instance) != VK_SUCCESS)
 		return nullptr;
-	volkLoadInstance(ret->m_instance);
+	volkLoadInstanceOnly(ret->m_instance);
 
 	if (use_validation_layer && debug_callback) {
 		VkDebugUtilsMessengerCreateInfoEXT debug_info = {};

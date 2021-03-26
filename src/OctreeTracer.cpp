@@ -2,7 +2,6 @@
 #include "OctreeTracer.hpp"
 #include "QuadSpirv.hpp"
 #include "myvk/ShaderModule.hpp"
-#include <spdlog/spdlog.h>
 
 constexpr uint32_t get_beam_size(uint32_t x) { return (x + (kBeamSize - 1)) / kBeamSize + 1; }
 
@@ -270,7 +269,6 @@ void OctreeTracer::Resize(uint32_t width, uint32_t height) {
 	uint32_t beam_width = get_beam_size(m_width), beam_height = get_beam_size(m_height);
 	if (m_frame_resources[0].m_beam_image->GetExtent().width != beam_width ||
 	    m_frame_resources[0].m_beam_image->GetExtent().height != beam_height) {
-		spdlog::info("Beam image resize {}x{}", beam_width, beam_height);
 		for (auto &i : m_frame_resources) {
 			i.m_beam_image = myvk::Image::CreateTexture2D(
 			    i.m_beam_image->GetDevicePtr(), {beam_width, beam_height}, 1,

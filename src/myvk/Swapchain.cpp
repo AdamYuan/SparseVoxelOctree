@@ -69,10 +69,10 @@ std::shared_ptr<Swapchain> Swapchain::Create(const std::shared_ptr<Queue> &graph
 		glfwGetWindowSize(present_queue->GetSurfacePtr()->GetGlfwWindow(), &width, &height);
 		extent = {(uint32_t)width, (uint32_t)height};
 
-		extent.width = std::min(extent.width, capabilities.maxImageExtent.width);
-		extent.width = std::max(extent.width, capabilities.minImageExtent.width);
-		extent.height = std::min(extent.height, capabilities.maxImageExtent.height);
-		extent.height = std::max(extent.height, capabilities.minImageExtent.height);
+		extent.width =
+		    std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, extent.width));
+		extent.height =
+		    std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, extent.height));
 	}
 
 	// query image count
@@ -140,10 +140,10 @@ std::shared_ptr<Swapchain> Swapchain::Create(const std::shared_ptr<Swapchain> &o
 		glfwGetWindowSize(ret->m_present_queue_ptr->GetSurfacePtr()->GetGlfwWindow(), &width, &height);
 		extent = {(uint32_t)width, (uint32_t)height};
 
-		extent.width = std::min(extent.width, capabilities.maxImageExtent.width);
-		extent.width = std::max(extent.width, capabilities.minImageExtent.width);
-		extent.height = std::min(extent.height, capabilities.maxImageExtent.height);
-		extent.height = std::max(extent.height, capabilities.minImageExtent.height);
+		extent.width =
+		    std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, extent.width));
+		extent.height =
+		    std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, extent.height));
 	}
 
 	// create swapchain
