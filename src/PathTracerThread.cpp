@@ -39,8 +39,8 @@ void PathTracerThread::SetPause(bool pause) {
 	if (pause == m_pause)
 		return;
 	m_time = glfwGetTime() - m_time;
-	m_pause = pause;
 	std::unique_lock<std::mutex> lock{m_pause_mutex};
+	m_pause = pause;
 	m_pause_condition_variable.notify_one();
 }
 
@@ -48,8 +48,8 @@ void PathTracerThread::StopAndJoin() {
 	if (!IsRunning())
 		return;
 	m_run = false;
-	SetPause(false);
 	UpdateViewer();
+	SetPause(false);
 	m_path_tracer_thread.join();
 	m_viewer_thread.join();
 }
