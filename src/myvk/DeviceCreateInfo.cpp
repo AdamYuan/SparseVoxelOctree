@@ -36,10 +36,40 @@ void DeviceCreateInfo::Initialize(const std::shared_ptr<PhysicalDevice> &physica
 	m_queue_selections.clear();
 	m_present_queue_selections.clear();
 	m_queue_support = queue_selector_func(physical_device, &m_queue_selections, &m_present_queue_selections);
-	for (auto &i : m_queue_selections)
-		i.queue_index %= physical_device->GetQueueFamilyProperties()[i.family_index].queueCount;
-	for (auto &i : m_present_queue_selections)
-		i.queue_index %= physical_device->GetQueueFamilyProperties()[i.family_index].queueCount;
+	generate_queue_creations();
+}
+
+void DeviceCreateInfo::generate_queue_creations() {
+	m_queue_creations.clear();
+	// transform index_specifiers to queue_indices
+	std::map<uint32_t, std::set<uint32_t>> queue_sets;
+	std::map<uint32_t, std::map<uint32_t, uint32_t>> queue_tables;
+
+	for (const auto &i : m_present_queue_selections)
+		queue_sets[i.family].insert(i.index_specifier);
+	for (const auto &i : m_queue_selections)
+		queue_sets[i.family].insert(i.index_specifier);
+
+	for (const auto &i : queue_sets) {
+		uint32_t queue_count = m_physical_device_ptr->GetQueueFamilyProperties()[i.first].queueCount;
+		m_queue_creations[i.first].resize(std::min((uint32_t)i.second.size(), queue_count));
+
+		std::map<uint32_t, uint32_t> table;
+		uint32_t cnt = 0;
+		for (uint32_t x : i.second)
+			table[x] = (cnt++) % queue_count;
+		queue_tables[i.first] = std::move(table);
+	}
+
+	for (const auto &i : m_queue_selections) {
+		uint32_t queue_index = queue_tables[i.family][i.index_specifier];
+		m_queue_creations[i.family][queue_index].first.push_back(&i);
+	}
+
+	for (const auto &i : m_present_queue_selections) {
+		uint32_t queue_index = queue_tables[i.family][i.index_specifier];
+		m_queue_creations[i.family][queue_index].second.push_back(&i);
+	}
 }
 
 void DeviceCreateInfo::enumerate_device_queue_create_infos(std::vector<VkDeviceQueueCreateInfo> *out_create_infos,
@@ -47,23 +77,17 @@ void DeviceCreateInfo::enumerate_device_queue_create_infos(std::vector<VkDeviceQ
 	out_create_infos->clear();
 	out_priorities->clear();
 
-	std::map<uint32_t, std::set<uint32_t>> queue_map;
-	for (const auto &i : m_present_queue_selections)
-		queue_map[i.family_index].insert(i.queue_index);
-	for (const auto &i : m_queue_selections)
-		queue_map[i.family_index].insert(i.queue_index);
-
-	if (queue_map.empty())
+	if (m_queue_creations.empty())
 		return;
 
 	uint32_t max_queue_count = 0;
-	for (const auto &i : queue_map) {
+	for (const auto &i : m_queue_creations) {
 		if (i.second.size() > max_queue_count)
 			max_queue_count = i.second.size();
 	}
 	out_priorities->resize(max_queue_count, 1.0f);
 
-	for (const auto &i : queue_map) {
+	for (const auto &i : m_queue_creations) {
 		VkDeviceQueueCreateInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 		info.queueFamilyIndex = i.first;
@@ -74,33 +98,15 @@ void DeviceCreateInfo::enumerate_device_queue_create_infos(std::vector<VkDeviceQ
 }
 
 void DeviceCreateInfo::fetch_queues(const std::shared_ptr<Device> &device) const {
-	std::map<std::pair<uint32_t, uint32_t>, std::pair<std::shared_ptr<Queue>, std::shared_ptr<PresentQueue>>> queue_map;
-
-	// process all present queue first
-	for (const auto &i : m_present_queue_selections) {
-		std::pair<uint32_t, uint32_t> queue_id = {i.family_index, i.queue_index};
-		if (queue_map.find(queue_id) != queue_map.end())
-			continue;
-		std::shared_ptr<PresentQueue> present_queue =
-		    PresentQueue::create(device, i.surface, i.family_index, i.queue_index);
-		queue_map[queue_id].first = present_queue;
-		queue_map[queue_id].second = present_queue;
-	}
-
-	// fallback as regular queue
-	for (const auto &i : m_queue_selections) {
-		std::pair<uint32_t, uint32_t> queue_id = {i.family_index, i.queue_index};
-		if (queue_map.find(queue_id) != queue_map.end())
-			continue;
-		queue_map[queue_id].first = Queue::create(device, i.family_index, i.queue_index);
-	}
-
-	// set queue target
-	for (const auto &i : m_queue_selections) {
-		(*i.target) = queue_map[{i.family_index, i.queue_index}].first;
-	}
-	for (const auto &i : m_present_queue_selections) {
-		(*i.target) = queue_map[{i.family_index, i.queue_index}].second;
+	for (const auto &creation : m_queue_creations) {
+		uint32_t family = creation.first;
+		for (uint32_t index = 0; index < creation.second.size(); ++index) {
+			std::shared_ptr<UniqueQueue> unique_queue = UniqueQueue::Create(device, family, index);
+			for (const QueueSelection *selection : creation.second[index].first)
+				(*selection->target) = Queue::Create(unique_queue);
+			for (const PresentQueueSelection *selection : creation.second[index].second)
+				(*selection->target) = PresentQueue::Create(unique_queue, selection->surface);
+		}
 	}
 }
 

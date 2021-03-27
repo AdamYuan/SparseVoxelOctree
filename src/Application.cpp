@@ -204,23 +204,23 @@ void Application::initialize_vulkan() {
 			    for (uint32_t i = 0; i < families.size(); ++i) {
 				    VkQueueFlags flags = families[i].queueFlags;
 				    if ((flags & VK_QUEUE_GRAPHICS_BIT) && (flags & VK_QUEUE_TRANSFER_BIT)) {
-					    main_queue.family_index = i;
-					    main_queue.queue_index = 0;
+					    main_queue.family = i;
+					    main_queue.index_specifier = 0;
 
 					    if (physical_device->GetSurfaceSupport(i, present_queue.surface)) {
-						    present_queue.family_index = i;
-						    present_queue.queue_index = 0;
+						    present_queue.family = i;
+						    present_queue.index_specifier = 0;
 						    break;
 					    }
 				    }
 			    }
 
 			    // present queue fallback
-			    if (present_queue.family_index == UINT32_MAX)
+			    if (present_queue.family == UINT32_MAX)
 				    for (uint32_t i = 0; i < families.size(); ++i) {
 					    if (physical_device->GetSurfaceSupport(i, present_queue.surface)) {
-						    present_queue.family_index = i;
-						    present_queue.queue_index = 0;
+						    present_queue.family = i;
+						    present_queue.index_specifier = 0;
 						    break;
 					    }
 				    }
@@ -230,10 +230,10 @@ void Application::initialize_vulkan() {
 				    VkQueueFlags flags = families[i].queueFlags;
 				    if ((flags & VK_QUEUE_GRAPHICS_BIT) && (flags & VK_QUEUE_COMPUTE_BIT) &&
 				        (flags & VK_QUEUE_TRANSFER_BIT)) {
-					    loader_queue.family_index = i;
-					    loader_queue.queue_index = 1;
+					    loader_queue.family = i;
+					    loader_queue.index_specifier = 1;
 
-					    if (i != main_queue.family_index)
+					    if (i != main_queue.family)
 						    break; // prefer independent queue
 				    }
 			    }
@@ -242,10 +242,10 @@ void Application::initialize_vulkan() {
 			    for (uint32_t i = 0; i < families.size(); ++i) {
 				    VkQueueFlags flags = families[i].queueFlags;
 				    if ((flags & VK_QUEUE_COMPUTE_BIT) && (flags & VK_QUEUE_TRANSFER_BIT)) {
-					    path_tracer_queue.family_index = i;
-					    path_tracer_queue.queue_index = 1;
+					    path_tracer_queue.family = i;
+					    path_tracer_queue.index_specifier = 1;
 
-					    if (i != main_queue.family_index)
+					    if (i != main_queue.family)
 						    break; // prefer independent queue
 				    }
 			    }
@@ -253,8 +253,8 @@ void Application::initialize_vulkan() {
 			    (*out_queue_selections) = {main_queue, loader_queue, path_tracer_queue};
 			    (*out_present_queue_selections) = {present_queue};
 
-			    return (~main_queue.family_index) && (~loader_queue.family_index) &&
-			           (~path_tracer_queue.family_index) && (~present_queue.family_index);
+			    return (~main_queue.family) && (~loader_queue.family) && (~path_tracer_queue.family) &&
+			           (~present_queue.family);
 		    },
 		    {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
 		if (!device_create_info.QueueSupport()) {

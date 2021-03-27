@@ -3,6 +3,7 @@
 
 #include "PhysicalDevice.hpp"
 #include "QueueSelector.hpp"
+#include <map>
 #include <memory>
 #include <vector>
 #include <volk.h>
@@ -18,6 +19,9 @@ private:
 	std::shared_ptr<PhysicalDevice> m_physical_device_ptr;
 	std::vector<QueueSelection> m_queue_selections;
 	std::vector<PresentQueueSelection> m_present_queue_selections;
+	std::map<uint32_t,
+	         std::vector<std::pair<std::vector<const QueueSelection *>, std::vector<const PresentQueueSelection *>>>>
+	    m_queue_creations;
 	std::vector<const char *> m_extensions;
 	bool m_extension_support{true}, m_queue_support{true};
 
@@ -27,6 +31,8 @@ private:
 	                                         std::vector<float> *out_priorities) const;
 
 	void fetch_queues(const std::shared_ptr<Device> &device) const;
+
+	void generate_queue_creations();
 
 	friend class Device;
 

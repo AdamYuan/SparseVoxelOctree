@@ -13,12 +13,12 @@ class PresentQueue;
 class Surface;
 struct QueueSelection {
 	std::shared_ptr<Queue> *target;
-	uint32_t family_index, queue_index;
+	uint32_t family, index_specifier;
 };
 struct PresentQueueSelection {
 	std::shared_ptr<PresentQueue> *target;
 	std::shared_ptr<Surface> surface;
-	uint32_t family_index, queue_index;
+	uint32_t family, index_specifier;
 };
 using QueueSelectorFunc =
     std::function<bool(const std::shared_ptr<PhysicalDevice> &, std::vector<QueueSelection> *const,

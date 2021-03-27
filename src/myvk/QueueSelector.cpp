@@ -23,23 +23,23 @@ bool GraphicsPresentQueueSelector::operator()(
 	for (uint32_t i = 0; i < families.size(); ++i) {
 		VkQueueFlags flags = families[i].queueFlags;
 		if ((flags & VK_QUEUE_GRAPHICS_BIT) && (flags & VK_QUEUE_TRANSFER_BIT)) {
-			graphics_queue.family_index = i;
-			graphics_queue.queue_index = 0;
+			graphics_queue.family = i;
+			graphics_queue.index_specifier = 0;
 
 			if (physical_device->GetSurfaceSupport(i, present_queue.surface)) {
-				present_queue.family_index = i;
-				present_queue.queue_index = 0;
+				present_queue.family = i;
+				present_queue.index_specifier = 0;
 				break;
 			}
 		}
 	}
 
 	// present queue fallback
-	if (present_queue.family_index == UINT32_MAX)
+	if (present_queue.family == UINT32_MAX)
 		for (uint32_t i = 0; i < families.size(); ++i) {
 			if (physical_device->GetSurfaceSupport(i, present_queue.surface)) {
-				present_queue.family_index = i;
-				present_queue.queue_index = 0;
+				present_queue.family = i;
+				present_queue.index_specifier = 0;
 				break;
 			}
 		}
@@ -47,6 +47,6 @@ bool GraphicsPresentQueueSelector::operator()(
 	(*out_queue_selections) = {graphics_queue};
 	(*out_present_queue_selections) = {present_queue};
 
-	return (~graphics_queue.family_index) && (~present_queue.family_index);
+	return (~graphics_queue.family) && (~present_queue.family);
 }
 } // namespace myvk
