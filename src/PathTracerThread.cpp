@@ -47,7 +47,7 @@ void PathTracerThread::SetPause(bool pause) {
 void PathTracerThread::StopAndJoin() {
 	if (!IsRunning())
 		return;
-	m_run = false;
+	m_run.store(false, std::memory_order_release);
 	UpdateViewer();
 	SetPause(false);
 	m_path_tracer_thread.join();
@@ -73,13 +73,14 @@ void PathTracerThread::path_tracer_thread_func() {
 	pt_command_buffer->End();
 
 	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(device);
-	while (m_run) {
+	while (m_run.load(std::memory_order_acquire)) {
 		while (m_pause) {
 			std::unique_lock<std::mutex> lock{m_pause_mutex};
 			m_pause_condition_variable.wait(lock);
+			lock.unlock();
 		}
 
-		if (!m_run)
+		if (!m_run.load(std::memory_order_acquire))
 			break;
 
 		{
@@ -139,13 +140,13 @@ void PathTracerThread::viewer_thread_func() {
 	std::shared_ptr<myvk::CommandPool> main_command_pool = myvk::CommandPool::Create(m_main_queue);
 
 	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(device);
-	while (m_run) {
+	while (m_run.load(std::memory_order_acquire)) {
 		{
 			std::unique_lock<std::mutex> lock{m_viewer_mutex};
 			m_viewer_condition_variable.wait(lock);
 		}
 
-		if (!m_run)
+		if (!m_run.load(std::memory_order_acquire))
 			break;
 
 		// release pt queue ownership

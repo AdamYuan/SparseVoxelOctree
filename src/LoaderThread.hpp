@@ -2,8 +2,10 @@
 #define LOADER_THREAD_HPP
 
 #include "Octree.hpp"
+#include "OctreeBuilder.hpp"
 #include "myvk/Queue.hpp"
 #include <condition_variable>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -14,9 +16,8 @@ private:
 	std::shared_ptr<myvk::Queue> m_loader_queue, m_main_queue;
 
 	std::thread m_thread;
-	std::mutex m_mutex;
-	bool m_job_done;
-	std::condition_variable m_condition_variable;
+	std::promise<std::shared_ptr<OctreeBuilder>> m_promise;
+	std::future<std::shared_ptr<OctreeBuilder>> m_future;
 
 	const char *m_notification = "";
 

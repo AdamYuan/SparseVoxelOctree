@@ -7,7 +7,7 @@ std::shared_ptr<UniqueQueue> UniqueQueue::Create(const std::shared_ptr<Device> &
 	std::shared_ptr<UniqueQueue> ret = std::make_shared<UniqueQueue>();
 	ret->m_device_ptr = device;
 	ret->m_family_index = family_index;
-	vkGetDeviceQueue(device->GetHandle(), ret->m_family_index, queue_index, &ret->m_queue);
+	vkGetDeviceQueue(device->GetHandle(), family_index, queue_index, &ret->m_queue);
 	return ret;
 }
 
