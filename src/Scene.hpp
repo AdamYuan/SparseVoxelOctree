@@ -11,6 +11,7 @@
 #include "myvk/Sampler.hpp"
 
 #include <array>
+#include <atomic>
 #include <glm/glm.hpp>
 #include <string>
 
@@ -53,7 +54,7 @@ private:
 
 public:
 	static std::shared_ptr<Scene> Create(const std::shared_ptr<myvk::Queue> &graphics_queue, const char *filename,
-	                                     const char **notification_ptr = nullptr);
+	                                     std::atomic<const char *> *notification_ptr = nullptr);
 
 	static VkVertexInputBindingDescription GetVertexBindingDescription();
 

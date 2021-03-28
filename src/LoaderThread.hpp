@@ -4,10 +4,9 @@
 #include "Octree.hpp"
 #include "OctreeBuilder.hpp"
 #include "myvk/Queue.hpp"
-#include <condition_variable>
+#include <atomic>
 #include <future>
 #include <memory>
-#include <mutex>
 #include <thread>
 
 class LoaderThread {
@@ -19,7 +18,7 @@ private:
 	std::promise<std::shared_ptr<OctreeBuilder>> m_promise;
 	std::future<std::shared_ptr<OctreeBuilder>> m_future;
 
-	const char *m_notification = "";
+	std::atomic<const char *> m_notification;
 
 	void thread_func(const char *filename, uint32_t octree_level);
 
