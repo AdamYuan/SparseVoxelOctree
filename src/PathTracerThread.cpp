@@ -39,8 +39,9 @@ void PathTracerThread::SetPause(bool pause) {
 	if (pause == m_pause)
 		return;
 	m_time = glfwGetTime() - m_time;
+	m_pause.store(pause, std::memory_order_release);
+
 	std::unique_lock<std::mutex> lock{m_pause_mutex};
-	m_pause = pause;
 	m_pause_condition_variable.notify_one();
 }
 
@@ -74,10 +75,9 @@ void PathTracerThread::path_tracer_thread_func() {
 
 	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(device);
 	while (m_run.load(std::memory_order_acquire)) {
-		while (m_pause) {
+		while (m_pause.load(std::memory_order_acquire)) {
 			std::unique_lock<std::mutex> lock{m_pause_mutex};
 			m_pause_condition_variable.wait(lock);
-			lock.unlock();
 		}
 
 		if (!m_run.load(std::memory_order_acquire))
