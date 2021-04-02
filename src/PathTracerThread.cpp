@@ -41,7 +41,6 @@ void PathTracerThread::SetPause(bool pause) {
 	m_time = glfwGetTime() - m_time;
 	m_pause.store(pause, std::memory_order_release);
 
-	std::unique_lock<std::mutex> lock{m_pause_mutex};
 	m_pause_condition_variable.notify_one();
 }
 
@@ -56,7 +55,6 @@ void PathTracerThread::StopAndJoin() {
 }
 
 void PathTracerThread::UpdateViewer() {
-	std::unique_lock<std::mutex> lock{m_viewer_mutex};
 	m_viewer_condition_variable.notify_one();
 }
 

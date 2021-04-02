@@ -2,7 +2,6 @@
 
 #include "Queue.hpp"
 #include "Surface.hpp"
-#include <map>
 #include <memory>
 #include <set>
 #include <string>
