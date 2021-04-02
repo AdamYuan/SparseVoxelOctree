@@ -28,20 +28,20 @@ public:
 
 class Queue : public DeviceObjectBase { // only can be created with device creation
 protected:
-	std::shared_ptr<UniqueQueue> m_unique_queue;
+	std::shared_ptr<UniqueQueue> m_unique_queue_ptr;
 
 public:
 	static std::shared_ptr<Queue> Create(const std::shared_ptr<UniqueQueue> &unique_queue);
 
-	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_unique_queue->GetDevicePtr(); }
+	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_unique_queue_ptr->GetDevicePtr(); }
 
-	VkQueue GetHandle() const { return m_unique_queue->m_queue; }
+	VkQueue GetHandle() const { return m_unique_queue_ptr->m_queue; }
 
-	uint32_t GetFamilyIndex() const { return m_unique_queue->m_family_index; }
+	uint32_t GetFamilyIndex() const { return m_unique_queue_ptr->m_family_index; }
 
-	std::mutex &GetMutex() { return m_unique_queue->m_mutex; }
+	std::mutex &GetMutex() { return m_unique_queue_ptr->m_mutex; }
 
-	const std::mutex &GetMutex() const { return m_unique_queue->m_mutex; }
+	const std::mutex &GetMutex() const { return m_unique_queue_ptr->m_mutex; }
 
 	VkResult WaitIdle() const;
 };

@@ -98,7 +98,7 @@ private:
 
 	void ui_menubar();
 
-	static void glfw_key_callback(GLFWwindow *window, int key, int, int action, int);
+	static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 	static void glfw_framebuffer_resize_callback(GLFWwindow *window, int width, int height);
 
 public:

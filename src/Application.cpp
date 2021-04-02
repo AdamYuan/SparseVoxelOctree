@@ -415,7 +415,7 @@ void Application::ui_menubar() {
 		ImGui::OpenPopup(open_modal);
 }
 
-void Application::glfw_key_callback(GLFWwindow *window, int key, int, int action, int) {
+void Application::glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
 	auto *app = (Application *)glfwGetWindowUserPointer(window);
 	if (!ImGui::GetCurrentContext()->NavWindow ||
 	    (ImGui::GetCurrentContext()->NavWindow->Flags & ImGuiWindowFlags_NoBringToFrontOnFocus)) {

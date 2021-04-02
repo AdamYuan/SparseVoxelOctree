@@ -13,16 +13,16 @@ std::shared_ptr<UniqueQueue> UniqueQueue::Create(const std::shared_ptr<Device> &
 
 std::shared_ptr<Queue> Queue::Create(const std::shared_ptr<UniqueQueue> &unique_queue) {
 	std::shared_ptr<Queue> ret = std::make_shared<Queue>();
-	ret->m_unique_queue = unique_queue;
+	ret->m_unique_queue_ptr = unique_queue;
 	return ret;
 }
 
-VkResult Queue::WaitIdle() const { return vkQueueWaitIdle(m_unique_queue->m_queue); }
+VkResult Queue::WaitIdle() const { return vkQueueWaitIdle(m_unique_queue_ptr->m_queue); }
 
 std::shared_ptr<PresentQueue> PresentQueue::Create(const std::shared_ptr<UniqueQueue> &unique_queue,
                                                    const std::shared_ptr<Surface> &surface) {
 	std::shared_ptr<PresentQueue> ret = std::make_shared<PresentQueue>();
-	ret->m_unique_queue = unique_queue;
+	ret->m_unique_queue_ptr = unique_queue;
 	ret->m_surface_ptr = surface;
 	return ret;
 }

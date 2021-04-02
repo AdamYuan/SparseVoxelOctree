@@ -2,7 +2,7 @@
 [![Linux](https://github.com/AdamYuan/SparseVoxelOctree/actions/workflows/linux.yml/badge.svg)](https://github.com/AdamYuan/SparseVoxelOctree/actions/workflows/linux.yml)
 [![Windows](https://github.com/AdamYuan/SparseVoxelOctree/actions/workflows/windows.yml/badge.svg)](https://github.com/AdamYuan/SparseVoxelOctree/actions/workflows/windows.yml)
 [![Mac OS](https://github.com/AdamYuan/SparseVoxelOctree/actions/workflows/macos.yml/badge.svg)](https://github.com/AdamYuan/SparseVoxelOctree/actions/workflows/macos.yml)  
-A GPU SVO Builder using rasterization pipeline, a efficient SVO ray marcher and a simple SVO path tracer.  
+A GPU SVO Builder using the rasterization pipeline, an efficient SVO ray marcher and a simple SVO path tracer.  
 If you want an OpenGL version, check [OpenGL branch](https://github.com/AdamYuan/SparseVoxelOctree/tree/opengl).
 
 ## Compilation
@@ -50,6 +50,7 @@ In addition, the new Vulkan version has some advanced features such as asynchron
 - [x] Allow window resizing
 - [ ] Test queue ownership transfer
 ### v2.0
+- [ ] Voxel editor ?
 - [ ] Gradient-domain path tracing ?
 - [ ] Build SVO contours ?
 

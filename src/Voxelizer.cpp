@@ -108,12 +108,8 @@ void Voxelizer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 	input_assembly.primitiveRestartEnable = VK_FALSE;
 
 	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
 	viewport.width = m_voxel_resolution;
 	viewport.height = m_voxel_resolution;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor = {};
 	scissor.offset = {0, 0};
