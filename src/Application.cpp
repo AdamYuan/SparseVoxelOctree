@@ -143,7 +143,7 @@ void Application::draw_frame() {
 	command_buffer->Reset();
 	command_buffer->Begin();
 
-	if (m_ui_state == UIStates::kOctreeTracer) {
+	if (m_ui_state != UIStates::kPathTracing && !m_octree->Empty()) {
 		m_octree_tracer->CmdBeamRenderPass(command_buffer, current_frame);
 	}
 	command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffers[image_index], {{{0.0f, 0.0f, 0.0f, 1.0f}}});
