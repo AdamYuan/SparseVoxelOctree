@@ -81,21 +81,14 @@ private:
 	std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> m_log_sink;
 
 	void create_window();
-
 	void initialize_vulkan();
-
 	void create_render_pass();
-
 	void create_framebuffers();
-
 	void resize();
-
 	void draw_frame();
 
 	void ui_switch_state();
-
 	void ui_render_main();
-
 	void ui_menubar();
 
 	static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
@@ -103,9 +96,8 @@ private:
 
 public:
 	Application();
-
+	~Application();
 	void Load(const char *filename, uint32_t octree_level);
-
 	void Run();
 };
 

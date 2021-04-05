@@ -324,6 +324,12 @@ Application::Application() {
 	m_path_tracer_thread = PathTracerThread::Create(m_path_tracer_viewer, m_path_tracer_queue, m_main_queue);
 }
 
+Application::~Application() {
+	ImGui_ImplGlfw_Shutdown();
+	glfwDestroyWindow(m_window);
+	glfwTerminate();
+}
+
 void Application::Load(const char *filename, uint32_t octree_level) { m_loader_thread->Launch(filename, octree_level); }
 
 void Application::Run() {
