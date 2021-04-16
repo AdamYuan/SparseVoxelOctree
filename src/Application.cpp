@@ -85,7 +85,7 @@ void Application::create_render_pass() {
 	std::vector<VkSubpassDependency> subpass_dependencies(3);
 	subpass_dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 	subpass_dependencies[0].dstSubpass = 0;
-	subpass_dependencies[0].srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+	subpass_dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	subpass_dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	subpass_dependencies[0].srcAccessMask = 0;
 	subpass_dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
