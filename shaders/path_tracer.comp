@@ -1,12 +1,6 @@
 #version 450
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-// RAY MARCH METHOD IS COPIED FROM
-// https://code.google.com/archive/p/efficient-sparse-voxel-octrees/
-#define STACK_SIZE 23 // must be 23
-//#define EPS 3.552713678800501e-15
-#define EPS 1.1920928955078125e-07
-
 layout(std430, set = 0, binding = 0) readonly buffer uuOctree {
 	uint uOctree[];
 };
@@ -29,6 +23,116 @@ layout(push_constant) uniform uuPushConstant {
 	float uSunRadiance[3];
 };
 
+bool RayMarchLeaf(
+    vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal);
+
+#define TWO_PI 6.28318530718f
+vec3 SampleHemisphere(vec2 r, in const float e) {
+	r.x *= TWO_PI;
+	float cos_phi = cos(r.x);
+	float sin_phi = sin(r.x);
+	float cos_theta = pow((1.0f - r.y), 1.0f / (e + 1.0f));
+	float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
+	float pu = sin_theta * cos_phi;
+	float pv = sin_theta * sin_phi;
+	float pw = cos_theta;
+	return normalize(vec3(pu, pv, pw));
+}
+vec3 AlignDirection(in const vec3 dir, in const vec3 target) {
+	vec3 u = normalize(
+	    cross(abs(target.x) > .01 ? vec3(0, 1, 0) : vec3(1, 0, 0), target));
+	vec3 v = cross(target, u);
+	return dir.x * u + dir.y * v + dir.z * target;
+}
+
+vec3 GenRay(in const ivec2 pixel, in const ivec2 size, in const vec2 noise) {
+	vec2 coord = (vec2(pixel) + noise) / vec2(size);
+	coord = coord * 2.0f - 1.0f;
+	return normalize(mat3(uInvView) * (uInvProjection * vec4(coord, 1, 1)).xyz);
+}
+
+vec2 GetSobol(in const int i) {
+	return vec2(uSobol[i << 1], uSobol[i << 1 | 1]) / 4294967296.0;
+}
+
+void main() {
+	ivec2 pixel = ivec2(gl_GlobalInvocationID.xy), size = imageSize(uColor);
+	if (pixel.x >= size.x || pixel.y >= size.y)
+		return;
+
+	vec3 o = uInvView[3].xyz, d = GenRay(pixel, size, GetSobol(0));
+
+	vec2 noise = texelFetch(uNoise, pixel & 0xff, 0).xy;
+	vec3 acc_color = vec3(1), radiance = vec3(0);
+
+	vec3 pos, albedo, normal, direct_albedo = vec3(0.0f),
+	                          direct_normal = vec3(0.0f);
+
+	if (RayMarchLeaf(o, d, pos, albedo, normal)) {
+		acc_color *= albedo;
+		direct_albedo = albedo;
+		direct_normal = normal;
+
+		for (int cur = 1; cur < uBounce; ++cur) {
+			d = AlignDirection(
+			    SampleHemisphere(fract(GetSobol(cur) + noise), 0.0f), normal);
+			o = pos;
+
+			if (RayMarchLeaf(o, d, pos, albedo, normal))
+				acc_color *= albedo;
+			else {
+				radiance = acc_color * vec3(uSunRadiance[0], uSunRadiance[1],
+				                            uSunRadiance[2]);
+				break;
+			}
+		}
+	} else
+		radiance = vec3(uSunRadiance[0], uSunRadiance[1], uSunRadiance[2]);
+
+	uint spp = uSobol[(uBounce + 1) << 1];
+	vec3 pt_color =
+	    (imageLoad(uColor, pixel).xyz * spp + radiance) / float(spp + 1);
+	imageStore(uColor, pixel, vec4(pt_color, 1));
+
+	vec3 pt_albedo =
+	    (imageLoad(uAlbedo, pixel).xyz * spp + direct_albedo) / float(spp + 1);
+	imageStore(uAlbedo, pixel, vec4(pt_albedo, 1));
+
+	vec3 pt_normal =
+	    (imageLoad(uNormal, pixel).xyz * spp + direct_normal) / float(spp + 1);
+	imageStore(uNormal, pixel, vec4(pt_normal, 1));
+}
+
+// The following code is copied from
+// https://code.google.com/archive/p/efficient-sparse-voxel-octrees/
+/*
+ *  Copyright (c) 2009-2011, NVIDIA Corporation
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are met:
+ *      * Redistributions of source code must retain the above copyright
+ *        notice, this list of conditions and the following disclaimer.
+ *      * Redistributions in binary form must reproduce the above copyright
+ *        notice, this list of conditions and the following disclaimer in the
+ *        documentation and/or other materials provided with the distribution.
+ *      * Neither the name of NVIDIA Corporation nor the
+ *        names of its contributors may be used to endorse or promote products
+ *        derived from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+ *  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ *  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+#define STACK_SIZE 23
+#define EPS 1.1920928955078125e-07
 struct StackItem {
 	uint node;
 	float t_max;
@@ -207,81 +311,4 @@ bool RayMarchLeaf(
 	          0.00392156862745098f; // (...) / 255.0f
 
 	return scale < STACK_SIZE && t_min <= t_max;
-}
-
-#define TWO_PI 6.28318530718f
-vec3 SampleHemisphere(vec2 r, in const float e) {
-	r.x *= TWO_PI;
-	float cos_phi = cos(r.x);
-	float sin_phi = sin(r.x);
-	float cos_theta = pow((1.0f - r.y), 1.0f / (e + 1.0f));
-	float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
-	float pu = sin_theta * cos_phi;
-	float pv = sin_theta * sin_phi;
-	float pw = cos_theta;
-	return normalize(vec3(pu, pv, pw));
-}
-vec3 AlignDirection(in const vec3 dir, in const vec3 target) {
-	vec3 u = normalize(
-	    cross(abs(target.x) > .01 ? vec3(0, 1, 0) : vec3(1, 0, 0), target));
-	vec3 v = cross(target, u);
-	return dir.x * u + dir.y * v + dir.z * target;
-}
-
-vec3 GenRay(in const ivec2 pixel, in const ivec2 size, in const vec2 noise) {
-	vec2 coord = (vec2(pixel) + noise) / vec2(size);
-	coord = coord * 2.0f - 1.0f;
-	return normalize(mat3(uInvView) * (uInvProjection * vec4(coord, 1, 1)).xyz);
-}
-
-vec2 GetSobol(in const int i) {
-	return vec2(uSobol[i << 1], uSobol[i << 1 | 1]) / 4294967296.0;
-}
-
-void main() {
-	ivec2 pixel = ivec2(gl_GlobalInvocationID.xy), size = imageSize(uColor);
-	if (pixel.x >= size.x || pixel.y >= size.y)
-		return;
-
-	vec3 o = uInvView[3].xyz, d = GenRay(pixel, size, GetSobol(0));
-
-	vec2 noise = texelFetch(uNoise, pixel & 0xff, 0).xy;
-	vec3 acc_color = vec3(1), radiance = vec3(0);
-
-	vec3 pos, albedo, normal, direct_albedo = vec3(0.0f),
-	                          direct_normal = vec3(0.0f);
-
-	if (RayMarchLeaf(o, d, pos, albedo, normal)) {
-		acc_color *= albedo;
-		direct_albedo = albedo;
-		direct_normal = normal;
-
-		for (int cur = 1; cur < uBounce; ++cur) {
-			d = AlignDirection(
-			    SampleHemisphere(fract(GetSobol(cur) + noise), 0.0f), normal);
-			o = pos;
-
-			if (RayMarchLeaf(o, d, pos, albedo, normal))
-				acc_color *= albedo;
-			else {
-				radiance = acc_color * vec3(uSunRadiance[0], uSunRadiance[1],
-				                            uSunRadiance[2]);
-				break;
-			}
-		}
-	} else
-		radiance = vec3(uSunRadiance[0], uSunRadiance[1], uSunRadiance[2]);
-
-	uint spp = uSobol[(uBounce + 1) << 1];
-	vec3 pt_color =
-	    (imageLoad(uColor, pixel).xyz * spp + radiance) / float(spp + 1);
-	imageStore(uColor, pixel, vec4(pt_color, 1));
-
-	vec3 pt_albedo =
-	    (imageLoad(uAlbedo, pixel).xyz * spp + direct_albedo) / float(spp + 1);
-	imageStore(uAlbedo, pixel, vec4(pt_albedo, 1));
-
-	vec3 pt_normal =
-	    (imageLoad(uNormal, pixel).xyz * spp + direct_normal) / float(spp + 1);
-	imageStore(uNormal, pixel, vec4(pt_normal, 1));
 }

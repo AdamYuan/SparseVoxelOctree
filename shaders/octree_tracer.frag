@@ -1,9 +1,4 @@
 #version 450
-// RAY MARCH METHOD IS COPIED FROM
-// https://code.google.com/archive/p/efficient-sparse-voxel-octrees/
-#define STACK_SIZE 23 // must be 23
-#define EPS 3.552713678800501e-15
-
 layout(std430, set = 0, binding = 0) readonly buffer uuOctree {
 	uint uOctree[];
 };
@@ -19,6 +14,50 @@ layout(push_constant) uniform uuPushConstant {
 	uint uWidth, uHeight, uViewType, uBeamEnable, uBeamSize;
 };
 
+bool RayMarchLeaf(vec3 o,
+                  vec3 d,
+                  out float o_t,
+                  out vec3 o_color,
+                  out vec3 o_normal,
+                  out uint o_iter);
+
+vec3 GenRay() {
+	vec2 coord = ivec2(gl_FragCoord.xy) / vec2(uWidth, uHeight);
+	coord = coord * 2.0f - 1.0f;
+	return normalize(mat3(uInvView) * (uInvProjection * vec4(coord, 1, 1)).xyz);
+}
+
+vec3 Heat(in float x) {
+	return sin(clamp(x, 0.0, 1.0) * 3.0 - vec3(1, 2, 3)) * 0.5 + 0.5;
+}
+
+void main() {
+	vec3 o = uInvView[3].xyz, d = GenRay();
+
+	float beam;
+	if (uBeamEnable == 1) {
+		ivec2 beam_coord = ivec2(gl_FragCoord.xy / uBeamSize);
+		beam = min(min(texelFetch(uBeamImage, beam_coord, 0).r,
+		               texelFetch(uBeamImage, beam_coord + ivec2(1, 0), 0).r),
+		           min(texelFetch(uBeamImage, beam_coord + ivec2(0, 1), 0).r,
+		               texelFetch(uBeamImage, beam_coord + ivec2(1, 1), 0).r));
+		o += d * beam;
+	}
+
+	float t;
+	vec3 color, normal;
+	uint iter;
+	bool hit = RayMarchLeaf(o, d, t, color, normal, iter);
+	oColor = vec4(uViewType == 2
+	                  ? Heat(iter / 128.0)
+	                  : (hit ? (uViewType == 0 ? pow(color, vec3(1.0 / 2.2))
+	                                           : normal * 0.5 + 0.5)
+	                         : vec3(0)),
+	              1.0);
+}
+
+// The following code is copied from
+// https://code.google.com/archive/p/efficient-sparse-voxel-octrees/
 /*
  *  Copyright (c) 2009-2011, NVIDIA Corporation
  *  All rights reserved.
@@ -45,13 +84,20 @@ layout(push_constant) uniform uuPushConstant {
  *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-uint iter = 0;
+#define STACK_SIZE 23
+#define EPS 3.552713678800501e-15
 struct StackItem {
 	uint node;
 	float t_max;
 } stack[STACK_SIZE];
-bool RayMarchLeaf(vec3 o, vec3 d, out float o_t, out vec3 o_color,
-                  out vec3 o_normal) {
+bool RayMarchLeaf(vec3 o,
+                  vec3 d,
+                  out float o_t,
+                  out vec3 o_color,
+                  out vec3 o_normal,
+                  out uint o_iter) {
+	uint iter = 0;
+
 	d.x = abs(d.x) > EPS ? d.x : (d.x >= 0 ? EPS : -EPS);
 	d.y = abs(d.y) > EPS ? d.y : (d.y >= 0 ? EPS : -EPS);
 	d.z = abs(d.z) > EPS ? d.z : (d.z >= 0 ? EPS : -EPS);
@@ -205,41 +251,7 @@ bool RayMarchLeaf(vec3 o, vec3 d, out float o_t, out vec3 o_color,
 	o_normal = norm;
 	o_color = unpackUnorm4x8(cur).xyz;
 	o_t = t_min;
+	o_iter = iter;
 
 	return scale < STACK_SIZE && t_min <= t_max;
-}
-
-vec3 GenRay() {
-	vec2 coord = ivec2(gl_FragCoord.xy) / vec2(uWidth, uHeight);
-	coord = coord * 2.0f - 1.0f;
-	return normalize(mat3(uInvView) * (uInvProjection * vec4(coord, 1, 1)).xyz);
-}
-
-vec3 Heat(in float x) {
-	return sin(clamp(x, 0.0, 1.0) * 3.0 - vec3(1, 2, 3)) * 0.5 + 0.5;
-}
-
-void main() {
-	vec3 o = uInvView[3].xyz, d = GenRay();
-
-	float beam;
-	if (uBeamEnable == 1) {
-		ivec2 beam_coord = ivec2(gl_FragCoord.xy / uBeamSize);
-		beam = min(min(texelFetch(uBeamImage, beam_coord, 0).r,
-		               texelFetch(uBeamImage, beam_coord + ivec2(1, 0), 0).r),
-		           min(texelFetch(uBeamImage, beam_coord + ivec2(0, 1), 0).r,
-		               texelFetch(uBeamImage, beam_coord + ivec2(1, 1), 0).r));
-		o += d * beam;
-	}
-
-	float t;
-	vec3 color, normal;
-	bool hit = RayMarchLeaf(o, d, t, color, normal);
-	oColor = vec4(uViewType == 2
-	                  ? Heat(iter / 128.0)
-	                  : (hit ? (uViewType == 0 ? pow(color, vec3(1.0 / 2.2))
-	                                           : normal * 0.5 + 0.5)
-	                         : vec3(0)),
-	              1.0);
-	// if (beam > t) oColor = vec4(0, 1, 0, 1); //DEBUG
 }
