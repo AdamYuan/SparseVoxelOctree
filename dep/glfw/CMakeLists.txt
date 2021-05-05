@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-project(GLFW VERSION 3.3.3 LANGUAGES C)
+project(GLFW VERSION 3.3.4 LANGUAGES C)
 
 set(CMAKE_LEGACY_CYGWIN_WIN32 OFF)
 
@@ -19,10 +19,10 @@ endif()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
-option(GLFW_BUILD_EXAMPLES "Build the GLFW example programs" OFF)
-option(GLFW_BUILD_TESTS "Build the GLFW test programs" OFF)
-option(GLFW_BUILD_DOCS "Build the GLFW documentation" OFF)
-option(GLFW_INSTALL "Generate installation target" OFF)
+option(GLFW_BUILD_EXAMPLES "Build the GLFW example programs" ON)
+option(GLFW_BUILD_TESTS "Build the GLFW test programs" ON)
+option(GLFW_BUILD_DOCS "Build the GLFW documentation" ON)
+option(GLFW_INSTALL "Generate installation target" ON)
 option(GLFW_VULKAN_STATIC "Assume the Vulkan loader is linked with the application" OFF)
 
 include(GNUInstallDirs)
