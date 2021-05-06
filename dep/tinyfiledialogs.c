@@ -3,7 +3,7 @@ The code is 100% compatible C C++
 (just comment out << extern "C" >> in the header file) */
 
 /*_________
- /         \ tinyfiledialogs.c v3.8.5 [Jan 17, 2021] zlib licence
+ /         \ tinyfiledialogs.c v3.8.8 [Apr 22, 2021] zlib licence
  |tiny file| Unique code file created [November 9, 2014]
  | dialogs | Copyright (c) 2014 - 2021 Guillaume Vareille http://ysengrin.com
  \____  ___/ http://tinyfiledialogs.sourceforge.net
@@ -99,7 +99,7 @@ Thanks for contributions, bug corrections & thorough testing to:
 #endif
 #define LOW_MULTIPLE_FILES 32
 
-char tinyfd_version[8] = "3.8.5";
+char tinyfd_version[8] = "3.8.8";
 
 /******************************************************************************************************/
 /**************************************** UTF-8 on Windows ********************************************/
@@ -463,10 +463,9 @@ int tinyfd_setGlobalInt(char const * aIntVariableName, int aValue) /* to be call
 }
 
 
-
 #ifdef _WIN32
 static int powershellPresent(void)
-{ /*only on vista and above*/
+{ /*only on vista and above (or installed on xp)*/
     static int lPowershellPresent = -1;
     char lBuff[MAX_PATH_OR_CMD];
     FILE* lIn;
@@ -578,6 +577,24 @@ static int sizeMbcs(wchar_t const * aMbcsString)
 }
 
 
+wchar_t* tinyfd_mbcsTo16(char const* aMbcsString)
+{
+    static wchar_t* lMbcsString = NULL;
+    int lSize;
+
+    free(lMbcsString);
+    if (!aMbcsString) { lMbcsString = NULL; return NULL; }
+    lSize = sizeUtf16FromMbcs(aMbcsString);
+    if (lSize)
+    {
+        lMbcsString = (wchar_t*)malloc(lSize * sizeof(wchar_t));
+        lSize = MultiByteToWideChar(CP_ACP, 0, aMbcsString, -1, lMbcsString, lSize);
+    }
+    else wcscpy(lMbcsString, L"");
+    return lMbcsString;
+}
+
+
 wchar_t * tinyfd_utf8to16(char const * aUtf8string)
 {
 	static wchar_t * lUtf16string = NULL;
@@ -586,15 +603,19 @@ wchar_t * tinyfd_utf8to16(char const * aUtf8string)
 	free(lUtf16string);
 	if (!aUtf8string) {lUtf16string = NULL; return NULL;}
 	lSize = sizeUtf16From8(aUtf8string);
-	lUtf16string = (wchar_t *)malloc(lSize * sizeof(wchar_t));
-	lSize = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
-		aUtf8string, -1, lUtf16string, lSize);
-	if (lSize == 0)
-	{
-		free(lUtf16string);
-		lUtf16string = NULL;
-	}
-	return lUtf16string;
+    if (lSize)
+    {
+        lUtf16string = (wchar_t*)malloc(lSize * sizeof(wchar_t));
+        lSize = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+            aUtf8string, -1, lUtf16string, lSize);
+        return lUtf16string;
+    }
+    else
+    {
+        /* let's try mbcs anyway */
+        lUtf16string = NULL;
+        return tinyfd_mbcsTo16(aUtf8string);
+    }
 }
 
 
@@ -606,14 +627,12 @@ char * tinyfd_utf16toMbcs(wchar_t const * aUtf16string)
 	free(lMbcsString);
 	if (!aUtf16string) { lMbcsString = NULL; return NULL; }
 	lSize = sizeMbcs(aUtf16string);
-	lMbcsString = (char *)malloc(lSize);
-	lSize = WideCharToMultiByte(CP_ACP, 0,
-		aUtf16string, -1, lMbcsString, lSize, NULL, NULL);
-	if (lSize == 0)
-	{
-		free(lMbcsString);
-		lMbcsString = NULL;
-	}
+    if (lSize)
+    {
+        lMbcsString = (char*)malloc(lSize);
+        lSize = WideCharToMultiByte(CP_ACP, 0, aUtf16string, -1, lMbcsString, lSize, NULL, NULL);
+    }
+    else strcpy(lMbcsString, "");
 	return lMbcsString;
 }
 
@@ -625,25 +644,6 @@ char * tinyfd_utf8toMbcs(char const * aUtf8string)
 	return tinyfd_utf16toMbcs(lUtf16string);
 }
 
-wchar_t * tinyfd_mbcsTo16(char const * aMbcsString)
-{
-	static wchar_t * lMbcsString = NULL;
-	int lSize;
-
-	free(lMbcsString);
-	if (!aMbcsString) { lMbcsString = NULL; return NULL; }
-	lSize = sizeUtf16FromMbcs(aMbcsString);
-	lMbcsString = (wchar_t *)malloc(lSize * sizeof(wchar_t));
-	lSize = MultiByteToWideChar(CP_ACP, 0,
-		aMbcsString, -1, lMbcsString, lSize);
-	if (lSize == 0)
-	{
-		free(lMbcsString);
-		lMbcsString = NULL;
-	}
-	return lMbcsString;
-}
-
 
 char * tinyfd_utf16to8(wchar_t const * aUtf16string)
 {
@@ -653,14 +653,12 @@ char * tinyfd_utf16to8(wchar_t const * aUtf16string)
 	free(lUtf8string);
 	if (!aUtf16string) { lUtf8string = NULL; return NULL; }
 	lSize = sizeUtf8(aUtf16string);
-	lUtf8string = (char *)malloc(lSize);
-	lSize = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
-		aUtf16string, -1, lUtf8string, lSize, NULL, NULL);
-	if (lSize == 0)
-	{
-		free(lUtf8string);
-		lUtf8string = NULL;
-	}
+    if (lSize)
+    {
+        lUtf8string = (char*)malloc(lSize);
+        lSize = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, aUtf16string, -1, lUtf8string, lSize, NULL, NULL);
+    }
+    else strcpy(lUtf8string, "");
 	return lUtf8string;
 }
 
@@ -683,10 +681,14 @@ void tinyfd_beep(void)
 static void wipefileW(wchar_t const * aFilename)
 {
         int i;
-        struct _stat st;
         FILE * lIn;
-
+#if defined(__MINGW32_MAJOR_VERSION) && !defined(__MINGW64__) && (__MINGW32_MAJOR_VERSION <= 3)
+        struct _stat st;
         if (_wstat(aFilename, &st) == 0)
+#else
+        struct __stat64 st;
+        if (_wstat64(aFilename, &st) == 0)
+#endif
         {
                 if ((lIn = _wfopen(aFilename, L"w")))
                 {
@@ -817,7 +819,11 @@ static void RGB2HexW( unsigned char const aRGB[3], wchar_t aoResultHexRGB[8])
 
 static int dirExists(char const * aDirPath)
 {
-        struct _stat lInfo;
+#if defined(__MINGW32_MAJOR_VERSION) && !defined(__MINGW64__) && (__MINGW32_MAJOR_VERSION <= 3)
+    struct _stat lInfo;
+#else
+    struct __stat64 lInfo;
+#endif
         wchar_t * lTmpWChar;
         int lStatRet;
 		size_t lDirLen;
@@ -833,7 +839,11 @@ static int dirExists(char const * aDirPath)
         if (tinyfd_winUtf8)
         {
 			lTmpWChar = tinyfd_utf8to16(aDirPath);
+#if defined(__MINGW32_MAJOR_VERSION) && !defined(__MINGW64__) && (__MINGW32_MAJOR_VERSION <= 3)
             lStatRet = _wstat(lTmpWChar, &lInfo);
+#else
+            lStatRet = _wstat64(lTmpWChar, &lInfo);
+#endif
             if (lStatRet != 0)
                     return 0;
             else if (lInfo.st_mode & S_IFDIR)
@@ -841,7 +851,11 @@ static int dirExists(char const * aDirPath)
             else
                         return 0;
         }
+#if defined(__MINGW32_MAJOR_VERSION) && !defined(__MINGW64__) && (__MINGW32_MAJOR_VERSION <= 3)
         else if (_stat(aDirPath, &lInfo) != 0)
+#else
+        else if (_stat64(aDirPath, &lInfo) != 0)
+#endif
                 return 0;
         else if (lInfo.st_mode & S_IFDIR)
                 return 1;
@@ -852,7 +866,11 @@ static int dirExists(char const * aDirPath)
 
 static int fileExists(char const * aFilePathAndName)
 {
-        struct _stat lInfo;
+#if defined(__MINGW32_MAJOR_VERSION) && !defined(__MINGW64__) && (__MINGW32_MAJOR_VERSION <= 3)
+    struct _stat lInfo;
+#else
+    struct __stat64 lInfo;
+#endif
         wchar_t * lTmpWChar;
         int lStatRet;
         FILE * lIn;
@@ -865,7 +883,12 @@ static int fileExists(char const * aFilePathAndName)
         if (tinyfd_winUtf8)
         {
 			lTmpWChar = tinyfd_utf8to16(aFilePathAndName);
+#if defined(__MINGW32_MAJOR_VERSION) && !defined(__MINGW64__) && (__MINGW32_MAJOR_VERSION <= 3)
             lStatRet = _wstat(lTmpWChar, &lInfo);
+#else
+            lStatRet = _wstat64(lTmpWChar, &lInfo);
+#endif
+
             if (lStatRet != 0)
                     return 0;
             else if (lInfo.st_mode & _S_IFREG)
@@ -1925,7 +1948,7 @@ static int notifyWinGui(
 		if (tinyfd_winUtf8) lTmpWChar = tinyfd_utf8to16(aMessage);
 		else lTmpWChar = tinyfd_mbcsTo16(aMessage);
 		lMessage = (wchar_t *) malloc((wcslen(lTmpWChar) + 1)* sizeof(wchar_t));
-      if (lMessage) wcscpy(lMessage, lTmpWChar);
+        if (lMessage) wcscpy(lMessage, lTmpWChar);
 	}
 	if (aIconType)
 	{
@@ -3143,8 +3166,12 @@ char * tinyfd_colorChooser(
     {
 		if (aTitle&&!strcmp(aTitle,"tinyfd_query")){strcpy(tinyfd_response,"windows");return (char *)1;}
 		p = colorChooserWinGui(aTitle, aDefaultHexRGB, aDefaultRGB, aoResultRGB);
-		strcpy(lDefaultHexRGB, p);
-		return lDefaultHexRGB;
+        if (p)
+        {
+            strcpy(lDefaultHexRGB, p);
+            return lDefaultHexRGB;
+        }
+        return NULL;
     }
 	else if (dialogPresent())
 	{

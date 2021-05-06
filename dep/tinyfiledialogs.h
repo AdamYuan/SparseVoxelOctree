@@ -1,8 +1,8 @@
-/* If you compiled tinyfiledialogs.c (maybe renamed with an extension ".cpp")
-with a C++ compiler, then comment out << extern "C" >> bellow in this header file) */
+/* If you are using a C++ compiler to compile tinyfiledialogs.c (maybe renamed with an extension ".cpp")
+then comment out << extern "C" >> bellow in this header file) */
 
 /*_________
- /         \ tinyfiledialogs.h v3.8.5 [Jan 17, 2021] zlib licence
+ /         \ tinyfiledialogs.h v3.8.8 [Apr 22, 2021] zlib licence
  |tiny file| Unique header file created [November 9, 2014]
  | dialogs | Copyright (c) 2014 - 2021 Guillaume Vareille http://ysengrin.com
  \____  ___/ http://tinyfiledialogs.sourceforge.net
