@@ -21,63 +21,9 @@ if(MSVC)
 endif()
 
 add_subdirectory(dep)
-
-find_program(GLSLC "glslc")
-IF(GLSLC)
-	function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
-		add_custom_command(
-			OUTPUT ${OUTPUT_FILE}
-			COMMAND glslc ${INPUT_FILE} -o ${OUTPUT_FILE} -O -Os -mfmt=num
-			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-			DEPENDS ${INPUT_FILE}
-			)
-	endfunction()
-
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/quad.vert ${CMAKE_SOURCE_DIR}/src/spirv/quad.vert.u32)
-
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/sobol.comp ${CMAKE_SOURCE_DIR}/src/spirv/sobol.comp.u32)
-
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.vert ${CMAKE_SOURCE_DIR}/src/spirv/voxelizer.vert.u32)
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.frag ${CMAKE_SOURCE_DIR}/src/spirv/voxelizer.frag.u32)
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/voxelizer.geom ${CMAKE_SOURCE_DIR}/src/spirv/voxelizer.geom.u32)
-
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tag_node.comp ${CMAKE_SOURCE_DIR}/src/spirv/octree_tag_node.comp.u32)
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_init_node.comp ${CMAKE_SOURCE_DIR}/src/spirv/octree_init_node.comp.u32)
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_alloc_node.comp ${CMAKE_SOURCE_DIR}/src/spirv/octree_alloc_node.comp.u32)
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_modify_arg.comp ${CMAKE_SOURCE_DIR}/src/spirv/octree_modify_arg.comp.u32)
-
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer.frag ${CMAKE_SOURCE_DIR}/src/spirv/octree_tracer.frag.u32)
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/octree_tracer_beam.frag ${CMAKE_SOURCE_DIR}/src/spirv/octree_tracer_beam.frag.u32)
-
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/path_tracer.comp ${CMAKE_SOURCE_DIR}/src/spirv/path_tracer.comp.u32)
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/path_tracer_viewer_gen.frag ${CMAKE_SOURCE_DIR}/src/spirv/path_tracer_viewer_gen.frag.u32)
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/path_tracer_viewer_main.vert ${CMAKE_SOURCE_DIR}/src/spirv/path_tracer_viewer_main.vert.u32)
-	add_spirv_shader(${CMAKE_SOURCE_DIR}/shaders/path_tracer_viewer_main.frag ${CMAKE_SOURCE_DIR}/src/spirv/path_tracer_viewer_main.frag.u32)
-ENDIF()
+add_subdirectory(shaders)
 
 add_executable(SparseVoxelOctree
-	# SPIRV SHADERS
-	src/spirv/quad.vert.u32
-
-	src/spirv/sobol.comp.u32
-
-	src/spirv/voxelizer.vert.u32
-	src/spirv/voxelizer.frag.u32
-	src/spirv/voxelizer.geom.u32
-
-	src/spirv/octree_tag_node.comp.u32
-	src/spirv/octree_init_node.comp.u32
-	src/spirv/octree_alloc_node.comp.u32
-	src/spirv/octree_modify_arg.comp.u32
-
-	src/spirv/octree_tracer.frag.u32
-	src/spirv/octree_tracer_beam.frag.u32
-
-	src/spirv/path_tracer.comp.u32
-	src/spirv/path_tracer_viewer_gen.frag.u32
-	src/spirv/path_tracer_viewer_main.vert.u32
-	src/spirv/path_tracer_viewer_main.frag.u32
-
 	src/main.cpp
 	src/QuadSpirv.hpp
 	src/Config.hpp
@@ -126,6 +72,6 @@ if(OpenMP_CXX_FOUND)
 	target_link_libraries(SparseVoxelOctree PRIVATE OpenMP::OpenMP_CXX)
 endif()
 find_package(Threads REQUIRED)
-target_link_libraries(SparseVoxelOctree PRIVATE dep Threads::Threads)
+target_link_libraries(SparseVoxelOctree PRIVATE dep shaders Threads::Threads)
 
 install(TARGETS SparseVoxelOctree RUNTIME DESTINATION)
