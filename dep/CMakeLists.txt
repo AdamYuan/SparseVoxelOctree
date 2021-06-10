@@ -108,8 +108,6 @@ add_library(dep STATIC
 	myvk/QueryPool.hpp
 	)
 
-target_include_directories(dep 
-	PUBLIC .
-	PUBLIC meshoptimizer/src)
+target_include_directories(dep PUBLIC . meshoptimizer/src)
 target_link_libraries(dep PUBLIC volk glfw spdlog)
 target_compile_definitions(dep PUBLIC VK_NO_PROTOTYPES)
