@@ -11,7 +11,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
 	add_definitions(-DNOMINMAX)
 ENDIF()
 
-add_definitions(-DVK_NO_PROTOTYPES)
+include_directories(.)
 
 add_subdirectory(glfw)
 add_subdirectory(spdlog)
@@ -110,7 +110,6 @@ add_library(dep STATIC
 
 target_include_directories(dep 
 	PUBLIC .
-	PUBLIC meshoptimizer/src
-	)
-
+	PUBLIC meshoptimizer/src)
 target_link_libraries(dep PUBLIC volk glfw spdlog)
+target_compile_definitions(dep PUBLIC VK_NO_PROTOTYPES)
