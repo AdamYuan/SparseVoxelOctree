@@ -20,21 +20,7 @@ if(MSVC)
 	set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
 endif()
 
-include_directories(
-	dep
-	dep/glfw/include
-	dep/meshoptimizer/src
-	dep/spdlog/include
-	dep/volk
-	)
-
-add_subdirectory(dep/glfw)
-add_subdirectory(dep/spdlog)
-
-if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-  set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
-endif()
-add_subdirectory(dep/volk)
+add_subdirectory(dep)
 
 find_program(GLSLC "glslc")
 IF(GLSLC)
@@ -92,27 +78,6 @@ add_executable(SparseVoxelOctree
 	src/spirv/path_tracer_viewer_main.vert.u32
 	src/spirv/path_tracer_viewer_main.frag.u32
 
-	# SINGLE HEADERS
-	dep/vk_mem_alloc.cpp
-	dep/stb_image.cpp
-	dep/tiny_obj_loader.cpp
-	dep/tinyfiledialogs.c
-	dep/tinyexr.cc
-
-	# IMGUI
-	dep/imgui/imgui.cpp
-	dep/imgui/imgui_draw.cpp
-	dep/imgui/imgui_impl_glfw.cpp
-	dep/imgui/imgui_widgets.cpp
-	dep/imgui/imgui_tables.cpp
-
-	# MESH OPTIMIZER
-	dep/meshoptimizer/src/indexgenerator.cpp
-	dep/meshoptimizer/src/vcacheoptimizer.cpp
-	dep/meshoptimizer/src/overdrawoptimizer.cpp
-	dep/meshoptimizer/src/vfetchoptimizer.cpp
-
-	# MAIN PROGRAM
 	src/main.cpp
 	src/QuadSpirv.hpp
 	src/Config.hpp
@@ -154,82 +119,13 @@ add_executable(SparseVoxelOctree
 	src/UIPathTracer.hpp
 	src/UIOctreeTracer.cpp
 	src/UIOctreeTracer.hpp
-
-	# MYVK
-	src/myvk/DeviceObjectBase.hpp
-	src/myvk/ImageBase.cpp
-	src/myvk/ImageBase.hpp
-	src/myvk/Image.cpp
-	src/myvk/Image.hpp
-	src/myvk/BufferBase.cpp
-	src/myvk/BufferBase.hpp
-	src/myvk/Buffer.cpp
-	src/myvk/Buffer.hpp
-	src/myvk/CommandBuffer.cpp
-	src/myvk/CommandBuffer.hpp
-	src/myvk/CommandPool.cpp
-	src/myvk/CommandPool.hpp
-	src/myvk/Device.cpp
-	src/myvk/Device.hpp
-	src/myvk/Instance.cpp
-	src/myvk/Instance.hpp
-	src/myvk/PhysicalDevice.cpp
-	src/myvk/PhysicalDevice.hpp
-	src/myvk/Queue.cpp
-	src/myvk/Queue.hpp
-	src/myvk/QueueSelector.cpp
-	src/myvk/QueueSelector.hpp
-	src/myvk/DeviceCreateInfo.cpp
-	src/myvk/DeviceCreateInfo.hpp
-	src/myvk/Surface.cpp
-	src/myvk/Surface.hpp
-	src/myvk/Swapchain.cpp
-	src/myvk/Swapchain.hpp
-	src/myvk/SwapchainImage.cpp
-	src/myvk/SwapchainImage.hpp
-	src/myvk/Fence.cpp
-	src/myvk/Fence.hpp
-	src/myvk/Semaphore.cpp
-	src/myvk/Semaphore.hpp
-	src/myvk/ImageView.cpp
-	src/myvk/ImageView.hpp
-	src/myvk/RenderPass.cpp
-	src/myvk/RenderPass.hpp
-	src/myvk/PipelineBase.cpp
-	src/myvk/PipelineBase.hpp
-	src/myvk/PipelineLayout.cpp
-	src/myvk/PipelineLayout.hpp
-	src/myvk/DescriptorSetLayout.cpp
-	src/myvk/DescriptorSetLayout.hpp
-	src/myvk/ShaderModule.cpp
-	src/myvk/ShaderModule.hpp
-	src/myvk/GraphicsPipeline.cpp
-	src/myvk/GraphicsPipeline.hpp
-	src/myvk/ComputePipeline.cpp
-	src/myvk/ComputePipeline.hpp
-	src/myvk/Framebuffer.cpp
-	src/myvk/Framebuffer.hpp
-	src/myvk/DescriptorPool.cpp
-	src/myvk/DescriptorPool.hpp
-	src/myvk/DescriptorSet.cpp
-	src/myvk/DescriptorSet.hpp
-	src/myvk/FrameManager.cpp
-	src/myvk/FrameManager.hpp
-	src/myvk/Sampler.cpp
-	src/myvk/Sampler.hpp
-	src/myvk/ObjectTracker.cpp
-	src/myvk/ObjectTracker.hpp
-	src/myvk/QueryPool.cpp
-	src/myvk/QueryPool.hpp
 	)
-
-target_compile_definitions(SparseVoxelOctree PUBLIC VK_NO_PROTOTYPES)
 
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
 	target_link_libraries(SparseVoxelOctree PRIVATE OpenMP::OpenMP_CXX)
 endif()
 find_package(Threads REQUIRED)
-target_link_libraries(SparseVoxelOctree PRIVATE glfw spdlog volk Threads::Threads)
+target_link_libraries(SparseVoxelOctree PRIVATE dep Threads::Threads)
 
 install(TARGETS SparseVoxelOctree RUNTIME DESTINATION)
