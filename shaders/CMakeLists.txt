@@ -1,59 +1,52 @@
 cmake_minimum_required(VERSION 3.15)
 project(shaders)
 
+set(SHADER_SRC 
+
+	quad.vert
+	sobol.comp
+
+	voxelizer.vert
+	voxelizer.frag
+	voxelizer.geom
+
+	octree_tag_node.comp
+	octree_init_node.comp
+	octree_alloc_node.comp
+	octree_modify_arg.comp
+
+	octree_tracer.frag
+	octree_tracer_beam.frag
+
+	path_tracer.comp
+	path_tracer_viewer_gen.frag
+	path_tracer_viewer_main.vert
+	path_tracer_viewer_main.frag
+	)
+
 find_program(GLSLC "glslc")
 IF(GLSLC)
-	function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
-		add_custom_command(OUTPUT ${CMAKE_CURRENT_LIST_DIR}/${OUTPUT_FILE}
-			COMMAND glslc ${INPUT_FILE} -o ${OUTPUT_FILE} -O -Os -mfmt=num
+	function(add_spirv_shader INPUT_FILE)
+		add_custom_command(OUTPUT ${CMAKE_CURRENT_LIST_DIR}/include/spirv/${INPUT_FILE}.u32
+			COMMAND glslc ${INPUT_FILE} -o include/spirv/${INPUT_FILE}.u32 -O -Os -mfmt=num
 			WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
 			DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${INPUT_FILE}
 			)
 	endfunction()
 
-	add_spirv_shader(quad.vert include/spirv/quad.vert.u32)
-
-	add_spirv_shader(sobol.comp include/spirv/sobol.comp.u32)
-
-	add_spirv_shader(voxelizer.vert include/spirv/voxelizer.vert.u32)
-	add_spirv_shader(voxelizer.frag include/spirv/voxelizer.frag.u32)
-	add_spirv_shader(voxelizer.geom include/spirv/voxelizer.geom.u32)
-
-	add_spirv_shader(octree_tag_node.comp include/spirv/octree_tag_node.comp.u32)
-	add_spirv_shader(octree_init_node.comp include/spirv/octree_init_node.comp.u32)
-	add_spirv_shader(octree_alloc_node.comp include/spirv/octree_alloc_node.comp.u32)
-	add_spirv_shader(octree_modify_arg.comp include/spirv/octree_modify_arg.comp.u32)
-
-	add_spirv_shader(octree_tracer.frag include/spirv/octree_tracer.frag.u32)
-	add_spirv_shader(octree_tracer_beam.frag include/spirv/octree_tracer_beam.frag.u32)
-
-	add_spirv_shader(path_tracer.comp include/spirv/path_tracer.comp.u32)
-	add_spirv_shader(path_tracer_viewer_gen.frag include/spirv/path_tracer_viewer_gen.frag.u32)
-	add_spirv_shader(path_tracer_viewer_main.vert include/spirv/path_tracer_viewer_main.vert.u32)
-	add_spirv_shader(path_tracer_viewer_main.frag include/spirv/path_tracer_viewer_main.frag.u32)
+	foreach(X IN LISTS SHADER_SRC)
+		add_spirv_shader(${X})
+	endforeach()
 ENDIF()
+
+set(SHADER_U32) 
+foreach(X IN LISTS SHADER_SRC)
+	list(APPEND SHADER_U32 include/spirv/${X}.u32)
+endforeach()
 
 add_custom_target(
 	shaders_gen ALL DEPENDS
-	include/spirv/quad.vert.u32
-	include/spirv/sobol.comp.u32
-
-	include/spirv/voxelizer.vert.u32
-	include/spirv/voxelizer.frag.u32
-	include/spirv/voxelizer.geom.u32
-
-	include/spirv/octree_tag_node.comp.u32
-	include/spirv/octree_init_node.comp.u32
-	include/spirv/octree_alloc_node.comp.u32
-	include/spirv/octree_modify_arg.comp.u32
-
-	include/spirv/octree_tracer.frag.u32
-	include/spirv/octree_tracer_beam.frag.u32
-
-	include/spirv/path_tracer.comp.u32
-	include/spirv/path_tracer_viewer_gen.frag.u32
-	include/spirv/path_tracer_viewer_main.vert.u32
-	include/spirv/path_tracer_viewer_main.frag.u32
+	${SHADER_U32}
 	)
 add_library(shaders INTERFACE)
 target_include_directories(shaders INTERFACE include)
