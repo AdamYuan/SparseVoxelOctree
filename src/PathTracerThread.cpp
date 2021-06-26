@@ -82,7 +82,6 @@ void PathTracerThread::path_tracer_thread_func() {
 			break;
 
 		{
-			std::lock_guard<std::mutex> lock{m_target_mutex};
 			fence->Reset();
 			pt_command_buffer->Submit(fence);
 			fence->Wait();
@@ -149,8 +148,6 @@ void PathTracerThread::viewer_thread_func() {
 
 		// release pt queue ownership
 		if (m_path_tracer_queue->GetFamilyIndex() != m_main_queue->GetFamilyIndex()) {
-			m_target_mutex.lock();
-
 			fence->Reset();
 			pt_release_command_buffer->Submit(fence);
 			fence->Wait();
@@ -194,8 +191,6 @@ void PathTracerThread::viewer_thread_func() {
 			fence->Reset();
 			pt_acquire_command_buffer->Submit({}, {}, fence);
 			fence->Wait();
-
-			m_target_mutex.unlock();
 		}
 	}
 

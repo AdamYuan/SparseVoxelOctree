@@ -16,7 +16,7 @@ private:
 
 	std::thread m_path_tracer_thread, m_viewer_thread;
 	std::condition_variable m_pause_condition_variable, m_viewer_condition_variable;
-	std::mutex m_pause_mutex, m_target_mutex, m_viewer_mutex;
+	std::mutex m_pause_mutex, m_viewer_mutex;
 	std::atomic_bool m_pause, m_run;
 
 	uint32_t m_spp;
@@ -42,9 +42,6 @@ public:
 
 	uint32_t GetSPP() const { return m_spp; }
 	double GetRenderTime() const;
-
-	std::mutex &GetTargetMutex() { return m_target_mutex; }
-	const std::mutex &GetTargetMutex() const { return m_target_mutex; }
 
 	bool IsPause() const { return m_pause; }
 	bool IsRunning() const { return m_path_tracer_thread.joinable() || m_viewer_thread.joinable(); }

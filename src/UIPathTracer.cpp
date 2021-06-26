@@ -239,7 +239,6 @@ void PathTracerExportEXRModal(const std::shared_ptr<PathTracerThread> &path_trac
 					std::shared_ptr<myvk::CommandPool> command_pool =
 					    myvk::CommandPool::Create(path_tracer_thread->GetPathTracerQueue());
 
-					std::lock_guard<std::mutex> lock_guard{path_tracer_thread->GetTargetMutex()};
 					if (current_channel == kChannels + 0) // color
 						pixels = path_tracer->ExtractColorImage(command_pool);
 					else if (current_channel == kChannels + 1) // albedo
