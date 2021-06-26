@@ -161,6 +161,11 @@ void Application::draw_frame() {
 }
 
 void Application::initialize_vulkan() {
+	if (volkInitialize() != VK_SUCCESS) {
+		spdlog::error("Failed to load vulkan!");
+		exit(EXIT_FAILURE);
+	}
+
 #ifdef NDEBUG
 	m_instance = myvk::Instance::CreateWithGlfwExtensions();
 #else
@@ -292,17 +297,17 @@ void Application::initialize_vulkan() {
 }
 
 Application::Application() {
-	if (volkInitialize() != VK_SUCCESS) {
-		spdlog::error("Failed to load vulkan!");
-		exit(EXIT_FAILURE);
-	}
+	spdlog::info("Enter Application()");
 
 	m_log_sink = std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(kLogLimit);
 	m_log_sink->set_pattern("%H:%M:%S.%e"); // only display time
 	spdlog::default_logger()->sinks().push_back(m_log_sink);
 
 	create_window();
+	spdlog::info("create_window() done");
 	initialize_vulkan();
+	spdlog::info("initialize_vulkan() done");
+
 	m_frame_manager.Initialize(m_main_queue, m_present_queue, false, kFrameCount);
 	m_frame_manager.SetResizeFunc([&]() { resize(); });
 
