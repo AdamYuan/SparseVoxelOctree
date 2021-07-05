@@ -30,6 +30,8 @@ private:
 	std::shared_ptr<myvk::PipelineLayout> m_main_pipeline_layout;
 	std::shared_ptr<myvk::GraphicsPipeline> m_main_graphics_pipeline;
 
+	std::shared_ptr<myvk::Buffer> m_texcoords_buffers[kFrameCount];
+
 	void create_render_pass(const std::shared_ptr<myvk::Device> &device);
 	void create_gen_graphics_pipeline(const std::shared_ptr<myvk::Device> &device);
 	void create_descriptors(const std::shared_ptr<myvk::Device> &device);
@@ -50,7 +52,7 @@ public:
 
 	void CmdGenRenderPass(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
 
-	void CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
+	void CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame) const;
 
 	const std::shared_ptr<myvk::Image> &GetImage() const { return m_image; }
 };

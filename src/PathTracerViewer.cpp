@@ -2,6 +2,8 @@
 #include "PathTracerViewer.hpp"
 #include "QuadSpirv.hpp"
 
+#include <spdlog/spdlog.h>
+
 void PathTracerViewer::create_render_pass(const std::shared_ptr<myvk::Device> &device) {
 	VkAttachmentDescription color_attachment = {};
 	color_attachment.format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -143,8 +145,7 @@ void PathTracerViewer::create_main_graphics_pipeline(const std::shared_ptr<myvk:
                                                      uint32_t subpass) {
 	std::shared_ptr<myvk::Device> device = render_pass->GetDevicePtr();
 
-	m_main_pipeline_layout = myvk::PipelineLayout::Create(device, {m_descriptor_set_layout},
-	                                                      {{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 6}});
+	m_main_pipeline_layout = myvk::PipelineLayout::Create(device, {m_descriptor_set_layout}, {});
 
 	constexpr uint32_t kPathTracerViewerMainVertSpirv[] = {
 #include "spirv/path_tracer_viewer_main.vert.u32"
@@ -163,8 +164,23 @@ void PathTracerViewer::create_main_graphics_pipeline(const std::shared_ptr<myvk:
 	    vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
 	    frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)};
 
+	VkVertexInputBindingDescription binding_descriptor = {};
+	binding_descriptor.binding = 0;
+	binding_descriptor.stride = sizeof(float) * 2;
+	binding_descriptor.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	VkVertexInputAttributeDescription attribute_description = {};
+	attribute_description.binding = 0;
+	attribute_description.location = 0;
+	attribute_description.format = VK_FORMAT_R32G32_SFLOAT;
+	attribute_description.offset = 0;
+
 	VkPipelineVertexInputStateCreateInfo vertex_input = {};
 	vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertex_input.vertexBindingDescriptionCount = 1;
+	vertex_input.pVertexBindingDescriptions = &binding_descriptor;
+	vertex_input.vertexAttributeDescriptionCount = 1;
+	vertex_input.pVertexAttributeDescriptions = &attribute_description;
 
 	VkPipelineInputAssemblyStateCreateInfo input_assembly = {};
 	input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -246,6 +262,11 @@ std::shared_ptr<PathTracerViewer> PathTracerViewer::Create(const std::shared_ptr
 	ret->create_descriptors(render_pass->GetDevicePtr());
 	ret->create_main_graphics_pipeline(render_pass, subpass);
 
+	for (uint32_t i = 0; i < kFrameCount; ++i)
+		ret->m_texcoords_buffers[i] =
+		    myvk::Buffer::Create(render_pass->GetDevicePtr(), sizeof(float) * 6, VMA_MEMORY_USAGE_CPU_TO_GPU,
+		                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+
 	return ret;
 }
 
@@ -296,8 +317,10 @@ void PathTracerViewer::CmdGenRenderPass(const std::shared_ptr<myvk::CommandBuffe
 	command_buffer->CmdEndRenderPass();
 }
 
-void PathTracerViewer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
+void PathTracerViewer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
+                                       uint32_t current_frame) const {
 	command_buffer->CmdBindPipeline(m_main_graphics_pipeline);
+	command_buffer->CmdBindVertexBuffer(m_texcoords_buffers[current_frame], 0);
 	command_buffer->CmdBindDescriptorSets({m_descriptor_set}, m_main_graphics_pipeline);
 
 	VkRect2D scissor = {};
@@ -320,8 +343,7 @@ void PathTracerViewer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer
 		texcoords[1] = texcoords[3] = -x;
 		texcoords[5] = 2.0f + x * 3.0f;
 	}
+	m_texcoords_buffers[current_frame]->UpdateData(texcoords, texcoords + 6);
 
-	command_buffer->CmdPushConstants(m_main_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(texcoords),
-	                                 texcoords);
 	command_buffer->CmdDraw(3, 1, 0, 0);
 }

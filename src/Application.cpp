@@ -148,7 +148,7 @@ void Application::draw_frame() {
 	}
 	command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffers[image_index], {{{0.0f, 0.0f, 0.0f, 1.0f}}});
 	if (m_ui_state == UIStates::kPathTracing) {
-		m_path_tracer_viewer->CmdDrawPipeline(command_buffer);
+		m_path_tracer_viewer->CmdDrawPipeline(command_buffer, current_frame);
 	} else if (!m_octree->Empty()) {
 		m_octree_tracer->CmdDrawPipeline(command_buffer, current_frame);
 	}
@@ -297,16 +297,12 @@ void Application::initialize_vulkan() {
 }
 
 Application::Application() {
-	spdlog::info("Enter Application()");
-
 	m_log_sink = std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(kLogLimit);
 	m_log_sink->set_pattern("%H:%M:%S.%e"); // only display time
 	spdlog::default_logger()->sinks().push_back(m_log_sink);
 
 	create_window();
-	spdlog::info("create_window() done");
 	initialize_vulkan();
-	spdlog::info("initialize_vulkan() done");
 
 	m_frame_manager.Initialize(m_main_queue, m_present_queue, false, kFrameCount);
 	m_frame_manager.SetResizeFunc([&]() { resize(); });

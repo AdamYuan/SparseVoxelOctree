@@ -231,8 +231,8 @@ void PathTracerExportEXRModal(const std::shared_ptr<PathTracerThread> &path_trac
 
 		{
 			if (ImGui::Button("Export", {button_width, 0})) {
-				bool tmp_pause = path_tracer_thread->IsPause();
-				path_tracer_thread->SetPause(true);
+				//bool tmp_pause = path_tracer_thread->IsPause();
+				//path_tracer_thread->SetPause(true);
 
 				std::vector<float> pixels;
 				{
@@ -247,7 +247,7 @@ void PathTracerExportEXRModal(const std::shared_ptr<PathTracerThread> &path_trac
 						pixels = path_tracer->ExtractNormalImage(command_pool);
 				}
 
-				path_tracer_thread->SetPause(tmp_pause);
+				//path_tracer_thread->SetPause(tmp_pause);
 
 				char *err{nullptr};
 				if (SaveEXR(pixels.data(), path_tracer->m_width, path_tracer->m_height, 3, save_as_fp16, exr_name_buf,
