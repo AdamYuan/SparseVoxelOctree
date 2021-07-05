@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(shaders)
+project(shader)
 
 set(SHADER_SRC 
 
@@ -45,9 +45,9 @@ foreach(X IN LISTS SHADER_SRC)
 endforeach()
 
 add_custom_target(
-	shaders_gen ALL DEPENDS
+	shader_gen ALL DEPENDS
 	${SHADER_U32}
 	)
-add_library(shaders INTERFACE)
-target_include_directories(shaders INTERFACE include)
-target_link_libraries(shaders INTERFACE ${SHADERS_LIBRARIES})
+add_library(shader INTERFACE)
+target_include_directories(shader INTERFACE include)
+target_link_libraries(shader INTERFACE ${SHADERS_LIBRARIES})

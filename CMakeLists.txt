@@ -21,7 +21,7 @@ if(MSVC)
 endif()
 
 add_subdirectory(dep)
-add_subdirectory(shaders)
+add_subdirectory(shader)
 
 add_executable(SparseVoxelOctree
 	src/main.cpp
@@ -72,6 +72,6 @@ if(OpenMP_CXX_FOUND)
 	target_link_libraries(SparseVoxelOctree PRIVATE OpenMP::OpenMP_CXX)
 endif()
 find_package(Threads REQUIRED)
-target_link_libraries(SparseVoxelOctree PRIVATE dep shaders Threads::Threads)
+target_link_libraries(SparseVoxelOctree PRIVATE dep shader Threads::Threads)
 
 install(TARGETS SparseVoxelOctree RUNTIME DESTINATION)

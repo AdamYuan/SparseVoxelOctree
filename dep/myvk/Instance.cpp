@@ -19,9 +19,23 @@ std::shared_ptr<Instance> Instance::CreateWithGlfwExtensions(bool use_validation
 
 	create_info.enabledExtensionCount = extensions.size();
 	create_info.ppEnabledExtensionNames = extensions.data();
+
+	VkValidationFeatureEnableEXT validation_features_enabled[3] = {
+	    VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT, 
+		VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT,
+	    VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT
+	};
+	VkValidationFeaturesEXT validation_features = {};
+	validation_features.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+	validation_features.enabledValidationFeatureCount = 3;
+	validation_features.pEnabledValidationFeatures = validation_features_enabled;
+
 	if (use_validation_layer) {
 		create_info.enabledLayerCount = sizeof(kValidationLayers) / sizeof(const char *);
 		create_info.ppEnabledLayerNames = kValidationLayers;
+
+		validation_features.pNext = create_info.pNext;
+		create_info.pNext = &validation_features;
 	} else
 		create_info.enabledLayerCount = 0;
 
