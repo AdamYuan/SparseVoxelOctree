@@ -138,7 +138,6 @@ void PathTracerViewer::create_descriptors(const std::shared_ptr<myvk::Device> &d
 		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {binding});
 	}
 	m_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
-	m_descriptor_set->UpdateCombinedImageSampler(m_sampler, m_image_view, 0);
 }
 
 void PathTracerViewer::create_main_graphics_pipeline(const std::shared_ptr<myvk::RenderPass> &render_pass,
@@ -250,13 +249,8 @@ std::shared_ptr<PathTracerViewer> PathTracerViewer::Create(const std::shared_ptr
 	std::shared_ptr<PathTracerViewer> ret = std::make_shared<PathTracerViewer>();
 	ret->m_path_tracer_ptr = path_tracer;
 
-	ret->m_image = myvk::Image::CreateTexture2D(
-	    render_pass->GetDevicePtr(), {path_tracer->m_width, path_tracer->m_height}, 1, VK_FORMAT_R8G8B8A8_UNORM,
-	    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-	ret->m_image_view = myvk::ImageView::Create(ret->m_image, VK_IMAGE_VIEW_TYPE_2D);
 	ret->m_sampler = myvk::Sampler::CreateClampToBorder(render_pass->GetDevicePtr(), VK_FILTER_NEAREST, {});
 	ret->create_render_pass(render_pass->GetDevicePtr());
-	ret->m_gen_framebuffer = myvk::Framebuffer::Create(ret->m_gen_render_pass, ret->m_image_view);
 	ret->create_gen_graphics_pipeline(render_pass->GetDevicePtr());
 
 	ret->create_descriptors(render_pass->GetDevicePtr());

@@ -4,16 +4,16 @@
 
 inline static constexpr uint32_t group_8(uint32_t x) { return (x >> 3u) + ((x & 0x7u) ? 1u : 0u); }
 
-void PathTracer::create_target_images(const std::shared_ptr<myvk::Device> &device) {
+void PathTracer::create_target_images(const std::shared_ptr<myvk::Device> &device, const std::vector<std::shared_ptr<myvk::Queue>> &access_queue) {
 	m_color_image = myvk::Image::CreateTexture2D(device, {m_width, m_height}, 1, VK_FORMAT_R32G32B32A32_SFLOAT,
 	                                             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-	                                                 VK_IMAGE_USAGE_STORAGE_BIT);
+	                                                 VK_IMAGE_USAGE_STORAGE_BIT, access_queue);
 	m_albedo_image = myvk::Image::CreateTexture2D(device, {m_width, m_height}, 1, VK_FORMAT_R8G8B8A8_UNORM,
 	                                              VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-	                                                  VK_IMAGE_USAGE_STORAGE_BIT);
+	                                                  VK_IMAGE_USAGE_STORAGE_BIT, access_queue);
 	m_normal_image = myvk::Image::CreateTexture2D(device, {m_width, m_height}, 1, VK_FORMAT_R8G8B8A8_SNORM,
 	                                              VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-	                                                  VK_IMAGE_USAGE_STORAGE_BIT);
+	                                                  VK_IMAGE_USAGE_STORAGE_BIT, access_queue);
 
 	m_color_image_view = myvk::ImageView::Create(m_color_image, VK_IMAGE_VIEW_TYPE_2D);
 	m_albedo_image_view = myvk::ImageView::Create(m_albedo_image, VK_IMAGE_VIEW_TYPE_2D);
@@ -63,9 +63,6 @@ void PathTracer::create_descriptor(const std::shared_ptr<myvk::Device> &device) 
 		m_noise_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {noise_binding});
 	}
 	m_target_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_target_descriptor_set_layout);
-	m_target_descriptor_set->UpdateStorageImage(m_color_image_view, 0);
-	m_target_descriptor_set->UpdateStorageImage(m_albedo_image_view, 1);
-	m_target_descriptor_set->UpdateStorageImage(m_normal_image_view, 2);
 
 	m_noise_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_noise_descriptor_set_layout);
 	m_noise_descriptor_set->UpdateCombinedImageSampler(m_noise_sampler, m_noise_image_view, 0);
@@ -168,7 +165,6 @@ std::shared_ptr<PathTracer> PathTracer::Create(const std::shared_ptr<Octree> &oc
 	ret->m_sun_radiance = glm::vec3(kDefaultSunRadiance);
 
 	ret->m_sobol.Initialize(command_pool->GetDevicePtr());
-	ret->create_target_images(command_pool->GetDevicePtr());
 	ret->create_noise_images(command_pool->GetDevicePtr());
 	ret->set_noise_image(command_pool);
 	ret->create_descriptor(command_pool->GetDevicePtr());
@@ -177,7 +173,7 @@ std::shared_ptr<PathTracer> PathTracer::Create(const std::shared_ptr<Octree> &oc
 	return ret;
 }
 
-void PathTracer::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool) {
+void PathTracer::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool, const std::shared_ptr<myvk::Queue> &shared_queue) {
 	{
 		float tmp = m_camera_ptr->m_aspect_ratio;
 		m_camera_ptr->m_aspect_ratio = m_width / float(m_height);
@@ -185,7 +181,7 @@ void PathTracer::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool) {
 		m_camera_ptr->m_aspect_ratio = tmp;
 	}
 	m_sobol.Reset(command_pool, (m_bounce + 1) * 2);
-	create_target_images(command_pool->GetDevicePtr());
+	create_target_images(command_pool->GetDevicePtr(), {command_pool->GetQueuePtr(), shared_queue});
 	clear_target_images(command_pool);
 	m_target_descriptor_set->UpdateStorageImage(m_color_image_view, 0);
 	m_target_descriptor_set->UpdateStorageImage(m_albedo_image_view, 1);

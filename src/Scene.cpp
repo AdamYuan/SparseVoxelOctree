@@ -233,7 +233,7 @@ void Scene::load_textures(const std::shared_ptr<myvk::Queue> &graphics_queue,
 	while (cores--) {
 		future_vector.push_back(std::async([&]() -> void {
 			std::shared_ptr<myvk::CommandPool> command_pool =
-			    myvk::CommandPool::Create(graphics_queue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+			    myvk::CommandPool::Create(graphics_queue);
 			myvk::ObjectTracker tracker;
 			while (true) {
 				uint32_t i = texture_id++;

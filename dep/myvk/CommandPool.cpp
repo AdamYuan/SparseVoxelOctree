@@ -15,6 +15,10 @@ std::shared_ptr<CommandPool> CommandPool::Create(const std::shared_ptr<Queue> &q
 	return ret;
 }
 
+VkResult CommandPool::Reset(VkCommandPoolResetFlags flags) const {
+	return vkResetCommandPool(GetDevicePtr()->GetHandle(), m_command_pool, flags);
+}
+
 CommandPool::~CommandPool() {
 	if (m_command_pool)
 		vkDestroyCommandPool(m_queue_ptr->GetDevicePtr()->GetHandle(), m_command_pool, nullptr);

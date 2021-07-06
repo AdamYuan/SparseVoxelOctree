@@ -26,7 +26,8 @@ private:
 	std::shared_ptr<myvk::PipelineLayout> m_pipeline_layout;
 	std::shared_ptr<myvk::ComputePipeline> m_pipeline;
 
-	void create_target_images(const std::shared_ptr<myvk::Device> &device);
+	void create_target_images(const std::shared_ptr<myvk::Device> &device,
+	                          const std::vector<std::shared_ptr<myvk::Queue>> &access_queue);
 	void create_noise_images(const std::shared_ptr<myvk::Device> &device);
 	void create_descriptor(const std::shared_ptr<myvk::Device> &device);
 	void create_pipeline(const std::shared_ptr<myvk::Device> &device);
@@ -49,7 +50,8 @@ public:
 	const std::shared_ptr<Octree> &GetOctreePtr() const { return m_octree_ptr; }
 	const std::shared_ptr<Camera> &GetCameraPtr() const { return m_camera_ptr; }
 
-	void Reset(const std::shared_ptr<myvk::CommandPool> &command_pool);
+	void Reset(const std::shared_ptr<myvk::CommandPool> &command_pool,
+	           const std::shared_ptr<myvk::Queue> &shared_queue);
 
 	void CmdRender(const std::shared_ptr<myvk::CommandBuffer> &command_buffer);
 

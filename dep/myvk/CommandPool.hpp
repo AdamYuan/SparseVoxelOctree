@@ -17,6 +17,8 @@ private:
 public:
 	static std::shared_ptr<CommandPool> Create(const std::shared_ptr<Queue> &queue, VkCommandPoolCreateFlags flags = 0);
 
+	VkResult Reset(VkCommandPoolResetFlags flags = 0) const;
+
 	VkCommandPool GetHandle() const { return m_command_pool; }
 
 	const std::shared_ptr<Queue> &GetQueuePtr() const { return m_queue_ptr; }

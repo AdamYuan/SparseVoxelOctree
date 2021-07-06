@@ -48,7 +48,7 @@ In addition, the new Vulkan version has some advanced features such as asynchron
 ## TODOs
 ### v1.0
 - [x] Allow window resizing
-- [ ] Test queue ownership transfer
+- [x] Test queue ownership transfer
 ### v2.0
 - [ ] Voxel editor ?
 - [ ] Gradient-domain path tracing ?

@@ -56,6 +56,7 @@ private:
 	// frame objects
 	myvk::FrameManager m_frame_manager;
 	std::vector<std::shared_ptr<myvk::Framebuffer>> m_framebuffers;
+	std::vector<std::shared_ptr<myvk::CommandPool>> m_frame_command_pools;
 	std::vector<std::shared_ptr<myvk::CommandBuffer>> m_frame_command_buffers;
 
 	// render pass

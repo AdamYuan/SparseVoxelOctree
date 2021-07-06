@@ -138,9 +138,10 @@ void Application::draw_frame() {
 	uint32_t current_frame = m_frame_manager.GetCurrentFrame();
 	if (m_ui_state == UIStates::kOctreeTracer)
 		m_camera->UpdateFrameUniformBuffer(current_frame);
+
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_command_buffers[current_frame];
 
-	command_buffer->Reset();
+	command_buffer->GetCommandPoolPtr()->Reset();
 	command_buffer->Begin();
 
 	if (m_ui_state != UIStates::kPathTracing && !m_octree->Empty()) {
@@ -289,11 +290,16 @@ void Application::initialize_vulkan() {
 		spdlog::warn("Async path tracing queue not available, the main thread might be blocked when path tracing");
 	}
 
-	m_main_command_pool = myvk::CommandPool::Create(m_main_queue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	m_main_command_pool = myvk::CommandPool::Create(m_main_queue);
 	m_path_tracer_command_pool =
-	    myvk::CommandPool::Create(m_path_tracer_queue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	    myvk::CommandPool::Create(m_path_tracer_queue);
 
-	m_frame_command_buffers = myvk::CommandBuffer::CreateMultiple(m_main_command_pool, kFrameCount);
+	m_frame_command_pools.resize(kFrameCount);
+	m_frame_command_buffers.resize(kFrameCount);
+	for (uint32_t i = 0; i < kFrameCount; ++i) {
+		m_frame_command_pools[i] = myvk::CommandPool::Create(m_main_queue);
+		m_frame_command_buffers[i] = myvk::CommandBuffer::Create(m_frame_command_pools[i]);
+	}
 }
 
 Application::Application() {
