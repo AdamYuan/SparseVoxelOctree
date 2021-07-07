@@ -75,7 +75,7 @@ void LoaderThread::thread_func(const char *filename, uint32_t octree_level) {
 		command_buffer->CmdWriteTimestamp(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 3);
 
 		if (m_main_queue->GetFamilyIndex() != m_loader_queue->GetFamilyIndex()) {
-			// TODO: Test queue ownership transfer
+			// release ownership
 			command_buffer->CmdPipelineBarrier(
 			    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
 			    {builder->GetOctree()->GetMemoryBarrier(0, 0, m_loader_queue, m_main_queue)}, {});
@@ -98,10 +98,9 @@ void LoaderThread::thread_func(const char *filename, uint32_t octree_level) {
 		             double(timestamps[3] - timestamps[2]) * 0.000001);
 
 		if (m_main_queue->GetFamilyIndex() != m_loader_queue->GetFamilyIndex()) {
-			// TODO: Test queue ownership transfer
 			command_buffer = myvk::CommandBuffer::Create(main_command_pool);
 			command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-			// transfer ownership
+			// acquire ownership
 			command_buffer->CmdPipelineBarrier(
 			    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, {},
 			    {builder->GetOctree()->GetMemoryBarrier(0, 0, m_loader_queue, m_main_queue)}, {});
