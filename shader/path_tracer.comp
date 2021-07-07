@@ -1,9 +1,7 @@
 #version 450
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-layout(std430, set = 0, binding = 0) readonly buffer uuOctree {
-	uint uOctree[];
-};
+layout(std430, set = 0, binding = 0) readonly buffer uuOctree { uint uOctree[]; };
 layout(set = 1, binding = 0) uniform uuCamera {
 	mat4 uProjection;
 	mat4 uInvProjection;
@@ -23,8 +21,7 @@ layout(push_constant) uniform uuPushConstant {
 	float uSunRadiance[3];
 };
 
-bool RayMarchLeaf(
-    vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal);
+bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal);
 
 #define TWO_PI 6.28318530718f
 vec3 SampleHemisphere(vec2 r, in const float e) {
@@ -39,8 +36,7 @@ vec3 SampleHemisphere(vec2 r, in const float e) {
 	return normalize(vec3(pu, pv, pw));
 }
 vec3 AlignDirection(in const vec3 dir, in const vec3 target) {
-	vec3 u = normalize(
-	    cross(abs(target.x) > .01 ? vec3(0, 1, 0) : vec3(1, 0, 0), target));
+	vec3 u = normalize(cross(abs(target.x) > .01 ? vec3(0, 1, 0) : vec3(1, 0, 0), target));
 	vec3 v = cross(target, u);
 	return dir.x * u + dir.y * v + dir.z * target;
 }
@@ -51,9 +47,7 @@ vec3 GenRay(in const ivec2 pixel, in const ivec2 size, in const vec2 noise) {
 	return normalize(mat3(uInvView) * (uInvProjection * vec4(coord, 1, 1)).xyz);
 }
 
-vec2 GetSobol(in const int i) {
-	return vec2(uSobol[i << 1], uSobol[i << 1 | 1]) / 4294967296.0;
-}
+vec2 GetSobol(in const int i) { return vec2(uSobol[i << 1], uSobol[i << 1 | 1]) / 4294967296.0; }
 
 void main() {
 	ivec2 pixel = ivec2(gl_GlobalInvocationID.xy), size = imageSize(uColor);
@@ -65,8 +59,7 @@ void main() {
 	vec2 noise = texelFetch(uNoise, pixel & 0xff, 0).xy;
 	vec3 acc_color = vec3(1), radiance = vec3(0);
 
-	vec3 pos, albedo, normal, direct_albedo = vec3(0.0f),
-	                          direct_normal = vec3(0.0f);
+	vec3 pos, albedo, normal, direct_albedo = vec3(0.0f), direct_normal = vec3(0.0f);
 
 	if (RayMarchLeaf(o, d, pos, albedo, normal)) {
 		acc_color *= albedo;
@@ -74,15 +67,13 @@ void main() {
 		direct_normal = normal;
 
 		for (int cur = 1; cur < uBounce; ++cur) {
-			d = AlignDirection(
-			    SampleHemisphere(fract(GetSobol(cur) + noise), 0.0f), normal);
+			d = AlignDirection(SampleHemisphere(fract(GetSobol(cur) + noise), 0.0f), normal);
 			o = pos;
 
 			if (RayMarchLeaf(o, d, pos, albedo, normal))
 				acc_color *= albedo;
 			else {
-				radiance = acc_color * vec3(uSunRadiance[0], uSunRadiance[1],
-				                            uSunRadiance[2]);
+				radiance = acc_color * vec3(uSunRadiance[0], uSunRadiance[1], uSunRadiance[2]);
 				break;
 			}
 		}
@@ -90,16 +81,13 @@ void main() {
 		radiance = vec3(uSunRadiance[0], uSunRadiance[1], uSunRadiance[2]);
 
 	uint spp = uSobol[(uBounce + 1) << 1];
-	vec3 pt_color =
-	    (imageLoad(uColor, pixel).xyz * spp + radiance) / float(spp + 1);
+	vec3 pt_color = (imageLoad(uColor, pixel).xyz * spp + radiance) / float(spp + 1);
 	imageStore(uColor, pixel, vec4(pt_color, 1));
 
-	vec3 pt_albedo =
-	    (imageLoad(uAlbedo, pixel).xyz * spp + direct_albedo) / float(spp + 1);
+	vec3 pt_albedo = (imageLoad(uAlbedo, pixel).xyz * spp + direct_albedo) / float(spp + 1);
 	imageStore(uAlbedo, pixel, vec4(pt_albedo, 1));
 
-	vec3 pt_normal =
-	    (imageLoad(uNormal, pixel).xyz * spp + direct_normal) / float(spp + 1);
+	vec3 pt_normal = (imageLoad(uNormal, pixel).xyz * spp + direct_normal) / float(spp + 1);
 	imageStore(uNormal, pixel, vec4(pt_normal, 1));
 }
 
@@ -137,8 +125,7 @@ struct StackItem {
 	uint node;
 	float t_max;
 } stack[STACK_SIZE];
-bool RayMarchLeaf(
-    vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal) {
+bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal) {
 	d.x = abs(d.x) >= EPS ? d.x : (d.x >= 0 ? EPS : -EPS);
 	d.y = abs(d.y) >= EPS ? d.y : (d.y >= 0 ? EPS : -EPS);
 	d.z = abs(d.z) >= EPS ? d.z : (d.z >= 0 ? EPS : -EPS);
@@ -157,11 +144,8 @@ bool RayMarchLeaf(
 		oct_mask ^= 4u, t_bias.z = 3.0f * t_coef.z - t_bias.z;
 
 	// Initialize the active span of t-values.
-	float t_min =
-	    max(max(2.0f * t_coef.x - t_bias.x, 2.0f * t_coef.y - t_bias.y),
-	        2.0f * t_coef.z - t_bias.z);
-	float t_max =
-	    min(min(t_coef.x - t_bias.x, t_coef.y - t_bias.y), t_coef.z - t_bias.z);
+	float t_min = max(max(2.0f * t_coef.x - t_bias.x, 2.0f * t_coef.y - t_bias.y), 2.0f * t_coef.z - t_bias.z);
+	float t_max = min(min(t_coef.x - t_bias.x, t_coef.y - t_bias.y), t_coef.z - t_bias.z);
 	t_min = max(t_min, 0.0f);
 	float h = t_max;
 
@@ -243,17 +227,13 @@ bool RayMarchLeaf(
 			// Find the highest differing bit between the two positions.
 			uint differing_bits = 0;
 			if ((step_mask & 1u) != 0)
-				differing_bits |= floatBitsToUint(pos.x) ^
-				                  floatBitsToUint(pos.x + scale_exp2);
+				differing_bits |= floatBitsToUint(pos.x) ^ floatBitsToUint(pos.x + scale_exp2);
 			if ((step_mask & 2u) != 0)
-				differing_bits |= floatBitsToUint(pos.y) ^
-				                  floatBitsToUint(pos.y + scale_exp2);
+				differing_bits |= floatBitsToUint(pos.y) ^ floatBitsToUint(pos.y + scale_exp2);
 			if ((step_mask & 4u) != 0)
-				differing_bits |= floatBitsToUint(pos.z) ^
-				                  floatBitsToUint(pos.z + scale_exp2);
+				differing_bits |= floatBitsToUint(pos.z) ^ floatBitsToUint(pos.z + scale_exp2);
 			scale = findMSB(differing_bits);
-			scale_exp2 = uintBitsToFloat((scale - STACK_SIZE + 127u)
-			                             << 23u); // exp2f(scale - s_max)
+			scale_exp2 = uintBitsToFloat((scale - STACK_SIZE + 127u) << 23u); // exp2f(scale - s_max)
 
 			// Restore parent voxel from the stack.
 			parent = stack[scale].node;
@@ -307,8 +287,7 @@ bool RayMarchLeaf(
 	if (norm.z != 0)
 		o_pos.z = norm.z > 0 ? pos.z + scale_exp2 + EPS * 2 : pos.z - EPS;
 	o_normal = norm;
-	o_color = vec3(cur & 0xffu, (cur >> 8u) & 0xffu, (cur >> 16u) & 0xffu) *
-	          0.00392156862745098f; // (...) / 255.0f
+	o_color = vec3(cur & 0xffu, (cur >> 8u) & 0xffu, (cur >> 16u) & 0xffu) * 0.00392156862745098f; // (...) / 255.0f
 
 	return scale < STACK_SIZE && t_min <= t_max;
 }

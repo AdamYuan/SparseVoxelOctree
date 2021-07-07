@@ -47,9 +47,13 @@ void PathTracerThread::SetPause(bool pause) {
 void PathTracerThread::StopAndJoin() {
 	if (!IsRunning())
 		return;
+
+	m_pause.store(false, std::memory_order_release);
 	m_run.store(false, std::memory_order_release);
-	UpdateViewer();
-	SetPause(false);
+
+	m_viewer_condition_variable.notify_one();
+	m_pause_condition_variable.notify_one();
+
 	m_path_tracer_thread.join();
 	m_viewer_thread.join();
 }
@@ -71,22 +75,17 @@ void PathTracerThread::path_tracer_thread_func() {
 
 	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(device);
 	while (m_run.load(std::memory_order_acquire)) {
-		while (m_pause.load(std::memory_order_acquire)) {
-			std::unique_lock<std::mutex> lock{m_pause_mutex};
-			m_pause_condition_variable.wait(lock);
-		}
-
-		if (!m_run.load(std::memory_order_acquire))
-			break;
-
-		{
-			fence->Reset();
-			pt_command_buffer->Submit(fence);
-			fence->Wait();
-		}
+		fence->Reset();
+		pt_command_buffer->Submit(fence);
+		fence->Wait();
 
 		if ((m_spp++) % kPTResultUpdateInterval == 0) {
 			UpdateViewer();
+		}
+
+		while (m_pause.load(std::memory_order_acquire)) {
+			std::unique_lock<std::mutex> lock{m_pause_mutex};
+			m_pause_condition_variable.wait(lock);
 		}
 	}
 
@@ -104,21 +103,20 @@ void PathTracerThread::viewer_thread_func() {
 	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(device);
 	while (m_run.load(std::memory_order_acquire)) {
 		{
+			std::shared_ptr<myvk::CommandBuffer> viewer_command_buffer = myvk::CommandBuffer::Create(main_command_pool);
+			viewer_command_buffer->Begin();
+			m_path_tracer_viewer_ptr->CmdGenRenderPass(viewer_command_buffer);
+			viewer_command_buffer->End();
+
+			fence->Reset();
+			viewer_command_buffer->Submit(fence);
+			fence->Wait();
+		}
+
+		{
 			std::unique_lock<std::mutex> lock{m_viewer_mutex};
 			m_viewer_condition_variable.wait(lock);
 		}
-
-		if (!m_run.load(std::memory_order_acquire))
-			break;
-
-		std::shared_ptr<myvk::CommandBuffer> viewer_command_buffer = myvk::CommandBuffer::Create(main_command_pool);
-		viewer_command_buffer->Begin();
-		m_path_tracer_viewer_ptr->CmdGenRenderPass(viewer_command_buffer);
-		viewer_command_buffer->End();
-
-		fence->Reset();
-		viewer_command_buffer->Submit(fence);
-		fence->Wait();
 	}
 
 	spdlog::info("Quit path tracer viewer thread");

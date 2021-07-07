@@ -5,9 +5,7 @@
 #define STACK_SIZE 23 // must be 23
 #define EPS 3.552713678800501e-15
 
-layout(std430, set = 0, binding = 0) readonly buffer uuOctree {
-	uint uOctree[];
-};
+layout(std430, set = 0, binding = 0) readonly buffer uuOctree { uint uOctree[]; };
 layout(set = 1, binding = 0) uniform uuCamera {
 	mat4 uProjection;
 	mat4 uInvProjection;
@@ -18,6 +16,22 @@ layout(push_constant) uniform uuPushConstant {
 	float uOriginSize;
 };
 layout(location = 0) out float oFragT;
+
+bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t, out float size);
+
+vec3 GenCoarseRay() {
+	vec2 coord = ivec2(gl_FragCoord.xy) / vec2(uWidth, uHeight) * uBeamSize;
+	coord = coord * 2.0f - 1.0f;
+	return normalize(mat3(uInvView) * (uInvProjection * vec4(coord, 1, 1)).xyz);
+}
+
+void main() {
+	vec3 o = uInvView[3].xyz, d = GenCoarseRay();
+	float dir_sz =
+	    dot(uInvView[2].xyz, d) * 2.8284271247461903 * float(uBeamSize) / (float(uHeight) * uProjection[1][1]);
+	float t, size;
+	oFragT = RayMarchCoarse(o, d, uOriginSize, dir_sz, t, size) ? max(0.0, t - size) : 1e10;
+}
 
 /*
  *  Copyright (c) 2009-2011, NVIDIA Corporation
@@ -49,8 +63,7 @@ struct StackItem {
 	uint node;
 	float t_max;
 } stack[STACK_SIZE];
-bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t,
-                    out float size) {
+bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t, out float size) {
 	d.x = abs(d.x) > EPS ? d.x : (d.x >= 0 ? EPS : -EPS);
 	d.y = abs(d.y) > EPS ? d.y : (d.y >= 0 ? EPS : -EPS);
 	d.z = abs(d.z) > EPS ? d.z : (d.z >= 0 ? EPS : -EPS);
@@ -69,11 +82,8 @@ bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t,
 		oct_mask ^= 4u, t_bias.z = 3.0f * t_coef.z - t_bias.z;
 
 	// Initialize the active span of t-values.
-	float t_min =
-	    max(max(2.0f * t_coef.x - t_bias.x, 2.0f * t_coef.y - t_bias.y),
-	        2.0f * t_coef.z - t_bias.z);
-	float t_max =
-	    min(min(t_coef.x - t_bias.x, t_coef.y - t_bias.y), t_coef.z - t_bias.z);
+	float t_min = max(max(2.0f * t_coef.x - t_bias.x, 2.0f * t_coef.y - t_bias.y), 2.0f * t_coef.z - t_bias.z);
+	float t_max = min(min(t_coef.x - t_bias.x, t_coef.y - t_bias.y), t_coef.z - t_bias.z);
 	t_min = max(t_min, 0.0f);
 	float h = t_max;
 
@@ -157,17 +167,13 @@ bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t,
 			// Find the highest differing bit between the two positions.
 			uint differing_bits = 0;
 			if ((step_mask & 1u) != 0)
-				differing_bits |= floatBitsToUint(pos.x) ^
-				                  floatBitsToUint(pos.x + scale_exp2);
+				differing_bits |= floatBitsToUint(pos.x) ^ floatBitsToUint(pos.x + scale_exp2);
 			if ((step_mask & 2u) != 0)
-				differing_bits |= floatBitsToUint(pos.y) ^
-				                  floatBitsToUint(pos.y + scale_exp2);
+				differing_bits |= floatBitsToUint(pos.y) ^ floatBitsToUint(pos.y + scale_exp2);
 			if ((step_mask & 4u) != 0)
-				differing_bits |= floatBitsToUint(pos.z) ^
-				                  floatBitsToUint(pos.z + scale_exp2);
+				differing_bits |= floatBitsToUint(pos.z) ^ floatBitsToUint(pos.z + scale_exp2);
 			scale = findMSB(differing_bits);
-			scale_exp2 = uintBitsToFloat((scale - STACK_SIZE + 127u)
-			                             << 23u); // exp2f(scale - s_max)
+			scale_exp2 = uintBitsToFloat((scale - STACK_SIZE + 127u) << 23u); // exp2f(scale - s_max)
 
 			// Restore parent voxel from the stack.
 			parent = stack[scale].node;
@@ -191,20 +197,4 @@ bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t,
 	t = t_min;
 	size = scale_exp2;
 	return scale < STACK_SIZE && t_min <= t_max;
-}
-
-vec3 GenCoarseRay() {
-	vec2 coord = ivec2(gl_FragCoord.xy) / vec2(uWidth, uHeight) * uBeamSize;
-	coord = coord * 2.0f - 1.0f;
-	return normalize(mat3(uInvView) * (uInvProjection * vec4(coord, 1, 1)).xyz);
-}
-
-void main() {
-	vec3 o = uInvView[3].xyz, d = GenCoarseRay();
-	float dir_sz = dot(uInvView[2].xyz, d) * 2.8284271247461903 *
-	               float(uBeamSize) / (float(uHeight) * uProjection[1][1]);
-	float t, size;
-	oFragT = RayMarchCoarse(o, d, uOriginSize, dir_sz, t, size)
-	             ? max(0.0, t - size)
-	             : 1e10;
 }

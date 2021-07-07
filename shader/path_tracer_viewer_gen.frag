@@ -12,12 +12,10 @@ void main() {
 	if (uViewType == 0) {
 		vec4 color = imageLoad(uColor, ivec2(gl_FragCoord.xy));
 		oColor = vec4(pow(color.xyz, vec3(1.0 / 2.2)), 1.0);
-	}
-	else if (uViewType == 1) {
+	} else if (uViewType == 1) {
 		vec4 albedo = imageLoad(uAlbedo, ivec2(gl_FragCoord.xy));
 		oColor = vec4(albedo.xyz, 1.0);
-	}
-	else {
+	} else {
 		vec4 normal = imageLoad(uNormal, ivec2(gl_FragCoord.xy));
 		oColor = vec4(normal.xyz * 0.5 + 0.5, 1.0);
 	}

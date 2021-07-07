@@ -8,9 +8,7 @@ layout(location = 0) in vec2 vTexcoord[];
 layout(location = 0) out vec2 gTexcoord;
 layout(location = 1) out vec3 gVoxelPos;
 
-vec2 Project(in vec3 v, in uint axis) {
-	return axis == 0 ? v.yz : (axis == 1 ? v.xz : v.xy);
-}
+vec2 Project(in vec3 v, in uint axis) { return axis == 0 ? v.yz : (axis == 1 ? v.xz : v.xy); }
 
 void main() {
 	// project the positions
