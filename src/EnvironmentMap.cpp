@@ -10,19 +10,23 @@ void EnvironmentMap::create_descriptors(const std::shared_ptr<myvk::Device> &dev
 	m_descriptor_pool = myvk::DescriptorPool::Create(
 	    device, 1, {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2}});
 	{
-		VkDescriptorSetLayoutBinding image_binding = {.binding = 0,
-		                                              .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-		                                              .descriptorCount = 1,
-		                                              .stageFlags =
-		                                                  VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT};
-		VkDescriptorSetLayoutBinding prab_buffer_binding = {.binding = 1,
-		                                                    .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-		                                                    .descriptorCount = 1,
-		                                                    .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT};
-		VkDescriptorSetLayoutBinding alias_buffer_binding = {.binding = 2,
-		                                                     .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-		                                                     .descriptorCount = 1,
-		                                                     .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT};
+		VkDescriptorSetLayoutBinding image_binding = {};
+		image_binding.binding = 0;
+		image_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		image_binding.descriptorCount = 1;
+		image_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+
+		VkDescriptorSetLayoutBinding prab_buffer_binding = {};
+		prab_buffer_binding.binding = 1;
+		prab_buffer_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		prab_buffer_binding.descriptorCount = 1;
+		prab_buffer_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+		VkDescriptorSetLayoutBinding alias_buffer_binding = {};
+		alias_buffer_binding.binding = 2;
+		alias_buffer_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		alias_buffer_binding.descriptorCount = 1;
+		alias_buffer_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
 		m_descriptor_set_layout =
 		    myvk::DescriptorSetLayout::Create(device, {image_binding, prab_buffer_binding, alias_buffer_binding});
