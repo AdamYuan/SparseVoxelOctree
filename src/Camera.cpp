@@ -1,7 +1,6 @@
 #include "Camera.hpp"
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/string_cast.hpp>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
@@ -79,8 +78,8 @@ Camera::UniformData Camera::fetch_uniform_data() const {
 	trans = glm::rotate(trans, m_yaw, glm::vec3(0.0f, 1.0f, 0.0f));
 	trans = glm::rotate(trans, m_pitch, glm::vec3(-1.0f, 0.0f, 0.0f));
 	float tg = glm::tan(m_fov * 0.5f);
-	glm::vec3 look = (trans * glm::vec4(0.0, 0.0, 1.0, 0.0)).xyz();
-	glm::vec3 side = (trans * glm::vec4(1.0, 0.0, 0.0, 0.0)).xyz();
+	glm::vec3 look = (trans * glm::vec4(0.0, 0.0, 1.0, 0.0));
+	glm::vec3 side = (trans * glm::vec4(1.0, 0.0, 0.0, 0.0));
 	look = glm::normalize(look);
 	side = glm::normalize(side) * tg * m_aspect_ratio;
 	glm::vec3 up = glm::normalize(glm::cross(look, side)) * tg;
