@@ -1,5 +1,5 @@
-#include "Config.hpp"
 #include "PathTracerThread.hpp"
+#include "Config.hpp"
 #include <spdlog/spdlog.h>
 
 std::shared_ptr<PathTracerThread> PathTracerThread::Create(const std::shared_ptr<PathTracerViewer> &path_tracer_viewer,
@@ -41,6 +41,7 @@ void PathTracerThread::SetPause(bool pause) {
 	m_time = glfwGetTime() - m_time;
 	m_pause.store(pause, std::memory_order_release);
 
+	spdlog::info("m_pause_condition_variable SIGNAL");
 	m_pause_condition_variable.notify_one();
 }
 
@@ -51,14 +52,19 @@ void PathTracerThread::StopAndJoin() {
 	m_pause.store(false, std::memory_order_release);
 	m_run.store(false, std::memory_order_release);
 
+	spdlog::info("m_viewer_condition_variable SIGNAL");
 	m_viewer_condition_variable.notify_one();
+	spdlog::info("m_pause_condition_variable SIGNAL");
 	m_pause_condition_variable.notify_one();
 
 	m_path_tracer_thread.join();
 	m_viewer_thread.join();
 }
 
-void PathTracerThread::UpdateViewer() { m_viewer_condition_variable.notify_one(); }
+void PathTracerThread::UpdateViewer() {
+	spdlog::info("m_viewer_condition_variable SIGNAL");
+	m_viewer_condition_variable.notify_one();
+}
 
 void PathTracerThread::path_tracer_thread_func() {
 	spdlog::info("Enter path tracer thread");
@@ -84,8 +90,10 @@ void PathTracerThread::path_tracer_thread_func() {
 		}
 
 		while (m_pause.load(std::memory_order_acquire)) {
+			spdlog::info("Path tracer thread [pause]: WAIT_LOCK");
 			std::unique_lock<std::mutex> lock{m_pause_mutex};
 			m_pause_condition_variable.wait(lock);
+			spdlog::info("Path tracer thread [pause]: WAIT_LOCK_DONE");
 		}
 	}
 
@@ -114,8 +122,10 @@ void PathTracerThread::viewer_thread_func() {
 		}
 
 		{
+			spdlog::info("Path tracer viewer thread: WAIT_LOCK");
 			std::unique_lock<std::mutex> lock{m_viewer_mutex};
 			m_viewer_condition_variable.wait(lock);
+			spdlog::info("Path tracer viewer thread: WAIT_LOCK_DONE");
 		}
 	}
 

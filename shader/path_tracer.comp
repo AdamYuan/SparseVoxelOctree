@@ -2,11 +2,7 @@
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(std430, set = 0, binding = 0) readonly buffer uuOctree { uint uOctree[]; };
-layout(set = 1, binding = 0) uniform uuCamera {
-	mat4 uProjection;
-	mat4 uInvProjection;
-	mat4 uInvView;
-};
+layout(set = 1, binding = 0) uniform uuCamera { vec4 uPosition, uLook, uSide, uUp; };
 
 layout(std430, set = 2, binding = 0) buffer uuSobol { uint uSobol[]; };
 
@@ -44,7 +40,7 @@ vec3 AlignDirection(in const vec3 dir, in const vec3 target) {
 vec3 GenRay(in const ivec2 pixel, in const ivec2 size, in const vec2 noise) {
 	vec2 coord = (vec2(pixel) + noise) / vec2(size);
 	coord = coord * 2.0f - 1.0f;
-	return normalize(mat3(uInvView) * (uInvProjection * vec4(coord, 1, 1)).xyz);
+	return normalize(uLook.xyz - uSide.xyz * coord.x - uUp.xyz * coord.y);
 }
 
 vec2 GetSobol(in const int i) { return vec2(uSobol[i << 1], uSobol[i << 1 | 1]) / 4294967296.0; }
@@ -54,7 +50,7 @@ void main() {
 	if (pixel.x >= size.x || pixel.y >= size.y)
 		return;
 
-	vec3 o = uInvView[3].xyz, d = GenRay(pixel, size, GetSobol(0));
+	vec3 o = uPosition.xyz, d = GenRay(pixel, size, GetSobol(0));
 
 	vec2 noise = texelFetch(uNoise, pixel & 0xff, 0).xy;
 	vec3 acc_color = vec3(1), radiance = vec3(0);

@@ -1,16 +1,9 @@
 #version 450 core
-// RENDER BEAM OPTIMIZATION TEXTURE
-// RAY MARCH METHOD IS COPIED FROM
-// https://code.google.com/archive/p/efficient-sparse-voxel-octrees/
 #define STACK_SIZE 23 // must be 23
 #define EPS 3.552713678800501e-15
 
 layout(std430, set = 0, binding = 0) readonly buffer uuOctree { uint uOctree[]; };
-layout(set = 1, binding = 0) uniform uuCamera {
-	mat4 uProjection;
-	mat4 uInvProjection;
-	mat4 uInvView;
-};
+layout(set = 1, binding = 0) uniform uuCamera { vec4 uPosition, uLook, uSide, uUp; };
 layout(push_constant) uniform uuPushConstant {
 	uint uWidth, uHeight, uBeamSize;
 	float uOriginSize;
@@ -22,14 +15,27 @@ bool RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t, ou
 vec3 GenCoarseRay() {
 	vec2 coord = ivec2(gl_FragCoord.xy) / vec2(uWidth, uHeight) * uBeamSize;
 	coord = coord * 2.0f - 1.0f;
-	return normalize(mat3(uInvView) * (uInvProjection * vec4(coord, 1, 1)).xyz);
+	return normalize(uLook.xyz - uSide.xyz * coord.x - uUp.xyz * coord.y);
+}
+
+vec3 GenCoarseRay(in vec2 bias) {
+	vec2 coord = (vec2(gl_FragCoord.xy) + bias) / vec2(uWidth, uHeight) * uBeamSize;
+	coord = coord * 2.0f - 1.0f;
+	return normalize(uLook.xyz - uSide.xyz * coord.x - uUp.xyz * coord.y);
+}
+
+float RayTangent(in vec3 x, in vec3 y) {
+	float c = dot(x, y);
+	return sqrt(1.0 - c * c) / abs(c);
 }
 
 void main() {
-	vec3 o = uInvView[3].xyz, d = GenCoarseRay();
-	float dir_sz =
-	    dot(uInvView[2].xyz, d) * 2.8284271247461903 * float(uBeamSize) / (float(uHeight) * uProjection[1][1]);
-	float t, size;
+	vec3 o = uPosition.xyz, d = GenCoarseRay();
+	float t0 = RayTangent(d, GenCoarseRay(vec2(0.5, 0.5)));
+	float t1 = RayTangent(d, GenCoarseRay(vec2(-0.5, 0.5)));
+	float t2 = RayTangent(d, GenCoarseRay(vec2(0.5, -0.5)));
+	float t3 = RayTangent(d, GenCoarseRay(vec2(-0.5, -0.5)));
+	float dir_sz = 2.0 * max(max(t0, t1), max(t2, t3)), t, size;
 	oFragT = RayMarchCoarse(o, d, uOriginSize, dir_sz, t, size) ? max(0.0, t - size) : 1e10;
 }
 

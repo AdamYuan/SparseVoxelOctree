@@ -1,10 +1,6 @@
 #version 450
 layout(std430, set = 0, binding = 0) readonly buffer uuOctree { uint uOctree[]; };
-layout(set = 1, binding = 0) uniform uuCamera {
-	mat4 uProjection;
-	mat4 uInvProjection;
-	mat4 uInvView;
-};
+layout(set = 1, binding = 0) uniform uuCamera { vec4 uPosition, uLook, uSide, uUp; };
 layout(set = 2, binding = 0) uniform sampler2D uBeamImage;
 layout(location = 0) out vec4 oColor;
 
@@ -15,13 +11,13 @@ bool RayMarchLeaf(vec3 o, vec3 d, out float o_t, out vec3 o_color, out vec3 o_no
 vec3 GenRay() {
 	vec2 coord = ivec2(gl_FragCoord.xy) / vec2(uWidth, uHeight);
 	coord = coord * 2.0f - 1.0f;
-	return normalize(mat3(uInvView) * (uInvProjection * vec4(coord, 1, 1)).xyz);
+	return normalize(uLook.xyz - uSide.xyz * coord.x - uUp.xyz * coord.y);
 }
 
 vec3 Heat(in float x) { return sin(clamp(x, 0.0, 1.0) * 3.0 - vec3(1, 2, 3)) * 0.5 + 0.5; }
 
 void main() {
-	vec3 o = uInvView[3].xyz, d = GenRay();
+	vec3 o = uPosition.xyz, d = GenRay();
 
 	float beam;
 	if (uBeamEnable == 1) {

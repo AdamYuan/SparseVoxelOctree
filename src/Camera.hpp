@@ -26,9 +26,7 @@ private:
 	std::vector<std::shared_ptr<myvk::DescriptorSet>> m_descriptor_sets;
 
 	struct UniformData {
-		glm::mat4 m_projection;
-		glm::mat4 m_inv_projection;
-		glm::mat4 m_inv_view;
+		glm::vec4 m_position, m_look, m_side, m_up;
 	};
 
 	void move_forward(float dist, float dir);
