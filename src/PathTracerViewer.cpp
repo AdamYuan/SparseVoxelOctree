@@ -134,6 +134,8 @@ void PathTracerViewer::create_descriptors(const std::shared_ptr<myvk::Device> &d
 		binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		binding.descriptorCount = 1;
 		binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		VkSampler immutable_samplers[] = {m_sampler->GetHandle()};
+		binding.pImmutableSamplers = immutable_samplers;
 
 		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {binding});
 	}

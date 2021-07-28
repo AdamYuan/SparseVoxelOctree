@@ -76,6 +76,8 @@ void ImGuiRenderer::create_descriptor(const std::shared_ptr<myvk::Device> &devic
 		layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		layout_binding.descriptorCount = 1;
 		layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		VkSampler immutable_samplers[] = {m_font_texture_sampler->GetHandle()};
+		layout_binding.pImmutableSamplers = immutable_samplers;
 
 		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {layout_binding});
 	}

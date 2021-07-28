@@ -59,6 +59,8 @@ void PathTracer::create_descriptor(const std::shared_ptr<myvk::Device> &device) 
 		noise_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		noise_binding.descriptorCount = 1;
 		noise_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		VkSampler immutable_samplers[] = {m_noise_sampler->GetHandle()};
+		noise_binding.pImmutableSamplers = immutable_samplers;
 
 		m_noise_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {noise_binding});
 	}

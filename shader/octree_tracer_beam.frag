@@ -1,7 +1,4 @@
 #version 450 core
-#define STACK_SIZE 23 // must be 23
-#define EPS 3.552713678800501e-15
-
 layout(std430, set = 0, binding = 0) readonly buffer uuOctree { uint uOctree[]; };
 layout(set = 1, binding = 0) uniform uuCamera { vec4 uPosition, uLook, uSide, uUp; };
 layout(push_constant) uniform uuPushConstant {
@@ -65,6 +62,8 @@ void main() {
  *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#define STACK_SIZE 23
+#define EPS 3.552713678800501e-15
 struct StackItem {
 	uint node;
 	float t_max;

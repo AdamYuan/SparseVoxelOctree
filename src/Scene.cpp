@@ -348,6 +348,14 @@ void Scene::create_descriptors(const std::shared_ptr<myvk::Device> &device) {
 		layout_binding.descriptorCount = std::max((uint32_t)m_textures.size(), 1u);
 		layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+		std::vector<VkSampler> immutable_samplers;
+		if (!m_textures.empty()) {
+			immutable_samplers.resize(m_textures.size());
+			for (uint32_t i = 0; i < m_textures.size(); ++i)
+				immutable_samplers[i] = m_textures[i].m_sampler->GetHandle();
+			layout_binding.pImmutableSamplers = immutable_samplers.data();
+		}
+
 		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {layout_binding});
 	}
 	m_descriptor_pool = myvk::DescriptorPool::Create(
