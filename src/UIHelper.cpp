@@ -141,6 +141,7 @@ bool FileOpen(const char *label, const char *btn, char *buf, size_t buf_size, co
 	}
 	return ret;
 }
+
 bool FileSave(const char *label, const char *btn, char *buf, size_t buf_size, const char *title, int filter_num,
               const char *const *filter_patterns) {
 	bool ret = ImGui::InputText(label, buf, buf_size);
@@ -153,5 +154,15 @@ bool FileSave(const char *label, const char *btn, char *buf, size_t buf_size, co
 		ret = true;
 	}
 	return ret;
+}
+
+void PushDisabled() {
+	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+	ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+}
+
+void PopDisabled() {
+	ImGui::PopItemFlag();
+	ImGui::PopStyleVar();
 }
 } // namespace UI

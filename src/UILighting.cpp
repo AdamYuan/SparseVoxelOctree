@@ -9,27 +9,39 @@ namespace UI {
 void LightingMenuItem(const std::shared_ptr<myvk::CommandPool> &command_pool, const std::shared_ptr<Lighting> &lighting,
                       const char **open_modal) {
 	if (ImGui::BeginMenu("Light")) {
-		if (ImGui::MenuItem("Sun Radiance", nullptr, lighting->m_light_type == Lighting::LightTypes::kSunRadiance))
-			lighting->m_light_type = Lighting::LightTypes::kSunRadiance;
-		ImGui::BeginGroup();
-		ImGui::DragFloat3("", &lighting->m_sun_radiance[0], 0.1f, 0.0f, kMaxSunRadiance);
-		ImGui::EndGroup();
+		auto type = lighting->m_light_type;
+		bool active;
 
-		if (ImGui::MenuItem("Environment Map", nullptr,
-		                    lighting->m_light_type == Lighting::LightTypes::kEnvironmentMap))
-			lighting->m_light_type = Lighting::LightTypes::kEnvironmentMap;
-		if (ImGui::Button("Load"))
-			*open_modal = kLightingLoadEnvMapModal;
-		if (!lighting->GetEnvironmentMapPtr()->Empty()) {
-			ImGui::SameLine();
-			if (ImGui::Button("Reset")) {
-				command_pool->GetQueuePtr()->WaitIdle();
-				lighting->GetEnvironmentMapPtr()->Reset();
-			} else {
+		{
+			active = type == Lighting::LightTypes::kSunRadiance;
+			if (ImGui::RadioButton("Sun Radiance", active))
+				lighting->m_light_type = Lighting::LightTypes::kSunRadiance;
+
+			if (!active) UI::PushDisabled();
+			ImGui::DragFloat3("", &lighting->m_sun_radiance[0], 0.1f, 0.0f, kMaxSunRadiance);
+			if (!active) UI::PopDisabled();
+		}
+
+		{
+			active = type == Lighting::LightTypes::kEnvironmentMap;
+			if (ImGui::RadioButton("Environment Map", active))
+				lighting->m_light_type = Lighting::LightTypes::kEnvironmentMap;
+
+			if (!active) UI::PushDisabled();
+			if (ImGui::Button("Load"))
+				*open_modal = kLightingLoadEnvMapModal;
+			if (!lighting->GetEnvironmentMapPtr()->Empty()) {
 				ImGui::SameLine();
-				ImGui::Text("(%d x %d)", lighting->GetEnvironmentMapPtr()->GetImageExtent().width,
-				            lighting->GetEnvironmentMapPtr()->GetImageExtent().height);
+				if (ImGui::Button("Unload")) {
+					command_pool->GetQueuePtr()->WaitIdle();
+					lighting->GetEnvironmentMapPtr()->Reset();
+				} else {
+					ImGui::SameLine();
+					ImGui::Text("(%d x %d)", lighting->GetEnvironmentMapPtr()->GetImageExtent().width,
+					            lighting->GetEnvironmentMapPtr()->GetImageExtent().height);
+				}
 			}
+			if (!active) UI::PopDisabled();
 		}
 
 		ImGui::EndMenu();

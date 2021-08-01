@@ -16,6 +16,8 @@ bool FileSave(const char *label, const char *btn, char *buf, size_t buf_size, co
               const char *const *filter_patterns);
 bool FileOpen(const char *label, const char *btn, char *buf, size_t buf_size, const char *title, int filter_num,
               const char *const *filter_patterns);
+void PushDisabled();
+void PopDisabled();
 } // namespace UI
 
 #endif
