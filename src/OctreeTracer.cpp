@@ -24,7 +24,7 @@ void OctreeTracer::create_layouts(const std::shared_ptr<myvk::Device> &device) {
 	    device,
 	    {m_octree_ptr->GetDescriptorSetLayout(), m_camera_ptr->GetDescriptorSetLayout(),
 	     m_lighting_ptr->GetEnvironmentMapPtr()->GetDescriptorSetLayout(), m_descriptor_set_layout},
-	    {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 6 * sizeof(uint32_t)}});
+	    {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 6 * sizeof(uint32_t) + 3 * sizeof(float)}});
 	m_beam_pipeline_layout = myvk::PipelineLayout::Create(
 	    device, {m_octree_ptr->GetDescriptorSetLayout(), m_camera_ptr->GetDescriptorSetLayout()},
 	    {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 3 * sizeof(uint32_t) + sizeof(float)}});
@@ -330,10 +330,17 @@ void OctreeTracer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &c
 	viewport.height = m_height;
 	command_buffer->CmdSetViewport({viewport});
 
-	uint32_t push_constants[] = {
+	uint32_t uint_push_constants[] = {
 	    m_width,       m_height, (uint32_t)m_view_type, (uint32_t)m_lighting_ptr->GetFinalLightType(),
 	    m_beam_enable, kBeamSize};
-	command_buffer->CmdPushConstants(m_main_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push_constants),
-	                                 push_constants);
+	glm::vec3 sun_color = m_lighting_ptr->m_sun_radiance;
+	float max_radiance = glm::max(glm::max(sun_color.r, sun_color.g), sun_color.b);
+	if (max_radiance != 0.0f)
+		sun_color /= max_radiance;
+
+	command_buffer->CmdPushConstants(m_main_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+	                                 sizeof(uint_push_constants), uint_push_constants);
+	command_buffer->CmdPushConstants(m_main_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(uint_push_constants),
+	                                 3 * sizeof(float), &sun_color[0]);
 	command_buffer->CmdDraw(3, 1, 0, 0);
 }

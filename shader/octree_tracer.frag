@@ -5,7 +5,10 @@ layout(set = 2, binding = 0) uniform sampler2D uEnvironmentMap;
 layout(set = 3, binding = 0) uniform sampler2D uBeamImage;
 layout(location = 0) out vec4 oColor;
 
-layout(push_constant) uniform uuPushConstant { uint uWidth, uHeight, uViewType, uLightType, uBeamEnable, uBeamSize; };
+layout(push_constant) uniform uuPushConstant {
+	uint uWidth, uHeight, uViewType, uLightType, uBeamEnable, uBeamSize;
+	float uSunR, uSunG, uSunB;
+};
 
 bool RayMarchLeaf(vec3 o, vec3 d, out float o_t, out vec3 o_color, out vec3 o_normal, out uint o_iter);
 
@@ -18,8 +21,10 @@ vec3 GenRay() {
 vec3 Heat(in float x) { return sin(clamp(x, 0.0, 1.0) * 3.0 - vec3(1, 2, 3)) * 0.5 + 0.5; }
 
 #define PI 3.1415926535897932384626433832795
+vec2 EnvMapCoord(in vec3 d) { return vec2(atan(d.x, d.z) / PI * 0.5, acos(d.y) / PI); }
+
 vec3 Light(in vec3 d) {
-	return uLightType == 0 ? vec3(1.0) : texture(uEnvironmentMap, vec2(atan(d.x, d.z) / PI * 0.5, acos(d.y) / PI)).xyz;
+	return uLightType == 0 ? vec3(uSunR, uSunG, uSunB) : texture(uEnvironmentMap, EnvMapCoord(d)).xyz;
 }
 
 void main() {
@@ -42,10 +47,8 @@ void main() {
 		normal = vec3(0.0);
 		color = Light(d);
 	}
-	oColor =
-	    vec4(uViewType == 2 ? Heat(iter / 128.0)
-	                        : (uViewType == 0 ? pow(color, vec3(1.0 / 2.2)) : normal * 0.5 + 0.5),
-	         1.0);
+	oColor = vec4(
+	    uViewType == 2 ? Heat(iter / 128.0) : (uViewType == 0 ? pow(color, vec3(1.0 / 2.2)) : normal * 0.5 + 0.5), 1.0);
 }
 
 // The following code is copied from
