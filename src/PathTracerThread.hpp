@@ -3,6 +3,7 @@
 
 #include "PathTracerViewer.hpp"
 #include "myvk/Queue.hpp"
+#include <binary_semaphore.hpp>
 #include <atomic>
 #include <condition_variable>
 #include <memory>
@@ -15,8 +16,7 @@ private:
 	std::shared_ptr<myvk::Queue> m_path_tracer_queue, m_main_queue;
 
 	std::thread m_path_tracer_thread, m_viewer_thread;
-	std::condition_variable m_pause_condition_variable, m_viewer_condition_variable;
-	std::mutex m_pause_mutex, m_viewer_mutex;
+	binary_semaphore m_pause_semaphore, m_viewer_semaphore;
 	std::atomic_bool m_pause, m_run;
 
 	uint32_t m_spp;
