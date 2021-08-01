@@ -328,7 +328,7 @@ Application::Application() {
 	m_camera->m_position = glm::vec3(1.5);
 	m_octree = Octree::Create(m_device);
 	m_octree_tracer = OctreeTracer::Create(m_octree, m_camera, m_lighting, m_render_pass, 0, kFrameCount);
-	m_path_tracer = PathTracer::Create(m_octree, m_camera, m_path_tracer_command_pool);
+	m_path_tracer = PathTracer::Create(m_octree, m_camera, m_lighting, m_path_tracer_command_pool);
 	m_path_tracer_viewer = PathTracerViewer::Create(m_path_tracer, m_render_pass, 0);
 
 	m_loader_thread = LoaderThread::Create(m_octree, m_loader_queue, m_main_queue);

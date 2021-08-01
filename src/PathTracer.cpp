@@ -1,19 +1,20 @@
+#include "PathTracer.hpp"
 #include "Config.hpp"
 #include "Noise.inl"
-#include "PathTracer.hpp"
 
 inline static constexpr uint32_t group_8(uint32_t x) { return (x >> 3u) + ((x & 0x7u) ? 1u : 0u); }
 
-void PathTracer::create_target_images(const std::shared_ptr<myvk::Device> &device, const std::vector<std::shared_ptr<myvk::Queue>> &access_queue) {
-	m_color_image = myvk::Image::CreateTexture2D(device, {m_width, m_height}, 1, VK_FORMAT_R32G32B32A32_SFLOAT,
-	                                             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-	                                                 VK_IMAGE_USAGE_STORAGE_BIT, access_queue);
-	m_albedo_image = myvk::Image::CreateTexture2D(device, {m_width, m_height}, 1, VK_FORMAT_R8G8B8A8_UNORM,
-	                                              VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-	                                                  VK_IMAGE_USAGE_STORAGE_BIT, access_queue);
-	m_normal_image = myvk::Image::CreateTexture2D(device, {m_width, m_height}, 1, VK_FORMAT_R8G8B8A8_SNORM,
-	                                              VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-	                                                  VK_IMAGE_USAGE_STORAGE_BIT, access_queue);
+void PathTracer::create_target_images(const std::shared_ptr<myvk::Device> &device,
+                                      const std::vector<std::shared_ptr<myvk::Queue>> &access_queue) {
+	m_color_image = myvk::Image::CreateTexture2D(
+	    device, {m_width, m_height}, 1, VK_FORMAT_R32G32B32A32_SFLOAT,
+	    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT, access_queue);
+	m_albedo_image = myvk::Image::CreateTexture2D(
+	    device, {m_width, m_height}, 1, VK_FORMAT_R8G8B8A8_UNORM,
+	    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT, access_queue);
+	m_normal_image = myvk::Image::CreateTexture2D(
+	    device, {m_width, m_height}, 1, VK_FORMAT_R8G8B8A8_SNORM,
+	    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT, access_queue);
 
 	m_color_image_view = myvk::ImageView::Create(m_color_image, VK_IMAGE_VIEW_TYPE_2D);
 	m_albedo_image_view = myvk::ImageView::Create(m_albedo_image, VK_IMAGE_VIEW_TYPE_2D);
@@ -74,8 +75,9 @@ void PathTracer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 	m_pipeline_layout = myvk::PipelineLayout::Create(
 	    device,
 	    {m_octree_ptr->GetDescriptorSetLayout(), m_camera_ptr->GetDescriptorSetLayout(),
-	     m_sobol.GetDescriptorSetLayout(), m_target_descriptor_set_layout, m_noise_descriptor_set_layout},
-	    {{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t) + 3 * sizeof(float)}});
+	     m_lighting_ptr->GetEnvironmentMapPtr()->GetDescriptorSetLayout(), m_sobol.GetDescriptorSetLayout(),
+	     m_target_descriptor_set_layout, m_noise_descriptor_set_layout},
+	    {{VK_SHADER_STAGE_COMPUTE_BIT, 0, 2 * sizeof(uint32_t) + 3 * sizeof(float)}});
 	{
 		constexpr uint32_t kPathTracerCompSpv[] = {
 #include "spirv/path_tracer.comp.u32"
@@ -158,13 +160,14 @@ void PathTracer::set_noise_image(const std::shared_ptr<myvk::CommandPool> &comma
 
 std::shared_ptr<PathTracer> PathTracer::Create(const std::shared_ptr<Octree> &octree,
                                                const std::shared_ptr<Camera> &camera,
+                                               const std::shared_ptr<Lighting> &lighting,
                                                const std::shared_ptr<myvk::CommandPool> &command_pool) {
 	std::shared_ptr<PathTracer> ret = std::make_shared<PathTracer>();
 	ret->m_octree_ptr = octree;
 	ret->m_camera_ptr = camera;
+	ret->m_lighting_ptr = lighting;
 
 	ret->m_bounce = kDefaultBounce;
-	ret->m_sun_radiance = glm::vec3(kDefaultSunRadiance);
 
 	ret->m_sobol.Initialize(command_pool->GetDevicePtr());
 	ret->create_noise_images(command_pool->GetDevicePtr());
@@ -175,7 +178,8 @@ std::shared_ptr<PathTracer> PathTracer::Create(const std::shared_ptr<Octree> &oc
 	return ret;
 }
 
-void PathTracer::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool, const std::shared_ptr<myvk::Queue> &shared_queue) {
+void PathTracer::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool,
+                       const std::shared_ptr<myvk::Queue> &shared_queue) {
 	{
 		float tmp = m_camera_ptr->m_aspect_ratio;
 		m_camera_ptr->m_aspect_ratio = m_width / float(m_height);
@@ -192,12 +196,16 @@ void PathTracer::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool, c
 
 void PathTracer::CmdRender(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) {
 	command_buffer->CmdBindDescriptorSets({m_octree_ptr->GetDescriptorSet(),
-	                                       m_camera_ptr->GetFrameDescriptorSet(kFrameCount), m_sobol.GetDescriptorSet(),
-	                                       m_target_descriptor_set, m_noise_descriptor_set},
+	                                       m_camera_ptr->GetFrameDescriptorSet(kFrameCount),
+	                                       m_lighting_ptr->GetEnvironmentMapPtr()->GetDescriptorSet(),
+	                                       m_sobol.GetDescriptorSet(), m_target_descriptor_set, m_noise_descriptor_set},
 	                                      m_pipeline);
-	command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &m_bounce);
-	command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t),
-	                                 3 * sizeof(float), &m_sun_radiance[0]);
+
+	uint32_t uint_push_constants[] = {m_bounce, (uint32_t)m_lighting_ptr->GetFinalLightType()};
+	command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint_push_constants),
+	                                 uint_push_constants);
+	command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint_push_constants),
+	                                 3 * sizeof(float), &m_lighting_ptr->m_sun_radiance[0]);
 	command_buffer->CmdBindPipeline(m_pipeline);
 	command_buffer->CmdDispatch(group_8(m_width), group_8(m_height), 1);
 

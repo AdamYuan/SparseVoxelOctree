@@ -161,8 +161,6 @@ void PathTracerStartModal(const std::shared_ptr<PathTracerThread> &path_tracer_t
 		if (ImGui::DragInt("Bounce", &bounce, 1, kMinBounce, kMaxBounce))
 			path_tracer->m_bounce = bounce;
 
-		ImGui::DragFloat3("Sun Radiance", &path_tracer->m_sun_radiance[0], 0.1f, 0.0f, kMaxSunRadiance);
-
 		float button_width = (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
 
 		if (ImGui::Button("Start", {button_width, 0})) {
