@@ -2,7 +2,6 @@
 
 #include "UIHelper.hpp"
 #include <font-awesome/IconsFontAwesome5.h>
-#include <imgui/imgui.h>
 
 namespace UI {
 void OctreeTracerMenuItems(const std::shared_ptr<OctreeTracer> &octree_tracer) {

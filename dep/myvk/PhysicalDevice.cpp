@@ -7,7 +7,12 @@ void PhysicalDevice::initialize(const std::shared_ptr<Instance> &instance, VkPhy
 	m_physical_device = physical_device;
 	vkGetPhysicalDeviceProperties(physical_device, &m_properties);
 	vkGetPhysicalDeviceMemoryProperties(physical_device, &m_memory_properties);
-	vkGetPhysicalDeviceFeatures(physical_device, &m_features);
+	VkPhysicalDeviceFeatures2 features2 = {};
+	features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	features2.pNext = &m_descriptor_indexing_features;
+	m_descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+	vkGetPhysicalDeviceFeatures2(physical_device, &features2);
+	m_features = features2.features;
 	{
 		uint32_t count;
 		vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &count, nullptr);

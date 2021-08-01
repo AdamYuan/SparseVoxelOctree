@@ -7,9 +7,13 @@ std::shared_ptr<Instance> Instance::CreateWithGlfwExtensions(bool use_validation
                                                              PFN_vkDebugUtilsMessengerCallbackEXT debug_callback) {
 	std::shared_ptr<Instance> ret = std::make_shared<Instance>();
 
-	VkInstanceCreateInfo create_info{};
+	VkApplicationInfo app_info = {};
+	app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+	app_info.apiVersion = VK_API_VERSION_1_2;
+
+	VkInstanceCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-	create_info.pApplicationInfo = nullptr;
+	create_info.pApplicationInfo = &app_info;
 
 	uint32_t glfw_extension_count = 0;
 	const char **glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
@@ -21,11 +25,11 @@ std::shared_ptr<Instance> Instance::CreateWithGlfwExtensions(bool use_validation
 	create_info.ppEnabledExtensionNames = extensions.data();
 
 	VkValidationFeatureEnableEXT validation_features_enabled[] = {
-	    VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT,
-	    VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT};
+	    VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT, VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT};
 	VkValidationFeaturesEXT validation_features = {};
 	validation_features.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-	validation_features.enabledValidationFeatureCount = sizeof(validation_features_enabled) / sizeof(VkValidationFeatureEnableEXT);
+	validation_features.enabledValidationFeatureCount =
+	    sizeof(validation_features_enabled) / sizeof(VkValidationFeatureEnableEXT);
 	validation_features.pEnabledValidationFeatures = validation_features_enabled;
 
 	if (use_validation_layer) {

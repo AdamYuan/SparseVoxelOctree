@@ -60,7 +60,7 @@ void PathTracerControlButtons(const std::shared_ptr<PathTracerThread> &path_trac
 }
 void PathTracerMenuItems(const std::shared_ptr<PathTracerThread> &path_tracer_thread) {
 	const auto &path_tracer_viewer = path_tracer_thread->GetPathTracerViewerPtr();
-	if (ImGui::BeginMenu("View")) {
+	if (ImGui::BeginMenu("Channel")) {
 		if (ImGui::MenuItem("Color", nullptr, path_tracer_viewer->m_view_type == PathTracerViewer::ViewTypes::kColor)) {
 			path_tracer_viewer->m_view_type = PathTracerViewer::ViewTypes::kColor;
 			path_tracer_thread->UpdateViewer();

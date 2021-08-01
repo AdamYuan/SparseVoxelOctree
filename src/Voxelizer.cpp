@@ -38,8 +38,8 @@ void Voxelizer::create_descriptors(const std::shared_ptr<myvk::Device> &device) 
 		fragment_list_binding.descriptorCount = 1;
 		fragment_list_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		m_descriptor_set_layout =
-		    myvk::DescriptorSetLayout::Create(device, {atomic_counter_binding, fragment_list_binding});
+		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(
+		    device, {{atomic_counter_binding, 0}, {fragment_list_binding, VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT}});
 	}
 	m_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
 	m_descriptor_set->UpdateStorageBuffer(m_atomic_counter.GetBuffer(), 0);

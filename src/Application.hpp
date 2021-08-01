@@ -19,6 +19,7 @@
 #include "PathTracerThread.hpp"
 #include "PathTracerViewer.hpp"
 #include "Scene.hpp"
+#include "Lighting.hpp"
 
 #include "myvk/Buffer.hpp"
 #include "myvk/CommandBuffer.hpp"
@@ -70,6 +71,8 @@ private:
 	std::shared_ptr<OctreeTracer> m_octree_tracer;
 	std::shared_ptr<PathTracer> m_path_tracer;
 	std::shared_ptr<PathTracerViewer> m_path_tracer_viewer;
+	std::shared_ptr<EnvironmentMap> m_environment_map;
+	std::shared_ptr<Lighting> m_lighting;
 
 	// multithreading loader
 	std::shared_ptr<LoaderThread> m_loader_thread;

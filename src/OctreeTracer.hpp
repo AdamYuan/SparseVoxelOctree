@@ -2,6 +2,7 @@
 #define OCTREE_TRACER_HPP
 
 #include "Camera.hpp"
+#include "Lighting.hpp"
 #include "Octree.hpp"
 #include "myvk/Buffer.hpp"
 #include "myvk/CommandBuffer.hpp"
@@ -19,6 +20,7 @@ private:
 
 	std::shared_ptr<Octree> m_octree_ptr;
 	std::shared_ptr<Camera> m_camera_ptr;
+	std::shared_ptr<Lighting> m_lighting_ptr;
 
 	std::shared_ptr<myvk::DescriptorPool> m_descriptor_pool;
 	std::shared_ptr<myvk::DescriptorSetLayout> m_descriptor_set_layout;
@@ -54,10 +56,12 @@ private:
 public:
 	static std::shared_ptr<OctreeTracer> Create(const std::shared_ptr<Octree> &octree,
 	                                            const std::shared_ptr<Camera> &camera,
+	                                            const std::shared_ptr<Lighting> &lighting,
 	                                            const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass,
 	                                            uint32_t frame_count);
 	const std::shared_ptr<Octree> &GetOctreePtr() const { return m_octree_ptr; }
 	const std::shared_ptr<Camera> &GetCameraPtr() const { return m_camera_ptr; }
+	const std::shared_ptr<Lighting> &GetLightingPtr() const { return m_lighting_ptr; }
 
 	void Resize(uint32_t width, uint32_t height);
 

@@ -232,8 +232,7 @@ void Scene::load_textures(const std::shared_ptr<myvk::Queue> &graphics_queue,
 	std::atomic_uint32_t texture_id{0};
 	while (cores--) {
 		future_vector.push_back(std::async([&]() -> void {
-			std::shared_ptr<myvk::CommandPool> command_pool =
-			    myvk::CommandPool::Create(graphics_queue);
+			std::shared_ptr<myvk::CommandPool> command_pool = myvk::CommandPool::Create(graphics_queue);
 			myvk::ObjectTracker tracker;
 			while (true) {
 				uint32_t i = texture_id++;
@@ -310,8 +309,9 @@ void Scene::load_textures(const std::shared_ptr<myvk::Queue> &graphics_queue,
 }
 
 void Scene::process_texture_errors() {
-	if (m_textures.empty())
+	if (m_textures.empty()) {
 		return;
+	}
 	std::vector<uint32_t> new_index_mapper(m_textures.size()), prefix(m_textures.size(), 1u);
 	// generate prefix
 	for (uint32_t i = 0; i < m_textures.size(); ++i)
@@ -348,15 +348,16 @@ void Scene::create_descriptors(const std::shared_ptr<myvk::Device> &device) {
 		layout_binding.descriptorCount = std::max((uint32_t)m_textures.size(), 1u);
 		layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		std::vector<VkSampler> immutable_samplers;
 		if (!m_textures.empty()) {
-			immutable_samplers.resize(m_textures.size());
+			std::vector<VkSampler> immutable_samplers(m_textures.size());
 			for (uint32_t i = 0; i < m_textures.size(); ++i)
 				immutable_samplers[i] = m_textures[i].m_sampler->GetHandle();
 			layout_binding.pImmutableSamplers = immutable_samplers.data();
+			m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {layout_binding});
+		} else {
+			m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(
+			    device, {{layout_binding, VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT}});
 		}
-
-		m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {layout_binding});
 	}
 	m_descriptor_pool = myvk::DescriptorPool::Create(
 	    device, 1, {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, std::max((uint32_t)m_textures.size(), 1u)}});

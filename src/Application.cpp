@@ -12,6 +12,7 @@
 #include "UILog.hpp"
 #include "UIOctreeTracer.hpp"
 #include "UIPathTracer.hpp"
+#include "UILighting.hpp"
 
 #ifndef NDEBUG
 
@@ -320,10 +321,13 @@ Application::Application() {
 	create_framebuffers();
 	m_imgui_renderer.Initialize(m_main_command_pool, m_render_pass, 1, kFrameCount);
 
+	m_environment_map = EnvironmentMap::Create(m_device);
+	m_lighting = Lighting::Create(m_environment_map);
+
 	m_camera = Camera::Create(m_device, kFrameCount + 1); // reserve a camera buffer for path tracer
 	m_camera->m_position = glm::vec3(1.5);
 	m_octree = Octree::Create(m_device);
-	m_octree_tracer = OctreeTracer::Create(m_octree, m_camera, m_render_pass, 0, kFrameCount);
+	m_octree_tracer = OctreeTracer::Create(m_octree, m_camera, m_lighting, m_render_pass, 0, kFrameCount);
 	m_path_tracer = PathTracer::Create(m_octree, m_camera, m_path_tracer_command_pool);
 	m_path_tracer_viewer = PathTracerViewer::Create(m_path_tracer, m_render_pass, 0);
 
@@ -390,6 +394,7 @@ void Application::ui_render_main() {
 	UI::PathTracerStartModal(m_path_tracer_thread);
 	UI::PathTracerStopModal(m_path_tracer_thread);
 	UI::PathTracerExportEXRModal(m_path_tracer_thread);
+	UI::LightingLoadEnvMapModal(m_main_command_pool, m_lighting);
 }
 
 void Application::ui_menubar() {
@@ -410,8 +415,10 @@ void Application::ui_menubar() {
 
 	if (m_ui_state == UIStates::kPathTracing)
 		UI::PathTracerMenuItems(m_path_tracer_thread);
-	else if (m_ui_state == UIStates::kOctreeTracer)
+	else if (m_ui_state == UIStates::kOctreeTracer) {
 		UI::OctreeTracerMenuItems(m_octree_tracer);
+		UI::LightingMenuItem(m_main_command_pool, m_lighting, &open_modal);
+	}
 
 	UI::LogMenuItem(m_log_sink);
 

@@ -43,6 +43,7 @@ VkResult Device::create_device(const std::vector<VkDeviceQueueCreateInfo> &queue
 	create_info.enabledExtensionCount = extensions.size();
 	create_info.ppEnabledExtensionNames = extensions.data();
 	create_info.enabledLayerCount = 0;
+	create_info.pNext = &m_physical_device_ptr->GetDescriptorIndexingFeatures();
 
 	return vkCreateDevice(m_physical_device_ptr->GetHandle(), &create_info, nullptr, &m_device);
 }
