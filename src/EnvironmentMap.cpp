@@ -1,4 +1,5 @@
 #include "EnvironmentMap.hpp"
+#include <cmath>
 #include <myvk/CommandBuffer.hpp>
 #include <spdlog/spdlog.h>
 #include <stb_image.h>
@@ -59,7 +60,7 @@ void EnvironmentMap::Reset(const std::shared_ptr<myvk::CommandPool> &command_poo
 
 	// TODO: calculate weights, copy to vulkan image
 	weigh_hdr_image(&img);
-	create_images_and_buffers(command_pool, img, {}, {});
+	create_images_and_buffers(command_pool, img);
 
 	free(img.m_data); // release hdr image data
 
@@ -102,11 +103,28 @@ EnvironmentMap::HdrImg EnvironmentMap::load_hdr_image(const char *filename) {
 	return {0, 0, nullptr};
 }
 
-void EnvironmentMap::weigh_hdr_image(const EnvironmentMap::HdrImg *img) {}
+inline static float luminance(float r, float g, float b) { return r * 0.3f + g * 0.6f + b * 0.1f; }
+void EnvironmentMap::weigh_hdr_image(const EnvironmentMap::HdrImg *img) {
+	float *cur = img->m_data;
+	double weight_sum = 0.0;
+	for (uint32_t j = 0; j < img->m_height; ++j) {
+		float sin_theta = sinf(M_PI * (1.0f - float(j) / float(img->m_height - 1)));
+		for (uint32_t i = 0; i < img->m_width; ++i, cur += 4) {
+			cur[3] = luminance(cur[0], cur[1], cur[2]) * sin_theta;
+			weight_sum += (double)cur[3];
+		}
+	}
+	spdlog::info("weight_sum = {}", weight_sum);
+	double inv_weight_sum = 1.0 / weight_sum;
+	// spdlog::info("inv_weight_sum = {}", inv_weight_sum);
+	cur = img->m_data;
+	for (uint32_t j = 0; j < img->m_height; ++j)
+		for (uint32_t i = 0; i < img->m_width; ++i, cur += 4)
+			cur[3] = float((double)cur[3] * inv_weight_sum);
+}
 
 void EnvironmentMap::create_images_and_buffers(const std::shared_ptr<myvk::CommandPool> &command_pool,
-                                               const HdrImg &img, const std::vector<float> &prab_vector,
-                                               const std::vector<uint32_t> &alias_vector) {
+                                               const HdrImg &img) {
 	const uint32_t img_size = img.m_width * img.m_height;
 	const VkDeviceSize img_bytes = img_size * sizeof(float) * 4;
 

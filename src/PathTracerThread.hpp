@@ -3,11 +3,9 @@
 
 #include "PathTracerViewer.hpp"
 #include "myvk/Queue.hpp"
-#include <binary_semaphore.hpp>
 #include <atomic>
-#include <condition_variable>
+#include <binary_semaphore.hpp>
 #include <memory>
-#include <mutex>
 #include <thread>
 
 class PathTracerThread {

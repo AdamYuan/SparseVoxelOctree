@@ -137,8 +137,11 @@ bool Scene::load_meshes(const char *filename, const char *base_dir, std::vector<
 	}
 
 	texture_filenames->resize(texture_name_map.size());
-	for (auto &i : texture_name_map)
-		(*texture_filenames)[i.second] = base_dir + i.first;
+	for (auto &i : texture_name_map) {
+		std::string replaced = i.first;
+		std::replace(replaced.begin(), replaced.end(), '\\', '/');
+		(*texture_filenames)[i.second] = base_dir + std::move(replaced);
+	}
 
 	return true;
 }

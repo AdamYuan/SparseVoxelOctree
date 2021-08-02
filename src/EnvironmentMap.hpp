@@ -25,8 +25,7 @@ private:
 	static HdrImg load_hdr_image(const char *filename);
 	static void weigh_hdr_image(const HdrImg *img);
 
-	void create_images_and_buffers(const std::shared_ptr<myvk::CommandPool> &command_pool, const HdrImg &img,
-	                               const std::vector<float> &prab_vector, const std::vector<uint32_t> &alias_vector);
+	void create_images_and_buffers(const std::shared_ptr<myvk::CommandPool> &command_pool, const HdrImg &img);
 	void create_descriptors(const std::shared_ptr<myvk::Device> &device);
 
 public:
