@@ -26,7 +26,7 @@ constexpr uint32_t kDefaultBounce = 4;
 constexpr uint32_t kMaxBounce = 16;
 
 constexpr float kDefaultConstantColor = 5.0f;
-constexpr float kMaxConstantColor = 20.0f;
+constexpr float kMaxConstantColor = 100.0f;
 
 constexpr uint32_t kPTResultUpdateInterval = 10;
 

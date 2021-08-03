@@ -23,18 +23,13 @@ layout(push_constant) uniform uuPushConstant {
 };
 
 bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal);
+bool RayMarchOcclude(vec3 o, vec3 d);
 
-#define TWO_PI 6.28318530718f
-vec3 SampleHemisphere(vec2 r, in const float e) {
-	r.x *= TWO_PI;
-	float cos_phi = cos(r.x);
-	float sin_phi = sin(r.x);
-	float cos_theta = pow((1.0f - r.y), 1.0f / (e + 1.0f));
-	float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
-	float pu = sin_theta * cos_phi;
-	float pv = sin_theta * sin_phi;
-	float pw = cos_theta;
-	return normalize(vec3(pu, pv, pw));
+#define PI 3.1415926535897932384626433832795
+
+vec3 CosineSampleHemisphere(in vec2 samp) {
+	float r = sqrt(samp.x), phi = 2 * PI * samp.y;
+	return normalize(vec3(r * cos(phi), r * sin(phi), sqrt(1.0 - samp.x)));
 }
 vec3 AlignDirection(in const vec3 dir, in const vec3 target) {
 	vec3 u = normalize(cross(abs(target.x) > .01 ? vec3(0, 1, 0) : vec3(1, 0, 0), target));
@@ -50,11 +45,9 @@ vec3 GenRay(in const ivec2 pixel, in const ivec2 size, in const vec2 noise) {
 
 vec2 GetSobol(in const int i) { return vec2(uSobol[i << 1], uSobol[i << 1 | 1]) / 4294967296.0; }
 
-#define PI 3.1415926535897932384626433832795
 vec2 EnvMapCoord(in vec3 d) { return vec2(atan(d.x, d.z) / PI * 0.5, acos(d.y) / PI); }
 float EnvMapPDF(in vec3 d) { return texture(uEnvironmentMap, EnvMapCoord(d)).w / (2 * PI * PI * sqrt(1 - d.y * d.y)); }
 ivec2 EnvMapIndexToPixel(in ivec2 env_map_dim, in uint idx) { return ivec2(idx % env_map_dim.x, idx / env_map_dim.x); }
-
 vec3 EnvMapPixelToDir(in ivec2 env_map_dim, in ivec2 pix, out float pdf) {
 	vec2 uv = vec2(pix) / vec2(env_map_dim);
 	float phi = 2.0 * PI * uv.x, theta = PI * uv.y;
@@ -62,7 +55,6 @@ vec3 EnvMapPixelToDir(in ivec2 env_map_dim, in ivec2 pix, out float pdf) {
 	pdf = texelFetch(uEnvironmentMap, pix, 0).w / (2 * PI * PI * sin_theta);
 	return normalize(vec3(sin_theta * sin(phi), cos(theta), sin_theta * cos(phi)));
 }
-
 ivec2 EnvMapSample(in ivec2 env_map_dim, in vec2 samp) {
 	uint sz = env_map_dim.x * env_map_dim.y;
 	uint idx = clamp(uint(samp.x * float(sz)), 0u, sz - 1u), prob = uint(samp.y * 4294967296.0);
@@ -100,11 +92,11 @@ void main() {
 
 		for (int cur = 1; cur < uBounce; ++cur) {
 			vec2 samp = fract(GetSobol(cur) + noise);
-			float mul = 1.0 / (2 * PI);
+			float mul = 1.0;
 
 			o = pos;
 			if (uLightType == 0)
-				d = AlignDirection(SampleHemisphere(samp, 0.0f), normal);
+				d = AlignDirection(CosineSampleHemisphere(samp), normal);
 			else {
 				ivec2 pix = EnvMapSample(env_map_dim, samp);
 				// debugPrintfEXT("(%d, %d)", pix.x, pix.y);
@@ -112,9 +104,9 @@ void main() {
 				d = EnvMapPixelToDir(env_map_dim, pix, pdf);
 				float x = dot(normal, d);
 				if (x < 0.0) {
-					d = AlignDirection(SampleHemisphere(samp, 0.0f), normal);
+					d = AlignDirection(CosineSampleHemisphere(samp), normal);
 				} else {
-					mul = x / pdf;
+					mul = x / pdf / PI;
 				}
 			}
 
@@ -337,5 +329,136 @@ bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_n
 	o_normal = norm;
 	o_color = vec3(cur & 0xffu, (cur >> 8u) & 0xffu, (cur >> 16u) & 0xffu) * 0.00392156862745098f; // (...) / 255.0f
 
+	return scale < STACK_SIZE && t_min <= t_max;
+}
+bool RayMarchOcclude(vec3 o, vec3 d) {
+	d.x = abs(d.x) >= EPS ? d.x : (d.x >= 0 ? EPS : -EPS);
+	d.y = abs(d.y) >= EPS ? d.y : (d.y >= 0 ? EPS : -EPS);
+	d.z = abs(d.z) >= EPS ? d.z : (d.z >= 0 ? EPS : -EPS);
+
+	// Precompute the coefficients of tx(x), ty(y), and tz(z).
+	// The octree is assumed to reside at coordinates [1, 2].
+	vec3 t_coef = 1.0f / -abs(d);
+	vec3 t_bias = t_coef * o;
+
+	uint oct_mask = 0u;
+	if (d.x > 0.0f)
+		oct_mask ^= 1u, t_bias.x = 3.0f * t_coef.x - t_bias.x;
+	if (d.y > 0.0f)
+		oct_mask ^= 2u, t_bias.y = 3.0f * t_coef.y - t_bias.y;
+	if (d.z > 0.0f)
+		oct_mask ^= 4u, t_bias.z = 3.0f * t_coef.z - t_bias.z;
+
+	// Initialize the active span of t-values.
+	float t_min = max(max(2.0f * t_coef.x - t_bias.x, 2.0f * t_coef.y - t_bias.y), 2.0f * t_coef.z - t_bias.z);
+	float t_max = min(min(t_coef.x - t_bias.x, t_coef.y - t_bias.y), t_coef.z - t_bias.z);
+	t_min = max(t_min, 0.0f);
+	float h = t_max;
+
+	uint parent = 0u;
+	uint cur = 0u;
+	vec3 pos = vec3(1.0f);
+	uint idx = 0u;
+	if (1.5f * t_coef.x - t_bias.x > t_min)
+		idx ^= 1u, pos.x = 1.5f;
+	if (1.5f * t_coef.y - t_bias.y > t_min)
+		idx ^= 2u, pos.y = 1.5f;
+	if (1.5f * t_coef.z - t_bias.z > t_min)
+		idx ^= 4u, pos.z = 1.5f;
+
+	uint scale = STACK_SIZE - 1;
+	float scale_exp2 = 0.5f; // exp2( scale - STACK_SIZE )
+
+	while (scale < STACK_SIZE) {
+		if (cur == 0u)
+			cur = uOctree[parent + (idx ^ oct_mask)];
+		// Determine maximum t-value of the cube by evaluating
+		// tx(), ty(), and tz() at its corner.
+
+		vec3 t_corner = pos * t_coef - t_bias;
+		float tc_max = min(min(t_corner.x, t_corner.y), t_corner.z);
+
+		if ((cur & 0x80000000u) != 0 && t_min <= t_max) {
+			// INTERSECT
+			float tv_max = min(t_max, tc_max);
+			float half_scale_exp2 = scale_exp2 * 0.5f;
+			vec3 t_center = half_scale_exp2 * t_coef + t_corner;
+
+			if (t_min <= tv_max) {
+				if ((cur & 0x40000000u) != 0) // leaf node
+					break;
+
+				// PUSH
+				if (tc_max < h) {
+					stack[scale].node = parent;
+					stack[scale].t_max = t_max;
+				}
+				h = tc_max;
+
+				parent = cur & 0x3fffffffu;
+
+				idx = 0u;
+				--scale;
+				scale_exp2 = half_scale_exp2;
+				if (t_center.x > t_min)
+					idx ^= 1u, pos.x += scale_exp2;
+				if (t_center.y > t_min)
+					idx ^= 2u, pos.y += scale_exp2;
+				if (t_center.z > t_min)
+					idx ^= 4u, pos.z += scale_exp2;
+
+				cur = 0;
+				t_max = tv_max;
+
+				continue;
+			}
+		}
+
+		// ADVANCE
+		uint step_mask = 0u;
+		if (t_corner.x <= tc_max)
+			step_mask ^= 1u, pos.x -= scale_exp2;
+		if (t_corner.y <= tc_max)
+			step_mask ^= 2u, pos.y -= scale_exp2;
+		if (t_corner.z <= tc_max)
+			step_mask ^= 4u, pos.z -= scale_exp2;
+
+		// Update active t-span and flip bits of the child slot index.
+		t_min = tc_max;
+		idx ^= step_mask;
+
+		// Proceed with pop if the bit flips disagree with the ray direction.
+		if ((idx & step_mask) != 0) {
+			// POP
+			// Find the highest differing bit between the two positions.
+			uint differing_bits = 0;
+			if ((step_mask & 1u) != 0)
+				differing_bits |= floatBitsToUint(pos.x) ^ floatBitsToUint(pos.x + scale_exp2);
+			if ((step_mask & 2u) != 0)
+				differing_bits |= floatBitsToUint(pos.y) ^ floatBitsToUint(pos.y + scale_exp2);
+			if ((step_mask & 4u) != 0)
+				differing_bits |= floatBitsToUint(pos.z) ^ floatBitsToUint(pos.z + scale_exp2);
+			scale = findMSB(differing_bits);
+			scale_exp2 = uintBitsToFloat((scale - STACK_SIZE + 127u) << 23u); // exp2f(scale - s_max)
+
+			// Restore parent voxel from the stack.
+			parent = stack[scale].node;
+			t_max = stack[scale].t_max;
+
+			// Round cube position and extract child slot index.
+			uint shx = floatBitsToUint(pos.x) >> scale;
+			uint shy = floatBitsToUint(pos.y) >> scale;
+			uint shz = floatBitsToUint(pos.z) >> scale;
+			pos.x = uintBitsToFloat(shx << scale);
+			pos.y = uintBitsToFloat(shy << scale);
+			pos.z = uintBitsToFloat(shz << scale);
+			idx = (shx & 1u) | ((shy & 1u) << 1u) | ((shz & 1u) << 2u);
+
+			// Prevent same parent from being stored again and invalidate cached
+			// child descriptor.
+			h = 0.0f;
+			cur = 0;
+		}
+	}
 	return scale < STACK_SIZE && t_min <= t_max;
 }
