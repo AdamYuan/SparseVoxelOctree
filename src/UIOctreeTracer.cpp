@@ -5,16 +5,6 @@
 
 namespace UI {
 void OctreeTracerMenuItems(const std::shared_ptr<OctreeTracer> &octree_tracer) {
-	if (ImGui::BeginMenu("Camera")) {
-		const auto &camera = octree_tracer->GetCameraPtr();
-		UI::DragAngle("FOV", &camera->m_fov, 1, 10, 179);
-		ImGui::DragFloat("Speed", &camera->m_speed, 0.005f, 0.005f, 0.2f);
-		ImGui::InputFloat3("Position", &camera->m_position[0]);
-		UI::DragAngle("Yaw", &camera->m_yaw, 1, 0, 360);
-		UI::DragAngle("Pitch", &camera->m_pitch, 1, -90, 90);
-		ImGui::EndMenu();
-	}
-
 	if (ImGui::BeginMenu("View")) {
 		if (ImGui::MenuItem("Diffuse", nullptr, octree_tracer->m_view_type == OctreeTracer::ViewTypes::kDiffuse))
 			octree_tracer->m_view_type = OctreeTracer::ViewTypes::kDiffuse;

@@ -8,6 +8,9 @@
 #include <myvk/Sampler.hpp>
 
 class EnvironmentMap {
+public:
+	float m_rotation{0.0f}, m_multiplier{1.0f};
+
 private:
 	struct HdrImg {
 		uint32_t m_width, m_height;

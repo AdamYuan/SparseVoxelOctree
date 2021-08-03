@@ -17,17 +17,22 @@ void LightingMenuItem(const std::shared_ptr<myvk::CommandPool> &command_pool, co
 			if (ImGui::RadioButton("Constant Color", active))
 				lighting->m_light_type = Lighting::LightTypes::kConstantColor;
 
-			if (!active) UI::PushDisabled();
+			if (!active)
+				UI::PushDisabled();
 			ImGui::DragFloat3("", &lighting->m_sun_radiance[0], 0.1f, 0.0f, kMaxConstantColor);
-			if (!active) UI::PopDisabled();
+			if (!active)
+				UI::PopDisabled();
 		}
+
+		ImGui::Separator();
 
 		{
 			active = type == Lighting::LightTypes::kEnvironmentMap;
 			if (ImGui::RadioButton("Environment Map", active))
 				lighting->m_light_type = Lighting::LightTypes::kEnvironmentMap;
 
-			if (!active) UI::PushDisabled();
+			if (!active)
+				UI::PushDisabled();
 			if (ImGui::Button("Load"))
 				*open_modal = kLightingLoadEnvMapModal;
 			if (!lighting->GetEnvironmentMapPtr()->Empty()) {
@@ -41,7 +46,12 @@ void LightingMenuItem(const std::shared_ptr<myvk::CommandPool> &command_pool, co
 					            lighting->GetEnvironmentMapPtr()->GetImageExtent().height);
 				}
 			}
-			if (!active) UI::PopDisabled();
+			ImGui::InputFloat("Multiplier", &lighting->GetEnvironmentMapPtr()->m_multiplier);
+			if (lighting->GetEnvironmentMapPtr()->m_multiplier < 0.0f)
+				lighting->GetEnvironmentMapPtr()->m_multiplier = 0.0f;
+			UI::DragAngle("Rotation", &lighting->GetEnvironmentMapPtr()->m_rotation, 1, 0, 360);
+			if (!active)
+				UI::PopDisabled();
 		}
 
 		ImGui::EndMenu();

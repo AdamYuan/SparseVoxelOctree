@@ -77,7 +77,7 @@ void PathTracer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 	    {m_octree_ptr->GetDescriptorSetLayout(), m_camera_ptr->GetDescriptorSetLayout(),
 	     m_lighting_ptr->GetEnvironmentMapPtr()->GetDescriptorSetLayout(), m_sobol.GetDescriptorSetLayout(),
 	     m_target_descriptor_set_layout, m_noise_descriptor_set_layout},
-	    {{VK_SHADER_STAGE_COMPUTE_BIT, 0, 2 * sizeof(uint32_t) + 3 * sizeof(float)}});
+	    {{VK_SHADER_STAGE_COMPUTE_BIT, 0, 2 * sizeof(uint32_t) + 5 * sizeof(float)}});
 	{
 		constexpr uint32_t kPathTracerCompSpv[] = {
 #include "spirv/path_tracer.comp.u32"
@@ -202,10 +202,14 @@ void PathTracer::CmdRender(const std::shared_ptr<myvk::CommandBuffer> &command_b
 	                                      m_pipeline);
 
 	uint32_t uint_push_constants[] = {m_bounce, (uint32_t)m_lighting_ptr->GetFinalLightType()};
+	float float_push_constants[] = {
+	    m_lighting_ptr->m_sun_radiance.x, m_lighting_ptr->m_sun_radiance.y, m_lighting_ptr->m_sun_radiance.z,
+	    m_lighting_ptr->GetEnvironmentMapPtr()->m_rotation, m_lighting_ptr->GetEnvironmentMapPtr()->m_multiplier};
+
 	command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint_push_constants),
 	                                 uint_push_constants);
 	command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint_push_constants),
-	                                 3 * sizeof(float), &m_lighting_ptr->m_sun_radiance[0]);
+	                                 sizeof(float_push_constants), float_push_constants);
 	command_buffer->CmdBindPipeline(m_pipeline);
 	command_buffer->CmdDispatch(group_8(m_width), group_8(m_height), 1);
 

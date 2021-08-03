@@ -7,12 +7,13 @@
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_internal.h>
 
+#include "UICamera.hpp"
 #include "UIHelper.hpp"
+#include "UILighting.hpp"
 #include "UILoader.hpp"
 #include "UILog.hpp"
 #include "UIOctreeTracer.hpp"
 #include "UIPathTracer.hpp"
-#include "UILighting.hpp"
 
 #ifndef NDEBUG
 
@@ -292,8 +293,7 @@ void Application::initialize_vulkan() {
 	}
 
 	m_main_command_pool = myvk::CommandPool::Create(m_main_queue);
-	m_path_tracer_command_pool =
-	    myvk::CommandPool::Create(m_path_tracer_queue);
+	m_path_tracer_command_pool = myvk::CommandPool::Create(m_path_tracer_queue);
 
 	m_frame_command_pools.resize(kFrameCount);
 	m_frame_command_buffers.resize(kFrameCount);
@@ -417,6 +417,7 @@ void Application::ui_menubar() {
 		UI::PathTracerMenuItems(m_path_tracer_thread);
 	else if (m_ui_state == UIStates::kOctreeTracer) {
 		UI::OctreeTracerMenuItems(m_octree_tracer);
+		UI::CameraMenuItems(m_camera);
 		UI::LightingMenuItem(m_main_command_pool, m_lighting, &open_modal);
 	}
 

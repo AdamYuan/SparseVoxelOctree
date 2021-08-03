@@ -24,7 +24,7 @@ void OctreeTracer::create_layouts(const std::shared_ptr<myvk::Device> &device) {
 	    device,
 	    {m_octree_ptr->GetDescriptorSetLayout(), m_camera_ptr->GetDescriptorSetLayout(),
 	     m_lighting_ptr->GetEnvironmentMapPtr()->GetDescriptorSetLayout(), m_descriptor_set_layout},
-	    {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 6 * sizeof(uint32_t) + 3 * sizeof(float)}});
+	    {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 6 * sizeof(uint32_t) + 4 * sizeof(float)}});
 	m_beam_pipeline_layout = myvk::PipelineLayout::Create(
 	    device, {m_octree_ptr->GetDescriptorSetLayout(), m_camera_ptr->GetDescriptorSetLayout()},
 	    {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 3 * sizeof(uint32_t) + sizeof(float)}});
@@ -338,9 +338,12 @@ void OctreeTracer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &c
 	if (max_radiance != 0.0f)
 		sun_color /= max_radiance;
 
+	float float_push_constants[] = {sun_color.x, sun_color.y, sun_color.z,
+	                                m_lighting_ptr->GetEnvironmentMapPtr()->m_rotation};
+
 	command_buffer->CmdPushConstants(m_main_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0,
 	                                 sizeof(uint_push_constants), uint_push_constants);
 	command_buffer->CmdPushConstants(m_main_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(uint_push_constants),
-	                                 3 * sizeof(float), &sun_color[0]);
+	                                 sizeof(float_push_constants), float_push_constants);
 	command_buffer->CmdDraw(3, 1, 0, 0);
 }

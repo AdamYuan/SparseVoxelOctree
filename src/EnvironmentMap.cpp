@@ -116,8 +116,9 @@ std::vector<double> EnvironmentMap::weigh_hdr_image(const EnvironmentMap::HdrImg
 	}
 
 	// normalize weights, set as PDF
+	double mul = (double)img_size / weight_sum;
 	for (uint32_t i = 0; i < img_size; ++i) {
-		ret[i] *= (double)img_size / weight_sum;
+		ret[i] *= mul;
 		img->m_data[(i << 2) | 3] = (float)ret[i];
 	}
 
