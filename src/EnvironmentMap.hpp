@@ -13,27 +13,31 @@ private:
 		uint32_t m_width, m_height;
 		float *m_data;
 	};
+	struct AliasPair {
+		uint32_t m_prob, m_alias; // m_prob is normalized to [0, 2^32]
+	};
 	std::shared_ptr<myvk::Sampler> m_sampler;
-	std::shared_ptr<myvk::Image> m_image;
-	std::shared_ptr<myvk::ImageView> m_image_view;
-	std::shared_ptr<myvk::Buffer> m_prab_buffer, m_alias_buffer;
+	std::shared_ptr<myvk::Image> m_hdr_image, m_alias_table_image;
+	std::shared_ptr<myvk::ImageView> m_hdr_image_view, m_alias_table_image_view;
 
 	std::shared_ptr<myvk::DescriptorPool> m_descriptor_pool;
 	std::shared_ptr<myvk::DescriptorSetLayout> m_descriptor_set_layout;
 	std::shared_ptr<myvk::DescriptorSet> m_descriptor_set;
 
 	static HdrImg load_hdr_image(const char *filename);
-	static void weigh_hdr_image(const HdrImg *img);
+	static std::vector<double> weigh_hdr_image(const HdrImg *img);
+	static void generate_alias_table(std::vector<double> *weights_ptr, AliasPair *alias_table);
 
-	void create_images_and_buffers(const std::shared_ptr<myvk::CommandPool> &command_pool, const HdrImg &img);
+	void create_images(const std::shared_ptr<myvk::CommandPool> &command_pool, const HdrImg &img,
+	                   std::vector<double> *weights_ptr);
 	void create_descriptors(const std::shared_ptr<myvk::Device> &device);
 
 public:
 	static std::shared_ptr<EnvironmentMap> Create(const std::shared_ptr<myvk::Device> &device);
 	const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayout() const { return m_descriptor_set_layout; }
 	const std::shared_ptr<myvk::DescriptorSet> &GetDescriptorSet() const { return m_descriptor_set; }
-	const VkExtent3D &GetImageExtent() const { return m_image->GetExtent(); }
-	bool Empty() const { return m_image == nullptr; }
+	const VkExtent3D &GetImageExtent() const { return m_hdr_image->GetExtent(); }
+	bool Empty() const { return m_hdr_image == nullptr; }
 	void Reset();
 	void Reset(const std::shared_ptr<myvk::CommandPool> &command_pool, const char *filename);
 };

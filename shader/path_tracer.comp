@@ -1,9 +1,13 @@
 #version 450
+// #extension GL_EXT_debug_printf : enable
+
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(std430, set = 0, binding = 0) readonly buffer uuOctree { uint uOctree[]; };
 layout(set = 1, binding = 0) uniform uuCamera { vec4 uPosition, uLook, uSide, uUp; };
+
 layout(set = 2, binding = 0) uniform sampler2D uEnvironmentMap;
+layout(set = 2, binding = 1) uniform usampler2D uEnvMapAliasTable;
 
 layout(std430, set = 3, binding = 0) buffer uuSobol { uint uSobol[]; };
 
@@ -48,6 +52,26 @@ vec2 GetSobol(in const int i) { return vec2(uSobol[i << 1], uSobol[i << 1 | 1]) 
 
 #define PI 3.1415926535897932384626433832795
 vec2 EnvMapCoord(in vec3 d) { return vec2(atan(d.x, d.z) / PI * 0.5, acos(d.y) / PI); }
+float EnvMapPDF(in vec3 d) { return texture(uEnvironmentMap, EnvMapCoord(d)).w / (2 * PI * PI * sqrt(1 - d.y * d.y)); }
+ivec2 EnvMapIndexToPixel(in ivec2 env_map_dim, in uint idx) { return ivec2(idx % env_map_dim.x, idx / env_map_dim.x); }
+
+vec3 EnvMapPixelToDir(in ivec2 env_map_dim, in ivec2 pix, inout float sin_theta) {
+	vec2 uv = vec2(pix) / vec2(env_map_dim);
+	float phi = 2.0 * PI * uv.x, theta = PI * uv.y;
+	sin_theta = sin(theta);
+	return normalize(vec3(sin_theta * sin(phi), cos(theta), sin_theta * cos(phi)));
+}
+
+ivec2 EnvMapSample(in ivec2 env_map_dim, in vec2 samp) {
+	uint sz = env_map_dim.x * env_map_dim.y;
+	uint idx = clamp(uint(samp.x * float(sz)), 0u, sz - 1u), prob = uint(samp.y * 4294967296.0);
+
+	ivec2 pix = EnvMapIndexToPixel(env_map_dim, idx);
+	uvec2 alias = texelFetch(uEnvMapAliasTable, pix, 0).xy;
+	if (prob <= alias.x)
+		return pix;
+	return EnvMapIndexToPixel(env_map_dim, alias.y);
+}
 
 vec3 Light(in vec3 d) {
 	return uLightType == 0 ? vec3(uSunRadiance[0], uSunRadiance[1], uSunRadiance[2])
@@ -66,19 +90,37 @@ void main() {
 
 	vec3 pos, albedo, normal, direct_albedo = vec3(0.0f), direct_normal = vec3(0.0f);
 
+	ivec2 env_map_dim = textureSize(uEnvironmentMap, 0).xy;
+
 	if (RayMarchLeaf(o, d, pos, albedo, normal)) {
 		acc_color *= albedo;
 		direct_albedo = albedo;
 		direct_normal = normal;
 
 		for (int cur = 1; cur < uBounce; ++cur) {
-			d = AlignDirection(SampleHemisphere(fract(GetSobol(cur) + noise), 0.0f), normal);
+			vec2 samp = fract(GetSobol(cur) + noise);
+			float mul = 1.0 / (2 * PI);
+
 			o = pos;
+			if (uLightType == 0)
+				d = AlignDirection(SampleHemisphere(samp, 0.0f), normal);
+			else {
+				ivec2 pix = EnvMapSample(env_map_dim, samp);
+				float sin_theta;
+				// debugPrintfEXT("(%d, %d)", pix.x, pix.y);
+				d = EnvMapPixelToDir(env_map_dim, pix, sin_theta);
+				float x = dot(normal, d);
+				if (x < 0.0) {
+					d = AlignDirection(SampleHemisphere(samp, 0.0f), normal);
+				} else {
+					mul = x / EnvMapPDF(d);
+				}
+			}
 
 			if (RayMarchLeaf(o, d, pos, albedo, normal))
-				acc_color *= albedo;
+				acc_color *= albedo * mul;
 			else {
-				radiance = acc_color * Light(d);
+				radiance = acc_color * Light(d) * mul;
 				break;
 			}
 		}
