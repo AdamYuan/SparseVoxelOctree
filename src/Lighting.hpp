@@ -6,7 +6,7 @@
 
 class Lighting {
 public:
-	enum class LightTypes { kSunRadiance = 0, kEnvironmentMap } m_light_type = LightTypes::kSunRadiance;
+	enum class LightTypes { kConstantColor = 0, kEnvironmentMap } m_light_type = LightTypes::kConstantColor;
 	glm::vec3 m_sun_radiance;
 
 private:
@@ -17,7 +17,7 @@ public:
 	const std::shared_ptr<EnvironmentMap> &GetEnvironmentMapPtr() const { return m_environment_map_ptr; }
 	LightTypes GetFinalLightType() const {
 		return (m_light_type == LightTypes::kEnvironmentMap && m_environment_map_ptr->Empty())
-		           ? LightTypes::kSunRadiance
+		           ? LightTypes::kConstantColor
 		           : m_light_type;
 	}
 };

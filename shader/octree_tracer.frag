@@ -7,7 +7,7 @@ layout(location = 0) out vec4 oColor;
 
 layout(push_constant) uniform uuPushConstant {
 	uint uWidth, uHeight, uViewType, uLightType, uBeamEnable, uBeamSize;
-	float uSunRadiance[3];
+	float uConstColor[3];
 };
 
 bool RayMarchLeaf(vec3 o, vec3 d, out float o_t, out vec3 o_color, out vec3 o_normal, out uint o_iter);
@@ -24,7 +24,7 @@ vec3 Heat(in float x) { return sin(clamp(x, 0.0, 1.0) * 3.0 - vec3(1, 2, 3)) * 0
 vec2 EnvMapCoord(in vec3 d) { return vec2(atan(d.x, d.z) / PI * 0.5, acos(d.y) / PI); }
 
 vec3 Light(in vec3 d) {
-	return uLightType == 0 ? vec3(uSunRadiance[0], uSunRadiance[1], uSunRadiance[2])
+	return uLightType == 0 ? vec3(uConstColor[0], uConstColor[1], uConstColor[2])
 	                       : texture(uEnvironmentMap, EnvMapCoord(d)).xyz;
 }
 

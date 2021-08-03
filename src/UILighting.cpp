@@ -13,12 +13,12 @@ void LightingMenuItem(const std::shared_ptr<myvk::CommandPool> &command_pool, co
 		bool active;
 
 		{
-			active = type == Lighting::LightTypes::kSunRadiance;
-			if (ImGui::RadioButton("Sun Radiance", active))
-				lighting->m_light_type = Lighting::LightTypes::kSunRadiance;
+			active = type == Lighting::LightTypes::kConstantColor;
+			if (ImGui::RadioButton("Constant Color", active))
+				lighting->m_light_type = Lighting::LightTypes::kConstantColor;
 
 			if (!active) UI::PushDisabled();
-			ImGui::DragFloat3("", &lighting->m_sun_radiance[0], 0.1f, 0.0f, kMaxSunRadiance);
+			ImGui::DragFloat3("", &lighting->m_sun_radiance[0], 0.1f, 0.0f, kMaxConstantColor);
 			if (!active) UI::PopDisabled();
 		}
 

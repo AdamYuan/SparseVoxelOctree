@@ -25,8 +25,8 @@ constexpr uint32_t kMinBounce = 2;
 constexpr uint32_t kDefaultBounce = 4;
 constexpr uint32_t kMaxBounce = 16;
 
-constexpr float kDefaultSunRadiance = 5.0f;
-constexpr float kMaxSunRadiance = 20.0f;
+constexpr float kDefaultConstantColor = 5.0f;
+constexpr float kMaxConstantColor = 20.0f;
 
 constexpr uint32_t kPTResultUpdateInterval = 10;
 
