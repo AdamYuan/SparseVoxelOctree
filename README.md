@@ -49,7 +49,7 @@ In addition, the new Vulkan version has some advanced features such as asynchron
 ### v1.0
 - [x] Allow window resizing
 - [x] Test queue ownership transfer
-- [ ] Environment map
+- [x] Environment map
 ### v2.0
 - [ ] Voxel editor ?
 - [ ] Gradient-domain path tracing ?

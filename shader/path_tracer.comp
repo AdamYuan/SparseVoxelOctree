@@ -25,50 +25,154 @@ layout(push_constant) uniform uuPushConstant {
 bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal);
 bool RayMarchOcclude(vec3 o, vec3 d);
 
-#define PI 3.1415926535897932384626433832795
-
-vec3 CosineSampleHemisphere(in vec2 samp) {
-	float r = sqrt(samp.x), phi = 2 * PI * samp.y;
-	return normalize(vec3(r * cos(phi), r * sin(phi), sqrt(1.0 - samp.x)));
+vec3 GenRay(in const ivec2 pixel, in const ivec2 size, in const vec2 noise) {
+	vec2 coord = (vec2(pixel) + noise) / vec2(size);
+	coord = coord * 2.0f - 1.0f;
+	return normalize(uLook.xyz - uSide.xyz * coord.x - uUp.xyz * coord.y);
 }
+vec2 GetSobol(in const int i) { return vec2(uSobol[i << 1], uSobol[i << 1 | 1]) / 4294967296.0; }
+
+#define PI 3.1415926535897932384626433832795
+#define DIFFUSE_BSDF PI
 vec3 AlignDirection(in const vec3 dir, in const vec3 target) {
 	vec3 u = normalize(cross(abs(target.x) > .01 ? vec3(0, 1, 0) : vec3(1, 0, 0), target));
 	vec3 v = cross(target, u);
 	return dir.x * u + dir.y * v + dir.z * target;
 }
 
-vec3 GenRay(in const ivec2 pixel, in const ivec2 size, in const vec2 noise) {
-	vec2 coord = (vec2(pixel) + noise) / vec2(size);
-	coord = coord * 2.0f - 1.0f;
-	return normalize(uLook.xyz - uSide.xyz * coord.x - uUp.xyz * coord.y);
+// Diffuse
+vec3 DiffuseSample(in const vec3 normal, in const vec2 samp, out float pdf) {
+	// cosine hemisphere sampling
+	float r = sqrt(samp.x), phi = 2 * PI * samp.y;
+	vec3 d = normalize(vec3(r * cos(phi), r * sin(phi), sqrt(1.0 - samp.x)));
+	// calculate pdf (dot(n, d) / PI)
+	pdf = d.z / PI;
+	return AlignDirection(d, normal);
 }
+float DiffusePDF(in float ndd) { return ndd / PI; }
 
-vec2 GetSobol(in const int i) { return vec2(uSobol[i << 1], uSobol[i << 1 | 1]) / 4294967296.0; }
-
-vec2 EnvMapCoord(in vec3 d) { return vec2((atan(d.x, d.z) + uEnvMapRotation) / PI * 0.5, acos(d.y) / PI); }
-float EnvMapPDF(in vec3 d) { return texture(uEnvironmentMap, EnvMapCoord(d)).w / (2 * PI * PI * sqrt(1 - d.y * d.y)); }
-ivec2 EnvMapIndexToPixel(in ivec2 env_map_dim, in uint idx) { return ivec2(idx % env_map_dim.x, idx / env_map_dim.x); }
-vec3 EnvMapPixelToDir(in ivec2 env_map_dim, in ivec2 pix, out float pdf) {
-	vec2 uv = vec2(pix) / vec2(env_map_dim);
-	float phi = 2.0 * PI * uv.x - uEnvMapRotation, theta = PI * uv.y;
-	float sin_theta = sin(theta);
-	pdf = texelFetch(uEnvironmentMap, pix, 0).w / (2 * PI * PI * sin_theta);
-	return normalize(vec3(sin_theta * sin(phi), cos(theta), sin_theta * cos(phi)));
+// Environment Map
+vec2 EnvMapCoord(in const vec3 d) { return vec2((atan(d.x, d.z) + uEnvMapRotation) / PI * 0.5, acos(d.y) / PI); }
+float EnvMapPDF(in const vec3 d) {
+	return texture(uEnvironmentMap, EnvMapCoord(d)).w / (2 * PI * PI * sqrt(1 - d.y * d.y));
 }
-ivec2 EnvMapSample(in ivec2 env_map_dim, in vec2 samp) {
+ivec2 EnvMapIndexToPixel(in const ivec2 env_map_dim, in const uint idx) {
+	return ivec2(idx % env_map_dim.x, idx / env_map_dim.x);
+}
+vec3 EnvMapSample(in const ivec2 env_map_dim, in const vec2 samp, out vec3 light, out float pdf) {
 	uint sz = env_map_dim.x * env_map_dim.y;
-	uint idx = clamp(uint(samp.x * float(sz)), 0u, sz - 1u), prob = uint(samp.y * 4294967296.0);
 
+	// sample alias table
+	uint idx = clamp(uint(samp.x * float(sz)), 0u, sz - 1u), prob = uint(samp.y * 4294967296.0);
 	ivec2 pix = EnvMapIndexToPixel(env_map_dim, idx);
 	uvec2 alias = texelFetch(uEnvMapAliasTable, pix, 0).xy;
-	if (prob <= alias.x)
-		return pix;
-	return EnvMapIndexToPixel(env_map_dim, alias.y);
+	if (prob > alias.x)
+		pix = EnvMapIndexToPixel(env_map_dim, alias.y);
+
+	// calculate dir and pdf
+	vec2 uv = (vec2(pix)) / vec2(env_map_dim);
+	float phi = 2.0 * PI * uv.x - uEnvMapRotation, theta = PI * uv.y;
+	float sin_theta = sin(theta);
+	vec4 texel = texelFetch(uEnvironmentMap, pix, 0);
+	light = texel.xyz;
+	pdf = texel.w / (2 * PI * PI * sin_theta);
+	return normalize(vec3(sin_theta * sin(phi), cos(theta), sin_theta * cos(phi)));
 }
 
-vec3 Light(in vec3 d, in bool bg) {
-	return uLightType == 0 ? vec3(uConstColor[0], uConstColor[1], uConstColor[2])
-	                       : texture(uEnvironmentMap, EnvMapCoord(d)).xyz * (bg ? 1.0 : uEnvMapMultiplier);
+// MIS Weight
+float PowerHeuristic(in const float a, in const float b) {
+	float t = a * a;
+	return t / (b * b + t);
+}
+
+// Lights
+vec3 EnvLight(in const vec3 d) { return texture(uEnvironmentMap, EnvMapCoord(d)).xyz; }
+vec3 ConstLight() { return vec3(uConstColor[0], uConstColor[1], uConstColor[2]); }
+
+vec3 ConstColorPathTrace(vec3 o, vec3 d, in const vec2 noise, out vec3 direct_albedo, out vec3 direct_normal) {
+	vec3 acc_color = vec3(1), radiance = vec3(0), pos, albedo, normal;
+
+	if (RayMarchLeaf(o, d, pos, albedo, normal)) {
+		acc_color *= albedo;
+		direct_albedo = albedo;
+		direct_normal = normal;
+
+		float bsdf_pdf;
+		for (int cur = 1; cur < uBounce; ++cur) {
+			vec2 samp = fract(GetSobol(cur) + noise);
+
+			o = pos;
+			d = DiffuseSample(normal, samp, bsdf_pdf);
+
+			if (RayMarchLeaf(o, d, pos, albedo, normal))
+				acc_color *= albedo; // * ndd / bsdf_pdf / DIFFUSE_BSDF;
+			else {
+				radiance = acc_color * ConstLight(); // * ndd / bsdf_pdf / DIFFUSE_BSDF;
+				break;
+			}
+		}
+	} else {
+		radiance = ConstLight();
+		direct_albedo = direct_normal = vec3(0);
+	}
+
+	return radiance;
+}
+
+vec3 EnvMapPathTrace(vec3 o, vec3 d, in const vec2 noise, out vec3 direct_albedo, out vec3 direct_normal) {
+	ivec2 env_map_dim = textureSize(uEnvironmentMap, 0).xy;
+	vec3 acc_color = vec3(1), radiance = vec3(0), pos, albedo, normal;
+
+	if (RayMarchLeaf(o, d, pos, albedo, normal)) {
+		uint n = 0;
+
+		acc_color *= albedo;
+		direct_albedo = albedo;
+		direct_normal = normal;
+
+		float light_pdf, bsdf_pdf, ndd;
+		for (int cur = 1; cur < uBounce; ++cur) {
+			vec2 samp = fract(GetSobol(cur) + noise);
+
+			o = pos;
+			// Multiple Importance Sampling (light)
+			{
+				vec3 light;
+				d = EnvMapSample(env_map_dim, samp, light, light_pdf);
+				ndd = dot(normal, d);
+
+				if (ndd > 0.0 && !isnan(light_pdf) && light_pdf > 0.0 && !RayMarchOcclude(o, d)) {
+					bsdf_pdf = DiffusePDF(ndd);
+					radiance += acc_color * light * uEnvMapMultiplier * PowerHeuristic(light_pdf, bsdf_pdf) * ndd /
+					            light_pdf / DIFFUSE_BSDF;
+					++n;
+				}
+			}
+
+			d = DiffuseSample(normal, samp, bsdf_pdf);
+			// ndd = dot(normal, d);
+
+			if (RayMarchLeaf(o, d, pos, albedo, normal))
+				acc_color *= albedo; // * ndd / bsdf_pdf / DIFFUSE_BSDF;
+			else {
+				// Multiple Importance Sampling (bsdf)
+				light_pdf = EnvMapPDF(d);
+				if (!isnan(light_pdf) && light_pdf > 0.0) {
+					radiance += acc_color * EnvLight(d) * uEnvMapMultiplier * PowerHeuristic(bsdf_pdf, light_pdf);
+					// * ndd / bsdf_pdf / DIFFUSE_BSDF;
+					++n;
+				}
+				break;
+			}
+		}
+		if (n > 0)
+			radiance /= float(n);
+	} else {
+		radiance = EnvLight(d);
+		direct_albedo = direct_normal = vec3(0);
+	}
+
+	return radiance;
 }
 
 void main() {
@@ -76,49 +180,12 @@ void main() {
 	if (pixel.x >= size.x || pixel.y >= size.y)
 		return;
 
+	vec2 noise = texelFetch(uNoise, pixel & 0xff, 0).xy;
 	vec3 o = uPosition.xyz, d = GenRay(pixel, size, GetSobol(0));
 
-	vec2 noise = texelFetch(uNoise, pixel & 0xff, 0).xy;
-	vec3 acc_color = vec3(1), radiance = vec3(0);
-
-	vec3 pos, albedo, normal, direct_albedo = vec3(0.0f), direct_normal = vec3(0.0f);
-
-	ivec2 env_map_dim = textureSize(uEnvironmentMap, 0).xy;
-
-	if (RayMarchLeaf(o, d, pos, albedo, normal)) {
-		acc_color *= albedo;
-		direct_albedo = albedo;
-		direct_normal = normal;
-
-		for (int cur = 1; cur < uBounce; ++cur) {
-			vec2 samp = fract(GetSobol(cur) + noise);
-			float mul = 1.0;
-
-			o = pos;
-			if (uLightType == 0)
-				d = AlignDirection(CosineSampleHemisphere(samp), normal);
-			else {
-				ivec2 pix = EnvMapSample(env_map_dim, samp);
-				// debugPrintfEXT("(%d, %d)", pix.x, pix.y);
-				float pdf;
-				d = EnvMapPixelToDir(env_map_dim, pix, pdf);
-				float x = dot(normal, d);
-				if (x < 0.0) {
-					d = AlignDirection(CosineSampleHemisphere(samp), normal);
-				} else {
-					mul = x / pdf / PI;
-				}
-			}
-
-			if (RayMarchLeaf(o, d, pos, albedo, normal))
-				acc_color *= albedo * mul;
-			else {
-				radiance = acc_color * Light(d, false) * mul;
-				break;
-			}
-		}
-	} else
-		radiance = Light(d, true);
+	vec3 direct_albedo, direct_normal;
+	vec3 radiance = uLightType == 0 ? ConstColorPathTrace(o, d, noise, direct_albedo, direct_normal)
+	                                : EnvMapPathTrace(o, d, noise, direct_albedo, direct_normal);
 
 	uint spp = uSobol[(uBounce + 1) << 1];
 	vec3 pt_color = (imageLoad(uColor, pixel).xyz * spp + radiance) / float(spp + 1);

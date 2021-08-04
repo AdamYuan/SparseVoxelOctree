@@ -17,7 +17,7 @@ private:
 		float *m_data;
 	};
 	struct AliasPair {
-		uint32_t m_prob, m_alias; // m_prob is normalized to [0, 2^32]
+		uint32_t m_prob, m_alias; // m_prob is normalized to [0, 2^32 - 1]
 	};
 	std::shared_ptr<myvk::Sampler> m_sampler;
 	std::shared_ptr<myvk::Image> m_hdr_image, m_alias_table_image;
