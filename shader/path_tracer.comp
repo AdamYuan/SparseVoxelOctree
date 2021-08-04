@@ -1,6 +1,4 @@
 #version 450
-// #extension GL_EXT_debug_printf : enable
-
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(std430, set = 0, binding = 0) readonly buffer uuOctree { uint uOctree[]; };
@@ -70,7 +68,7 @@ vec3 EnvMapSample(in const ivec2 env_map_dim, in const vec2 samp, out vec3 light
 		pix = EnvMapIndexToPixel(env_map_dim, alias.y);
 
 	// calculate dir and pdf
-	vec2 uv = (vec2(pix)) / vec2(env_map_dim);
+	vec2 uv = (vec2(pix) + 0.5) / vec2(env_map_dim);
 	float phi = 2.0 * PI * uv.x - uEnvMapRotation, theta = PI * uv.y;
 	float sin_theta = sin(theta);
 	vec4 texel = texelFetch(uEnvironmentMap, pix, 0);
