@@ -31,7 +31,7 @@ vec3 GenRay(in const ivec2 pixel, in const ivec2 size, in const vec2 noise) {
 vec2 GetSobol(in const int i) { return vec2(uSobol[i << 1], uSobol[i << 1 | 1]) / 4294967296.0; }
 
 #define PI 3.1415926535897932384626433832795
-#define DIFFUSE_BSDF PI
+#define DIFFUSE_BSDF (1.0 / PI)
 vec3 AlignDirection(in const vec3 dir, in const vec3 target) {
 	vec3 u = normalize(cross(abs(target.x) > .01 ? vec3(0, 1, 0) : vec3(1, 0, 0), target));
 	vec3 v = cross(target, u);
@@ -103,9 +103,9 @@ vec3 ConstColorPathTrace(vec3 o, vec3 d, in const vec2 noise, out vec3 direct_al
 			d = DiffuseSample(normal, samp, bsdf_pdf);
 
 			if (RayMarchLeaf(o, d, pos, albedo, normal))
-				acc_color *= albedo; // * ndd / bsdf_pdf / DIFFUSE_BSDF;
+				acc_color *= albedo; // * ndd * DIFFUSE_BSDF / bsdf_pdf;
 			else {
-				radiance = acc_color * ConstLight(); // * ndd / bsdf_pdf / DIFFUSE_BSDF;
+				radiance = acc_color * ConstLight(); // * ndd * DIFFUSE_BSDF / bsdf_pdf;
 				break;
 			}
 		}
@@ -122,8 +122,6 @@ vec3 EnvMapPathTrace(vec3 o, vec3 d, in const vec2 noise, out vec3 direct_albedo
 	vec3 acc_color = vec3(1), radiance = vec3(0), pos, albedo, normal;
 
 	if (RayMarchLeaf(o, d, pos, albedo, normal)) {
-		uint n = 0;
-
 		acc_color *= albedo;
 		direct_albedo = albedo;
 		direct_normal = normal;
@@ -133,17 +131,16 @@ vec3 EnvMapPathTrace(vec3 o, vec3 d, in const vec2 noise, out vec3 direct_albedo
 			vec2 samp = fract(GetSobol(cur) + noise);
 
 			o = pos;
-			// Multiple Importance Sampling (light)
 			{
-				vec3 light;
-				d = EnvMapSample(env_map_dim, samp, light, light_pdf);
+				// Multiple Importance Sampling (light)
+				vec3 env_light;
+				d = EnvMapSample(env_map_dim, samp, env_light, light_pdf);
 				ndd = dot(normal, d);
 
 				if (ndd > 0.0 && !isnan(light_pdf) && light_pdf > 0.0 && !RayMarchOcclude(o, d)) {
 					bsdf_pdf = DiffusePDF(ndd);
-					radiance += acc_color * light * uEnvMapMultiplier * PowerHeuristic(light_pdf, bsdf_pdf) * ndd /
-					            light_pdf / DIFFUSE_BSDF;
-					++n;
+					radiance += acc_color * env_light * uEnvMapMultiplier * PowerHeuristic(light_pdf, bsdf_pdf) * ndd *
+					            DIFFUSE_BSDF / light_pdf;
 				}
 			}
 
@@ -151,20 +148,16 @@ vec3 EnvMapPathTrace(vec3 o, vec3 d, in const vec2 noise, out vec3 direct_albedo
 			// ndd = dot(normal, d);
 
 			if (RayMarchLeaf(o, d, pos, albedo, normal))
-				acc_color *= albedo; // * ndd / bsdf_pdf / DIFFUSE_BSDF;
+				acc_color *= albedo; // * ndd * DIFFUSE_BSDF / bsdf_pdf;
 			else {
 				// Multiple Importance Sampling (bsdf)
 				light_pdf = EnvMapPDF(d);
-				if (!isnan(light_pdf) && light_pdf > 0.0) {
+				if (!isnan(light_pdf) && light_pdf > 0.0)
 					radiance += acc_color * EnvLight(d) * uEnvMapMultiplier * PowerHeuristic(bsdf_pdf, light_pdf);
-					// * ndd / bsdf_pdf / DIFFUSE_BSDF;
-					++n;
-				}
+				// * ndd * DIFFUSE_BSDF / bsdf_pdf;
 				break;
 			}
 		}
-		if (n > 0)
-			radiance /= float(n);
 	} else {
 		radiance = EnvLight(d);
 		direct_albedo = direct_normal = vec3(0);
