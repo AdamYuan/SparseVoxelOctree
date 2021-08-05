@@ -234,3 +234,17 @@ void EnvironmentMap::create_images(const std::shared_ptr<myvk::CommandPool> &com
 	command_buffer->Submit(fence);
 	fence->Wait();
 }
+
+void EnvironmentMap::CmdTransferOwnership(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
+                                          uint32_t src_queue_family, uint32_t dst_queue_family,
+                                          VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage) const {
+	if (Empty())
+		return;
+	command_buffer->CmdPipelineBarrier(
+	    src_stage, dst_stage, {}, {},
+	    {m_hdr_image->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, src_queue_family, dst_queue_family),
+	     m_alias_table_image->GetMemoryBarrier(
+	         VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, src_queue_family, dst_queue_family)});
+}

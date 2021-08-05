@@ -2,19 +2,12 @@
 #include "Queue.hpp"
 
 namespace myvk {
-#define MAKE_QUEUE_FAMILY                                                                                              \
-	uint32_t src_queue_family = VK_QUEUE_FAMILY_IGNORED, dst_queue_family = VK_QUEUE_FAMILY_IGNORED;                   \
-	if (src_queue && dst_queue && src_queue->GetFamilyIndex() != dst_queue->GetFamilyIndex()) {                        \
-		src_queue_family = src_queue->GetFamilyIndex();                                                                \
-		dst_queue_family = dst_queue->GetFamilyIndex();                                                                \
-	}
 
 std::vector<VkBufferMemoryBarrier> BufferBase::GetMemoryBarriers(const std::vector<BufferSubresourceRange> &regions,
                                                                  VkAccessFlags src_access_mask,
                                                                  VkAccessFlags dst_access_mask,
-                                                                 const std::shared_ptr<myvk::Queue> &src_queue,
-                                                                 const std::shared_ptr<myvk::Queue> &dst_queue) const {
-	MAKE_QUEUE_FAMILY
+                                                                 uint32_t src_queue_family,
+                                                                 uint32_t dst_queue_family) const {
 	std::vector<VkBufferMemoryBarrier> barriers(regions.size());
 	for (uint32_t i = 0; i < regions.size(); ++i) {
 		VkBufferMemoryBarrier &cur = barriers[i];
@@ -31,11 +24,11 @@ std::vector<VkBufferMemoryBarrier> BufferBase::GetMemoryBarriers(const std::vect
 	return barriers;
 }
 
-std::vector<VkBufferMemoryBarrier>
-BufferBase::GetSrcMemoryBarriers(const std::vector<VkBufferCopy> &regions, VkAccessFlags src_access_mask,
-                                 VkAccessFlags dst_access_mask, const std::shared_ptr<myvk::Queue> &src_queue,
-                                 const std::shared_ptr<myvk::Queue> &dst_queue) const {
-	MAKE_QUEUE_FAMILY
+std::vector<VkBufferMemoryBarrier> BufferBase::GetSrcMemoryBarriers(const std::vector<VkBufferCopy> &regions,
+                                                                    VkAccessFlags src_access_mask,
+                                                                    VkAccessFlags dst_access_mask,
+                                                                    uint32_t src_queue_family,
+                                                                    uint32_t dst_queue_family) const {
 	std::vector<VkBufferMemoryBarrier> barriers(regions.size());
 	for (uint32_t i = 0; i < regions.size(); ++i) {
 		VkBufferMemoryBarrier &cur = barriers[i];
@@ -52,11 +45,11 @@ BufferBase::GetSrcMemoryBarriers(const std::vector<VkBufferCopy> &regions, VkAcc
 	return barriers;
 }
 
-std::vector<VkBufferMemoryBarrier>
-BufferBase::GetDstMemoryBarriers(const std::vector<VkBufferCopy> &regions, VkAccessFlags src_access_mask,
-                                 VkAccessFlags dst_access_mask, const std::shared_ptr<myvk::Queue> &src_queue,
-                                 const std::shared_ptr<myvk::Queue> &dst_queue) const {
-	MAKE_QUEUE_FAMILY
+std::vector<VkBufferMemoryBarrier> BufferBase::GetDstMemoryBarriers(const std::vector<VkBufferCopy> &regions,
+                                                                    VkAccessFlags src_access_mask,
+                                                                    VkAccessFlags dst_access_mask,
+                                                                    uint32_t src_queue_family,
+                                                                    uint32_t dst_queue_family) const {
 	std::vector<VkBufferMemoryBarrier> barriers(regions.size());
 	for (uint32_t i = 0; i < regions.size(); ++i) {
 		VkBufferMemoryBarrier &cur = barriers[i];
@@ -73,11 +66,11 @@ BufferBase::GetDstMemoryBarriers(const std::vector<VkBufferCopy> &regions, VkAcc
 	return barriers;
 }
 
-std::vector<VkBufferMemoryBarrier>
-BufferBase::GetSrcMemoryBarriers(const std::vector<VkBufferImageCopy> &regions, VkAccessFlags src_access_mask,
-                                 VkAccessFlags dst_access_mask, const std::shared_ptr<myvk::Queue> &src_queue,
-                                 const std::shared_ptr<myvk::Queue> &dst_queue) const {
-	MAKE_QUEUE_FAMILY
+std::vector<VkBufferMemoryBarrier> BufferBase::GetSrcMemoryBarriers(const std::vector<VkBufferImageCopy> &regions,
+                                                                    VkAccessFlags src_access_mask,
+                                                                    VkAccessFlags dst_access_mask,
+                                                                    uint32_t src_queue_family,
+                                                                    uint32_t dst_queue_family) const {
 	std::vector<VkBufferMemoryBarrier> barriers(regions.size());
 	for (uint32_t i = 0; i < regions.size(); i++) {
 		VkBufferMemoryBarrier &cur = barriers[i];
@@ -97,10 +90,8 @@ BufferBase::GetSrcMemoryBarriers(const std::vector<VkBufferImageCopy> &regions, 
 }
 
 VkBufferMemoryBarrier BufferBase::GetMemoryBarrier(const BufferSubresourceRange &region, VkAccessFlags src_access_mask,
-                                                   VkAccessFlags dst_access_mask,
-                                                   const std::shared_ptr<myvk::Queue> &src_queue,
-                                                   const std::shared_ptr<myvk::Queue> &dst_queue) const {
-	MAKE_QUEUE_FAMILY
+                                                   VkAccessFlags dst_access_mask, uint32_t src_queue_family,
+                                                   uint32_t dst_queue_family) const {
 	VkBufferMemoryBarrier ret = {};
 	ret.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 	ret.size = region.size;
@@ -115,10 +106,8 @@ VkBufferMemoryBarrier BufferBase::GetMemoryBarrier(const BufferSubresourceRange 
 }
 
 VkBufferMemoryBarrier BufferBase::GetSrcMemoryBarrier(const VkBufferCopy &region, VkAccessFlags src_access_mask,
-                                                      VkAccessFlags dst_access_mask,
-                                                      const std::shared_ptr<myvk::Queue> &src_queue,
-                                                      const std::shared_ptr<myvk::Queue> &dst_queue) const {
-	MAKE_QUEUE_FAMILY
+                                                      VkAccessFlags dst_access_mask, uint32_t src_queue_family,
+                                                      uint32_t dst_queue_family) const {
 	VkBufferMemoryBarrier ret = {};
 	ret.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 	ret.size = region.size;
@@ -133,10 +122,8 @@ VkBufferMemoryBarrier BufferBase::GetSrcMemoryBarrier(const VkBufferCopy &region
 }
 
 VkBufferMemoryBarrier BufferBase::GetDstMemoryBarrier(const VkBufferCopy &region, VkAccessFlags src_access_mask,
-                                                      VkAccessFlags dst_access_mask,
-                                                      const std::shared_ptr<myvk::Queue> &src_queue,
-                                                      const std::shared_ptr<myvk::Queue> &dst_queue) const {
-	MAKE_QUEUE_FAMILY
+                                                      VkAccessFlags dst_access_mask, uint32_t src_queue_family,
+                                                      uint32_t dst_queue_family) const {
 	VkBufferMemoryBarrier ret = {};
 	ret.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 	ret.size = region.size;
@@ -151,9 +138,7 @@ VkBufferMemoryBarrier BufferBase::GetDstMemoryBarrier(const VkBufferCopy &region
 }
 
 VkBufferMemoryBarrier BufferBase::GetMemoryBarrier(VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
-                                                   const std::shared_ptr<myvk::Queue> &src_queue,
-                                                   const std::shared_ptr<myvk::Queue> &dst_queue) const {
-	MAKE_QUEUE_FAMILY
+                                                   uint32_t src_queue_family, uint32_t dst_queue_family) const {
 	VkBufferMemoryBarrier ret = {};
 	ret.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 	ret.size = m_size;

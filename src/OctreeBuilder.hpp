@@ -41,6 +41,11 @@ public:
 	void CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
 	VkDeviceSize GetOctreeRange(const std::shared_ptr<myvk::CommandPool> &command_pool) const;
 	const std::shared_ptr<myvk::Buffer> &GetOctree() const { return m_octree_buffer; }
+
+	void CmdTransferOctreeOwnership(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
+	                                uint32_t src_queue_family, uint32_t dst_queue_family,
+	                                VkPipelineStageFlags src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+	                                VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT) const;
 };
 
 #endif

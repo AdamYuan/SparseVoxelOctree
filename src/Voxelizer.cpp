@@ -171,7 +171,7 @@ void Voxelizer::count_and_create_fragment_list(const std::shared_ptr<myvk::Comma
 		command_buffer->CmdEndRenderPass();
 		command_buffer->End();
 		std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(command_pool->GetDevicePtr());
-		command_buffer->Submit({}, {}, fence);
+		command_buffer->Submit(fence);
 		fence->Wait();
 	}
 

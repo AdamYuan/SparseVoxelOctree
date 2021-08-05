@@ -9,6 +9,9 @@ constexpr const char *kHelpStr = "AdamYuan's GPU Sparse Voxel Octree (Driven by 
                                  "\t-lvl [OCTREE LEVEL (%u <= lvl <= %u)]\n";
 
 int main(int argc, char **argv) {
+#ifndef NDEBUG
+	spdlog::set_level(spdlog::level::debug);
+#endif
 	spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] [thread %t] %v");
 
 	--argc;

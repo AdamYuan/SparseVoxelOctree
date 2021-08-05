@@ -21,42 +21,45 @@ public:
 
 	std::vector<VkBufferMemoryBarrier> GetMemoryBarriers(const std::vector<BufferSubresourceRange> &regions,
 	                                                     VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
-	                                                     const std::shared_ptr<myvk::Queue> &src_queue = nullptr,
-	                                                     const std::shared_ptr<myvk::Queue> &dst_queue = nullptr) const;
+	                                                     uint32_t src_queue_family = VK_QUEUE_FAMILY_IGNORED,
+	                                                     uint32_t dst_queue_family = VK_QUEUE_FAMILY_IGNORED) const;
 
-	std::vector<VkBufferMemoryBarrier>
-	GetSrcMemoryBarriers(const std::vector<VkBufferCopy> &regions, VkAccessFlags src_access_mask,
-	                     VkAccessFlags dst_access_mask, const std::shared_ptr<myvk::Queue> &src_queue = nullptr,
-	                     const std::shared_ptr<myvk::Queue> &dst_queue = nullptr) const;
+	std::vector<VkBufferMemoryBarrier> GetSrcMemoryBarriers(const std::vector<VkBufferCopy> &regions,
+	                                                        VkAccessFlags src_access_mask,
+	                                                        VkAccessFlags dst_access_mask,
+	                                                        uint32_t src_queue_family = VK_QUEUE_FAMILY_IGNORED,
+	                                                        uint32_t dst_queue_family = VK_QUEUE_FAMILY_IGNORED) const;
 
-	std::vector<VkBufferMemoryBarrier>
-	GetDstMemoryBarriers(const std::vector<VkBufferCopy> &regions, VkAccessFlags src_access_mask,
-	                     VkAccessFlags dst_access_mask, const std::shared_ptr<myvk::Queue> &src_queue = nullptr,
-	                     const std::shared_ptr<myvk::Queue> &dst_queue = nullptr) const;
+	std::vector<VkBufferMemoryBarrier> GetDstMemoryBarriers(const std::vector<VkBufferCopy> &regions,
+	                                                        VkAccessFlags src_access_mask,
+	                                                        VkAccessFlags dst_access_mask,
+	                                                        uint32_t src_queue_family = VK_QUEUE_FAMILY_IGNORED,
+	                                                        uint32_t dst_queue_family = VK_QUEUE_FAMILY_IGNORED) const;
 
-	std::vector<VkBufferMemoryBarrier>
-	GetSrcMemoryBarriers(const std::vector<VkBufferImageCopy> &regions, VkAccessFlags src_access_mask,
-	                     VkAccessFlags dst_access_mask, const std::shared_ptr<myvk::Queue> &src_queue = nullptr,
-	                     const std::shared_ptr<myvk::Queue> &dst_queue = nullptr) const;
+	std::vector<VkBufferMemoryBarrier> GetSrcMemoryBarriers(const std::vector<VkBufferImageCopy> &regions,
+	                                                        VkAccessFlags src_access_mask,
+	                                                        VkAccessFlags dst_access_mask,
+	                                                        uint32_t src_queue_family = VK_QUEUE_FAMILY_IGNORED,
+	                                                        uint32_t dst_queue_family = VK_QUEUE_FAMILY_IGNORED) const;
 
 	VkBufferMemoryBarrier GetMemoryBarrier(VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
-	                                       const std::shared_ptr<myvk::Queue> &src_queue = nullptr,
-	                                       const std::shared_ptr<myvk::Queue> &dst_queue = nullptr) const;
+	                                       uint32_t src_queue_family = VK_QUEUE_FAMILY_IGNORED,
+	                                       uint32_t dst_queue_family = VK_QUEUE_FAMILY_IGNORED) const;
 
 	VkBufferMemoryBarrier GetMemoryBarrier(const BufferSubresourceRange &region, VkAccessFlags src_access_mask,
 	                                       VkAccessFlags dst_access_mask,
-	                                       const std::shared_ptr<myvk::Queue> &src_queue = nullptr,
-	                                       const std::shared_ptr<myvk::Queue> &dst_queue = nullptr) const;
+	                                       uint32_t src_queue_family = VK_QUEUE_FAMILY_IGNORED,
+	                                       uint32_t dst_queue_family = VK_QUEUE_FAMILY_IGNORED) const;
 
 	VkBufferMemoryBarrier GetSrcMemoryBarrier(const VkBufferCopy &region, VkAccessFlags src_access_mask,
 	                                          VkAccessFlags dst_access_mask,
-	                                          const std::shared_ptr<myvk::Queue> &src_queue = nullptr,
-	                                          const std::shared_ptr<myvk::Queue> &dst_queue = nullptr) const;
+	                                          uint32_t src_queue_family = VK_QUEUE_FAMILY_IGNORED,
+	                                          uint32_t dst_queue_family = VK_QUEUE_FAMILY_IGNORED) const;
 
 	VkBufferMemoryBarrier GetDstMemoryBarrier(const VkBufferCopy &region, VkAccessFlags src_access_mask,
 	                                          VkAccessFlags dst_access_mask,
-	                                          const std::shared_ptr<myvk::Queue> &src_queue = nullptr,
-	                                          const std::shared_ptr<myvk::Queue> &dst_queue = nullptr) const;
+	                                          uint32_t src_queue_family = VK_QUEUE_FAMILY_IGNORED,
+	                                          uint32_t dst_queue_family = VK_QUEUE_FAMILY_IGNORED) const;
 };
 } // namespace myvk
 

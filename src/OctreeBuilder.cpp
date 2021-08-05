@@ -1,5 +1,5 @@
-#include "Config.hpp"
 #include "OctreeBuilder.hpp"
+#include "Config.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -215,4 +215,10 @@ void OctreeBuilder::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command
 
 VkDeviceSize OctreeBuilder::GetOctreeRange(const std::shared_ptr<myvk::CommandPool> &command_pool) const {
 	return (m_atomic_counter.Read(command_pool) + 1u) * 8u * sizeof(uint32_t);
+}
+void OctreeBuilder::CmdTransferOctreeOwnership(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
+                                               uint32_t src_queue_family, uint32_t dst_queue_family,
+                                               VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage) const {
+	command_buffer->CmdPipelineBarrier(
+	    src_stage, dst_stage, {}, {m_octree_buffer->GetMemoryBarrier(0, 0, src_queue_family, dst_queue_family)}, {});
 }

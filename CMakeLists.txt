@@ -75,10 +75,6 @@ add_executable(SparseVoxelOctree
 		src/UILighting.hpp
 		)
 
-# find_package(OpenMP)
-# if (OpenMP_CXX_FOUND)
-#     target_link_libraries(SparseVoxelOctree PRIVATE OpenMP::OpenMP_CXX)
-# endif ()
 find_package(Threads REQUIRED)
 target_link_libraries(SparseVoxelOctree PRIVATE dep shader Threads::Threads)
 

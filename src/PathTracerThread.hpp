@@ -23,6 +23,9 @@ private:
 	void path_tracer_thread_func();
 	void viewer_thread_func();
 
+	void acquire_resources();
+	void release_resources();
+
 public:
 	static std::shared_ptr<PathTracerThread> Create(const std::shared_ptr<PathTracerViewer> &path_tracer_viewer,
 	                                                const std::shared_ptr<myvk::Queue> &path_tracer_queue,

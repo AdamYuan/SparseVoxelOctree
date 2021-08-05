@@ -42,7 +42,7 @@ vec3 AlignDirection(in const vec3 dir, in const vec3 target) {
 vec3 DiffuseSample(in const vec3 normal, in const vec2 samp, out float pdf) {
 	// cosine hemisphere sampling
 	float r = sqrt(samp.x), phi = 2 * PI * samp.y;
-	vec3 d = normalize(vec3(r * cos(phi), r * sin(phi), sqrt(1.0 - samp.x)));
+	vec3 d = vec3(r * cos(phi), r * sin(phi), sqrt(1.0 - samp.x));
 	// calculate pdf (dot(n, d) / PI)
 	pdf = d.z / PI;
 	return AlignDirection(d, normal);
@@ -74,7 +74,7 @@ vec3 EnvMapSample(in const ivec2 env_map_dim, in const vec2 samp, out vec3 light
 	vec4 texel = texelFetch(uEnvironmentMap, pix, 0);
 	light = texel.xyz;
 	pdf = texel.w / (2 * PI * PI * sin_theta);
-	return normalize(vec3(sin_theta * sin(phi), cos(theta), sin_theta * cos(phi)));
+	return vec3(sin_theta * sin(phi), cos(theta), sin_theta * cos(phi));
 }
 
 // MIS Weight

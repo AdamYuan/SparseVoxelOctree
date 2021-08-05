@@ -2,6 +2,7 @@
 #define ENVIRONMENT_MAP_HPP
 
 #include <myvk/Buffer.hpp>
+#include <myvk/CommandBuffer.hpp>
 #include <myvk/CommandPool.hpp>
 #include <myvk/DescriptorSet.hpp>
 #include <myvk/Image.hpp>
@@ -43,6 +44,11 @@ public:
 	bool Empty() const { return m_hdr_image == nullptr; }
 	void Reset();
 	void Reset(const std::shared_ptr<myvk::CommandPool> &command_pool, const char *filename);
+
+	void CmdTransferOwnership(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t src_queue_family,
+	                          uint32_t dst_queue_family,
+	                          VkPipelineStageFlags src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+	                          VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT) const;
 };
 
 #endif

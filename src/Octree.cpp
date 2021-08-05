@@ -25,3 +25,10 @@ void Octree::Update(const std::shared_ptr<myvk::CommandPool> &command_pool,
 	m_range = octree_range;
 	m_descriptor_set->UpdateStorageBuffer(m_buffer, 0, 0, 0, octree_range);
 }
+void Octree::CmdTransferOwnership(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t src_queue_family,
+                                  uint32_t dst_queue_family, VkPipelineStageFlags src_stage,
+                                  VkPipelineStageFlags dst_stage) const {
+	command_buffer->CmdPipelineBarrier(
+	    src_stage, dst_stage, {}, {m_buffer->GetMemoryBarrier({0, m_range}, 0, 0, src_queue_family, dst_queue_family)},
+	    {});
+}

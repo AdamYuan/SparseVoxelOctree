@@ -252,9 +252,8 @@ std::vector<float> PathTracer::ExtractColorImage(const std::shared_ptr<myvk::Com
 	                         VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 	extract_target_image_to_buffer(command_pool, m_color_image, staging_buffer);
 
-	float *data = (float *)staging_buffer->Map();
+	auto *data = (float *)staging_buffer->Map();
 	std::vector<float> pixels(kSize * 3);
-#pragma omp parallel for
 	for (int i = 0; i < kSize; ++i) {
 		pixels[i * 3 + 0] = data[i * 4 + 0];
 		pixels[i * 3 + 1] = data[i * 4 + 1];
@@ -274,7 +273,6 @@ std::vector<float> PathTracer::ExtractAlbedoImage(const std::shared_ptr<myvk::Co
 
 	auto *data = (uint32_t *)staging_buffer->Map();
 	std::vector<float> pixels(kSize * 3);
-	// #pragma omp parallel for
 	for (int i = 0; i < kSize; ++i) {
 		glm::vec3 v = glm::unpackUnorm4x8(data[i]);
 		pixels[i * 3 + 0] = v.x;
@@ -295,7 +293,6 @@ std::vector<float> PathTracer::ExtractNormalImage(const std::shared_ptr<myvk::Co
 
 	auto *data = (uint32_t *)staging_buffer->Map();
 	std::vector<float> pixels(kSize * 3);
-	// #pragma omp parallel for
 	for (int i = 0; i < kSize; ++i) {
 		glm::vec3 v = glm::unpackSnorm4x8(data[i]);
 		pixels[i * 3 + 0] = v.x;
