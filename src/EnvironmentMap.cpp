@@ -98,7 +98,7 @@ EnvironmentMap::HdrImg EnvironmentMap::load_hdr_image(const char *filename) {
 	return {0, 0, nullptr};
 }
 
-inline static float luminance(float r, float g, float b) { return r * 0.3f + g * 0.6f + b * 0.1f; }
+inline static float luminance(float r, float g, float b) { return 0.2126f * r + 0.7152f * g + 0.0722f * b; }
 std::vector<double> EnvironmentMap::weigh_hdr_image(const EnvironmentMap::HdrImg *img) {
 	const uint32_t img_size = img->m_width * img->m_height;
 
@@ -115,14 +115,14 @@ std::vector<double> EnvironmentMap::weigh_hdr_image(const EnvironmentMap::HdrImg
 		}
 	}
 
-	// normalize weights, set as PDF
+	// normalize weights, set as PDF (in alpha channel)
 	double mul = (double)img_size / weight_sum;
 	for (uint32_t i = 0; i < img_size; ++i) {
 		ret[i] *= mul;
 		img->m_data[(i << 2) | 3] = (float)ret[i];
 	}
 
-	spdlog::info("environment map pixel weights and pdf calculated");
+	spdlog::info("environment map pixel weights calculated");
 
 	return ret;
 }
