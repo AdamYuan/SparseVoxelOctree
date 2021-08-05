@@ -2,6 +2,7 @@
 #include <glm/glm.hpp>
 #include <myvk/CommandBuffer.hpp>
 #include <spdlog/spdlog.h>
+#include <spdlog/stopwatch.h>
 #include <stb_image.h>
 #include <tinyexr.h>
 
@@ -52,7 +53,6 @@ void EnvironmentMap::Reset(const std::shared_ptr<myvk::CommandPool> &command_poo
 		return;
 	}
 
-	// TODO: calculate weights, copy to vulkan image
 	std::vector<double> weights = weigh_hdr_image(&img);
 	create_images(command_pool, img, &weights);
 
@@ -108,7 +108,7 @@ std::vector<double> EnvironmentMap::weigh_hdr_image(const EnvironmentMap::HdrImg
 	double weight_sum = 0.0;
 	float *cur = img->m_data;
 	for (uint32_t j = 0; j < img->m_height; ++j) {
-		double sin_theta = glm::sin(M_PI * double(j) / double(img->m_height));
+		double sin_theta = glm::sin(M_PI * (double(j) + 0.5) / double(img->m_height));
 		for (uint32_t i = 0; i < img->m_width; ++i, cur += 4) {
 			ret.push_back((double)luminance(cur[0], cur[1], cur[2]) * sin_theta);
 			weight_sum += ret.back();
@@ -122,51 +122,73 @@ std::vector<double> EnvironmentMap::weigh_hdr_image(const EnvironmentMap::HdrImg
 		img->m_data[(i << 2) | 3] = (float)ret[i];
 	}
 
+	spdlog::info("environment map pixel weights and pdf calculated");
+
 	return ret;
 }
 
 void EnvironmentMap::generate_alias_table(std::vector<double> *weights_ptr, AliasPair *alias_table) {
 	std::vector<double> &weights = *weights_ptr;
 	const uint32_t n = weights.size();
+	// not needed, since the data is already normalized
 	/* double weight_sum = 0.0;
 	for (double &i : weights)
 	    weight_sum += i;
 	for (double &i : weights)
 	    i *= (double)n / weight_sum; */
-	std::vector<uint32_t> large_block, small_block;
-	large_block.reserve(n);
-	small_block.reserve(n);
+
+	std::vector<uint32_t> buffer(n);
+	uint32_t *const buffer_begin = buffer.data(), *const buffer_end = buffer.data() + n;
+	uint32_t *small_ptr = buffer_begin, *large_ptr = buffer_end;
+
+	// define bi-stack operations
+#define SMALL_PUSH(x) *(small_ptr++) = (x)
+#define LARGE_PUSH(x) *(--large_ptr) = (x)
+#define SMALL_EMPTY (small_ptr == buffer_begin)
+#define LARGE_EMPTY (large_ptr == buffer_end)
+#define SMALL_POP_AND_GET *(--small_ptr)
+#define LARGE_POP_AND_GET *(large_ptr++)
+#define LARGE_GET *large_ptr
+#define LARGE_POP ++large_ptr
 
 	for (uint32_t i = 0; i < n; ++i) {
 		if (weights[i] < 1.0)
-			small_block.push_back(i);
+			SMALL_PUSH(i);
 		else
-			large_block.push_back(i);
+			LARGE_PUSH(i);
 	}
 
-	while (!small_block.empty() && !large_block.empty()) {
-		uint32_t cur_small = small_block.back(), cur_large = large_block.back();
-		small_block.pop_back();
+	while (!SMALL_EMPTY && !LARGE_EMPTY) {
+		uint32_t cur_small = SMALL_POP_AND_GET, cur_large = LARGE_GET;
 		alias_table[cur_small].m_prob = (uint32_t)glm::clamp(weights[cur_small] * 4294967296.0, 0.0, 4294967295.0);
 		alias_table[cur_small].m_alias = cur_large;
 		weights[cur_large] -= 1.0 - weights[cur_small];
 		if (weights[cur_large] < 1.0) {
-			large_block.pop_back();
-			small_block.push_back(cur_large);
+			LARGE_POP;
+			SMALL_PUSH(cur_large);
 		}
 	}
 
-	while (!large_block.empty()) {
-		uint32_t cur = large_block.back();
-		large_block.pop_back();
+	while (!LARGE_EMPTY) {
+		uint32_t cur = LARGE_POP_AND_GET;
 		alias_table[cur].m_prob = alias_table[cur].m_alias = 0xffffffffu;
 	}
 
-	while (!small_block.empty()) {
-		uint32_t cur = small_block.back();
-		small_block.pop_back();
+	while (!SMALL_EMPTY) {
+		uint32_t cur = SMALL_POP_AND_GET;
 		alias_table[cur].m_prob = alias_table[cur].m_alias = 0xffffffffu;
 	}
+
+#undef SMALL_PUSH
+#undef LARGE_PUSH
+#undef SMALL_EMPTY
+#undef LARGE_EMPTY
+#undef SMALL_POP_AND_GET
+#undef LARGE_POP_AND_GET
+#undef LARGE_GET
+#undef LARGE_POP
+
+	spdlog::info("environment map alias table generated");
 }
 
 void EnvironmentMap::create_images(const std::shared_ptr<myvk::CommandPool> &command_pool, const HdrImg &img,
