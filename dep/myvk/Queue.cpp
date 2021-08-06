@@ -17,7 +17,10 @@ std::shared_ptr<Queue> Queue::Create(const std::shared_ptr<UniqueQueue> &unique_
 	return ret;
 }
 
-VkResult Queue::WaitIdle() const { return vkQueueWaitIdle(m_unique_queue_ptr->m_queue); }
+VkResult Queue::WaitIdle() const {
+	std::lock_guard<std::mutex> lock_guard{GetMutex()};
+	return vkQueueWaitIdle(m_unique_queue_ptr->m_queue);
+}
 
 std::shared_ptr<PresentQueue> PresentQueue::Create(const std::shared_ptr<UniqueQueue> &unique_queue,
                                                    const std::shared_ptr<Surface> &surface) {

@@ -39,9 +39,7 @@ public:
 
 	uint32_t GetFamilyIndex() const { return m_unique_queue_ptr->m_family_index; }
 
-	std::mutex &GetMutex() { return m_unique_queue_ptr->m_mutex; }
-
-	const std::mutex &GetMutex() const { return m_unique_queue_ptr->m_mutex; }
+	std::mutex &GetMutex() const { return m_unique_queue_ptr->m_mutex; }
 
 	VkResult WaitIdle() const;
 };
