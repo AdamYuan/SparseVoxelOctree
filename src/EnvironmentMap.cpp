@@ -2,7 +2,6 @@
 #include <glm/glm.hpp>
 #include <myvk/CommandBuffer.hpp>
 #include <spdlog/spdlog.h>
-#include <spdlog/stopwatch.h>
 #include <stb_image.h>
 #include <tinyexr.h>
 
@@ -47,11 +46,11 @@ void EnvironmentMap::Reset() {
 }
 
 void EnvironmentMap::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool, const char *filename) {
+	Reset();
+
 	HdrImg img = load_hdr_image(filename);
-	if (!img.m_data) {
-		Reset();
+	if (!img.m_data)
 		return;
-	}
 
 	std::vector<double> weights = weigh_hdr_image(&img);
 	create_images(command_pool, img, &weights);

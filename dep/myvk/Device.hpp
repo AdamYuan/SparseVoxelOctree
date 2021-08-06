@@ -21,12 +21,12 @@ private:
 	VkResult create_allocator();
 
 	VkResult create_device(const std::vector<VkDeviceQueueCreateInfo> &queue_create_infos,
-	                       const std::vector<const char *> &extensions);
+	                       const std::vector<const char *> &extensions, void *p_next);
 
 	VkResult create_pipeline_cache();
 
 public:
-	static std::shared_ptr<Device> Create(const DeviceCreateInfo &device_create_info);
+	static std::shared_ptr<Device> Create(const DeviceCreateInfo &device_create_info, void *p_next = nullptr);
 
 	VmaAllocator GetAllocatorHandle() const { return m_allocator; }
 

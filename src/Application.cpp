@@ -273,7 +273,10 @@ void Application::initialize_vulkan() {
 			spdlog::error("Failed to find extension support!");
 			exit(EXIT_FAILURE);
 		}
-		m_device = myvk::Device::Create(device_create_info);
+		VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features = {};
+		descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+		descriptor_indexing_features.descriptorBindingPartiallyBound = VK_TRUE;
+		m_device = myvk::Device::Create(device_create_info, &descriptor_indexing_features);
 		if (!m_device) {
 			spdlog::error("Failed to create logical device!");
 			exit(EXIT_FAILURE);
@@ -336,6 +339,12 @@ Application::Application() {
 }
 
 Application::~Application() {
+	// Stop threads
+	m_path_tracer_thread = nullptr;
+	m_loader_thread = nullptr;
+	// Wait all work done
+	m_device->WaitIdle();
+
 	ImGui_ImplGlfw_Shutdown();
 	glfwDestroyWindow(m_window);
 	glfwTerminate();
@@ -364,7 +373,6 @@ void Application::Run() {
 		draw_frame();
 		lst_time = cur_time;
 	}
-	m_device->WaitIdle();
 }
 
 void Application::ui_switch_state() {

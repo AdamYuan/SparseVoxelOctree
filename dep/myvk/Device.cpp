@@ -10,7 +10,7 @@ Device::~Device() {
 		vkDestroyDevice(m_device, nullptr);
 }
 
-std::shared_ptr<Device> Device::Create(const DeviceCreateInfo &device_create_info) {
+std::shared_ptr<Device> Device::Create(const DeviceCreateInfo &device_create_info, void *p_next) {
 	std::shared_ptr<Device> ret = std::make_shared<Device>();
 	ret->m_physical_device_ptr = device_create_info.m_physical_device_ptr;
 
@@ -19,7 +19,7 @@ std::shared_ptr<Device> Device::Create(const DeviceCreateInfo &device_create_inf
 
 	device_create_info.enumerate_device_queue_create_infos(&queue_create_infos, &queue_priorities);
 
-	if (ret->create_device(queue_create_infos, device_create_info.m_extensions) != VK_SUCCESS)
+	if (ret->create_device(queue_create_infos, device_create_info.m_extensions, p_next) != VK_SUCCESS)
 		return nullptr;
 	volkLoadDevice(ret->m_device);
 	device_create_info.fetch_queues(ret);
@@ -34,7 +34,7 @@ std::shared_ptr<Device> Device::Create(const DeviceCreateInfo &device_create_inf
 }
 
 VkResult Device::create_device(const std::vector<VkDeviceQueueCreateInfo> &queue_create_infos,
-                               const std::vector<const char *> &extensions) {
+                               const std::vector<const char *> &extensions, void *p_next) {
 	VkDeviceCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	create_info.pQueueCreateInfos = queue_create_infos.data();
@@ -43,7 +43,7 @@ VkResult Device::create_device(const std::vector<VkDeviceQueueCreateInfo> &queue
 	create_info.enabledExtensionCount = extensions.size();
 	create_info.ppEnabledExtensionNames = extensions.data();
 	create_info.enabledLayerCount = 0;
-	create_info.pNext = &m_physical_device_ptr->GetDescriptorIndexingFeatures();
+	create_info.pNext = p_next;
 
 	return vkCreateDevice(m_physical_device_ptr->GetHandle(), &create_info, nullptr, &m_device);
 }

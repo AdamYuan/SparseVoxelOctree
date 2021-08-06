@@ -10,7 +10,7 @@ void LogMenuItem(const std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> &log_s
 		const auto &logs_raw = log_sink->last_raw();
 		const auto &logs_time = log_sink->last_formatted();
 
-		static constexpr ImU32 kLogColors[7] = {0xffffffffu, 0xffffffffu, 0xff00bd00u, 0xff00ffffu,
+		static constexpr ImU32 kLogColors[7] = {0xffffffffu, 0xffffff00u, 0xff00bd00u, 0xff00ffffu,
 		                                        0xff0000ffu, 0xff0000ffu, 0xffffffffu};
 		static constexpr const char *kLogLevelStrs[7] = {"Trace", "Debug", "Info", "Warn", "Error", "Critical", "Off"};
 		static bool log_level_disable[7] = {};
