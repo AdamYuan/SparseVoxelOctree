@@ -1,9 +1,9 @@
-#ifndef IMGUI_HELPER_HPP
-#define IMGUI_HELPER_HPP
+#ifndef IMGUI_UTIL_HPP
+#define IMGUI_UTIL_HPP
 
 #include <imgui/imgui.h>
 
-namespace UI {
+namespace ImGui {
 void LoadFontAwesome();
 bool Spinner(const char *label, float radius, int thickness, const ImU32 &color);
 void StyleCinder(ImGuiStyle *dst = nullptr);

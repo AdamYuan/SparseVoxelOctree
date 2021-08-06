@@ -1,5 +1,5 @@
-#include "Config.hpp"
 #include "PathTracerViewer.hpp"
+#include "Config.hpp"
 #include "QuadSpirv.hpp"
 
 #include <spdlog/spdlog.h>
@@ -267,6 +267,8 @@ std::shared_ptr<PathTracerViewer> PathTracerViewer::Create(const std::shared_ptr
 }
 
 void PathTracerViewer::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool) {
+	m_view_type = ViewTypes::kColor;
+
 	m_image = myvk::Image::CreateTexture2D(
 	    m_gen_render_pass->GetDevicePtr(), {m_path_tracer_ptr->m_width, m_path_tracer_ptr->m_height}, 1,
 	    VK_FORMAT_R8G8B8A8_UNORM,

@@ -7,8 +7,8 @@
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_internal.h>
 
+#include "ImGuiUtil.hpp"
 #include "UICamera.hpp"
-#include "UIHelper.hpp"
 #include "UILighting.hpp"
 #include "UILoader.hpp"
 #include "UILog.hpp"
@@ -46,8 +46,8 @@ void Application::create_window() {
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	UI::LoadFontAwesome();
-	UI::StyleCinder();
+	ImGui::LoadFontAwesome();
+	ImGui::StyleCinder();
 	ImGui_ImplGlfw_InitForVulkan(m_window, true);
 }
 
@@ -308,7 +308,7 @@ void Application::initialize_vulkan() {
 
 Application::Application() {
 	m_log_sink = std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(kLogLimit);
-	m_log_sink->set_pattern("%H:%M:%S.%e"); // only display time
+	UI::LogSetRequiredPattern(m_log_sink);
 	spdlog::default_logger()->sinks().push_back(m_log_sink);
 
 	create_window();
@@ -426,10 +426,10 @@ void Application::ui_menubar() {
 	else if (m_ui_state == UIStates::kOctreeTracer) {
 		UI::OctreeTracerMenuItems(m_octree_tracer);
 		UI::CameraMenuItems(m_camera);
-		UI::LightingMenuItem(m_main_command_pool, m_lighting, &open_modal);
+		UI::LightingMenuItems(m_main_command_pool, m_lighting, &open_modal);
 	}
 
-	UI::LogMenuItem(m_log_sink);
+	UI::LogMenuItems(m_log_sink);
 
 	// Status bar
 	if (m_ui_state == UIStates::kOctreeTracer)

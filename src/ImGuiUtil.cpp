@@ -1,11 +1,11 @@
-#include "UIHelper.hpp"
+#include "ImGuiUtil.hpp"
 
 #include <font-awesome/IconsFontAwesome5.h>
 #include <font-awesome/fa_solid_900.inl>
 #include <imgui/imgui_internal.h>
 #include <tinyfiledialogs.h>
 
-namespace UI {
+namespace ImGui {
 void LoadFontAwesome() {
 	ImGuiIO &io = ImGui::GetIO();
 	io.Fonts->AddFontDefault();

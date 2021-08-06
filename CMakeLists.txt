@@ -59,8 +59,8 @@ add_executable(SparseVoxelOctree
 		src/PathTracerThread.hpp
 		src/Lighting.cpp
 		src/Lighting.hpp
-		src/UIHelper.cpp
-		src/UIHelper.hpp
+		src/ImGuiUtil.cpp
+		src/ImGuiUtil.hpp
 		src/UILog.cpp
 		src/UILog.hpp
 		src/UICamera.cpp

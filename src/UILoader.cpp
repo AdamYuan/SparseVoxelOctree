@@ -1,7 +1,7 @@
 #include "UILoader.hpp"
 
 #include "Config.hpp"
-#include "UIHelper.hpp"
+#include "ImGuiUtil.hpp"
 #include <font-awesome/IconsFontAwesome5.h>
 #include <imgui/imgui.h>
 
@@ -17,7 +17,7 @@ void LoaderLoadButton(const std::shared_ptr<LoaderThread> &loader_thread, const 
 	}
 }
 void LoaderLoadSceneModal(const std::shared_ptr<LoaderThread> &loader_thread) {
-	UI::SetNextWindowCentering();
+	ImGui::SetNextWindowCentering();
 	if (ImGui::BeginPopupModal(kLoaderLoadSceneModal, nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
@@ -26,7 +26,7 @@ void LoaderLoadSceneModal(const std::shared_ptr<LoaderThread> &loader_thread) {
 
 		constexpr const char *kFilter[] = {"*.obj"};
 
-		UI::FileOpen("OBJ Filename", "...", name_buf, kFilenameBufSize, "OBJ Filename", 1, kFilter);
+		ImGui::FileOpen("OBJ Filename", "...", name_buf, kFilenameBufSize, "OBJ Filename", 1, kFilter);
 		ImGui::DragInt("Octree Level", &octree_leve, 1, kOctreeLevelMin, kOctreeLevelMax);
 
 		float button_width = (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
@@ -44,11 +44,11 @@ void LoaderLoadSceneModal(const std::shared_ptr<LoaderThread> &loader_thread) {
 	}
 }
 void LoaderLoadingModal(const std::shared_ptr<LoaderThread> &loader_thread) {
-	UI::SetNextWindowCentering();
+	ImGui::SetNextWindowCentering();
 	if (ImGui::BeginPopupModal(kLoaderLoadingModal, nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
-		UI::Spinner("##spinner", 12, 6, ImGui::GetColorU32(ImGuiCol_ButtonHovered));
+		ImGui::Spinner("##spinner", 12, 6, ImGui::GetColorU32(ImGuiCol_ButtonHovered));
 		ImGui::SameLine();
 		ImGui::TextUnformatted(loader_thread->GetNotification());
 

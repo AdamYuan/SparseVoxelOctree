@@ -1,7 +1,7 @@
 #include "UIPathTracer.hpp"
 
 #include "Config.hpp"
-#include "UIHelper.hpp"
+#include "ImGuiUtil.hpp"
 #include <font-awesome/IconsFontAwesome5.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
@@ -140,7 +140,7 @@ void PathTracerRightStatus(const std::shared_ptr<PathTracerThread> &path_tracer_
 	}
 }
 void PathTracerStartModal(const std::shared_ptr<PathTracerThread> &path_tracer_thread) {
-	UI::SetNextWindowCentering();
+	ImGui::SetNextWindowCentering();
 	if (ImGui::BeginPopupModal(kPathTracerStartModal, nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
@@ -177,7 +177,7 @@ void PathTracerStartModal(const std::shared_ptr<PathTracerThread> &path_tracer_t
 	}
 }
 void PathTracerStopModal(const std::shared_ptr<PathTracerThread> &path_tracer_thread) {
-	UI::SetNextWindowCentering();
+	ImGui::SetNextWindowCentering();
 	if (ImGui::BeginPopupModal(kPathTracerStopModal, nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
@@ -198,7 +198,7 @@ void PathTracerStopModal(const std::shared_ptr<PathTracerThread> &path_tracer_th
 	}
 }
 void PathTracerExportEXRModal(const std::shared_ptr<PathTracerThread> &path_tracer_thread) {
-	UI::SetNextWindowCentering();
+	ImGui::SetNextWindowCentering();
 	if (ImGui::BeginPopupModal(kPathTracerExportEXRModal, nullptr,
 	                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
 	                               ImGuiWindowFlags_NoMove)) {
@@ -221,7 +221,7 @@ void PathTracerExportEXRModal(const std::shared_ptr<PathTracerThread> &path_trac
 		static bool save_as_fp16{false};
 
 		constexpr const char *kFilter[] = {"*.exr"};
-		UI::FileSave("OpenEXR Filename", "...", exr_name_buf, kFilenameBufSize, "Export OpenEXR", 1, kFilter);
+		ImGui::FileSave("OpenEXR Filename", "...", exr_name_buf, kFilenameBufSize, "Export OpenEXR", 1, kFilter);
 
 		ImGui::Checkbox("Export as FP16", &save_as_fp16);
 

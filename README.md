@@ -26,6 +26,14 @@ make
 * [spdlog](https://github.com/gabime/spdlog) - Logging system
 * [FontAwesome](https://fontawesome.com/) - Icon font
 
+## Usage
+* **Camera**
+  * **W A S D** - move around (horizontally)
+  * **SPACE** - go up
+  * **LSHIFT** - go down
+  * **Drag** - change perspective
+* **X** - toggle ui display
+
 ## Improvements
 The new Vulkan version is much faster than the old OpenGL version, given the comparison below:
 #### GTX 1660 Ti

@@ -1,6 +1,6 @@
 #include "UIOctreeTracer.hpp"
 
-#include "UIHelper.hpp"
+#include "ImGuiUtil.hpp"
 #include <font-awesome/IconsFontAwesome5.h>
 
 namespace UI {
@@ -12,6 +12,8 @@ void OctreeTracerMenuItems(const std::shared_ptr<OctreeTracer> &octree_tracer) {
 			octree_tracer->m_view_type = OctreeTracer::ViewTypes::kNormal;
 		if (ImGui::MenuItem("Iterations", nullptr, octree_tracer->m_view_type == OctreeTracer::ViewTypes::kIteration))
 			octree_tracer->m_view_type = OctreeTracer::ViewTypes::kIteration;
+
+		ImGui::Separator();
 
 		ImGui::Checkbox("Beam Optimization", &octree_tracer->m_beam_enable);
 		ImGui::EndMenu();

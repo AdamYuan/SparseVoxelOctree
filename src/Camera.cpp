@@ -59,8 +59,8 @@ void Camera::Control(GLFWwindow *window, float delta) {
 
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT)) {
 			glfwGetCursorPos(window, &cur_pos.x, &cur_pos.y);
-			float offset_x = float(cur_pos.x - m_last_mouse_pos.x) * m_sensitive;
-			float offset_y = float(cur_pos.y - m_last_mouse_pos.y) * m_sensitive;
+			float offset_x = float(cur_pos.x - m_last_mouse_pos.x) * m_sensitivity;
+			float offset_y = float(cur_pos.y - m_last_mouse_pos.y) * m_sensitivity;
 
 			m_yaw -= offset_x;
 			m_pitch -= offset_y;
