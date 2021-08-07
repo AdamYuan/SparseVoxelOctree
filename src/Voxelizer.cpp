@@ -84,74 +84,26 @@ void Voxelizer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 	geom_shader_module = myvk::ShaderModule::Create(device, kVoxelizerGeomSpv, sizeof(kVoxelizerGeomSpv));
 	frag_shader_module = myvk::ShaderModule::Create(device, kVoxelizerFragSpv, sizeof(kVoxelizerFragSpv));
 
-	VkPipelineShaderStageCreateInfo shader_stages[] = {
-	    vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
-	    geom_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT),
-	    frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)};
 	uint32_t specialization_texture_num = std::max(m_scene_ptr->GetTextureCount(), 1u);
 	VkSpecializationMapEntry frag_spec_entry = {0, 0, sizeof(uint32_t)};
 	VkSpecializationInfo frag_spec_info = {1, &frag_spec_entry, sizeof(uint32_t), &specialization_texture_num};
-	shader_stages[2].pSpecializationInfo = &frag_spec_info;
 
-	auto binding_descriptor = Scene::GetVertexBindingDescription();
-	auto attribute_descriptions = Scene::GetVertexAttributeDescriptions();
-	VkPipelineVertexInputStateCreateInfo vertex_input = {};
-	vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertex_input.vertexBindingDescriptionCount = 1;
-	vertex_input.pVertexBindingDescriptions = &binding_descriptor;
-	vertex_input.vertexAttributeDescriptionCount = attribute_descriptions.size();
-	vertex_input.pVertexAttributeDescriptions = attribute_descriptions.data();
+	std::vector<VkPipelineShaderStageCreateInfo> shader_stages = {
+	    vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
+	    geom_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT),
+	    frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, &frag_spec_info)};
 
-	VkPipelineInputAssemblyStateCreateInfo input_assembly = {};
-	input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	input_assembly.primitiveRestartEnable = VK_FALSE;
+	myvk::GraphicsPipelineState pipeline_state = {};
+	pipeline_state.m_vertex_input_state.Enable(Scene::GetVertexBindingDescriptions(),
+	                                           Scene::GetVertexAttributeDescriptions());
+	pipeline_state.m_input_assembly_state.Enable(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+	pipeline_state.m_viewport_state.Enable({{0, 0, (float)m_voxel_resolution, (float)m_voxel_resolution}},
+	                                       {{{0, 0}, {m_voxel_resolution, m_voxel_resolution}}});
+	pipeline_state.m_rasterization_state.Initialize(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE,
+	                                                VK_CULL_MODE_NONE);
+	pipeline_state.m_multisample_state.Enable(VK_SAMPLE_COUNT_4_BIT);
 
-	VkViewport viewport = {};
-	viewport.width = m_voxel_resolution;
-	viewport.height = m_voxel_resolution;
-
-	VkRect2D scissor = {};
-	scissor.offset = {0, 0};
-	scissor.extent = {m_voxel_resolution, m_voxel_resolution};
-
-	VkPipelineViewportStateCreateInfo viewport_state = {};
-	viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	viewport_state.viewportCount = 1;
-	viewport_state.pViewports = &viewport;
-	viewport_state.scissorCount = 1;
-	viewport_state.pScissors = &scissor;
-
-	VkPipelineRasterizationStateCreateInfo rasterizer = {};
-	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rasterizer.depthClampEnable = VK_FALSE;
-	rasterizer.rasterizerDiscardEnable = VK_FALSE;
-	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterizer.lineWidth = 1.0f;
-	rasterizer.cullMode = VK_CULL_MODE_NONE;
-	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	rasterizer.depthBiasEnable = VK_FALSE;
-
-	VkPipelineMultisampleStateCreateInfo multisampling = {};
-	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisampling.sampleShadingEnable = VK_FALSE;
-	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
-
-	VkGraphicsPipelineCreateInfo pipeline_info = {};
-	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipeline_info.stageCount = 3;
-	pipeline_info.pStages = shader_stages;
-	pipeline_info.pVertexInputState = &vertex_input;
-	pipeline_info.pInputAssemblyState = &input_assembly;
-	pipeline_info.pViewportState = &viewport_state;
-	pipeline_info.pRasterizationState = &rasterizer;
-	pipeline_info.pMultisampleState = &multisampling;
-	pipeline_info.pDepthStencilState = nullptr;
-	pipeline_info.pColorBlendState = nullptr;
-	pipeline_info.pDynamicState = nullptr;
-	pipeline_info.subpass = 0;
-
-	m_pipeline = myvk::GraphicsPipeline::Create(m_pipeline_layout, m_render_pass, pipeline_info);
+	m_pipeline = myvk::GraphicsPipeline::Create(m_pipeline_layout, m_render_pass, shader_stages, pipeline_state, 0);
 }
 
 void Voxelizer::count_and_create_fragment_list(const std::shared_ptr<myvk::CommandPool> &command_pool) {

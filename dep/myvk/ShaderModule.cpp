@@ -21,12 +21,15 @@ ShaderModule::~ShaderModule() {
 		vkDestroyShaderModule(m_device_ptr->GetHandle(), m_shader_module, nullptr);
 }
 
-VkPipelineShaderStageCreateInfo ShaderModule::GetPipelineShaderStageCreateInfo(VkShaderStageFlagBits stage) const {
+VkPipelineShaderStageCreateInfo
+ShaderModule::GetPipelineShaderStageCreateInfo(VkShaderStageFlagBits stage,
+                                               VkSpecializationInfo *p_specialization_info) const {
 	VkPipelineShaderStageCreateInfo ret = {};
 	ret.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	ret.stage = stage;
 	ret.module = m_shader_module;
 	ret.pName = "main";
+	ret.pSpecializationInfo = p_specialization_info;
 	return ret;
 }
 } // namespace myvk

@@ -10,7 +10,6 @@
 #include "myvk/ImageView.hpp"
 #include "myvk/Sampler.hpp"
 
-#include <array>
 #include <atomic>
 #include <glm/glm.hpp>
 #include <string>
@@ -56,9 +55,9 @@ public:
 	static std::shared_ptr<Scene> Create(const std::shared_ptr<myvk::Queue> &graphics_queue, const char *filename,
 	                                     std::atomic<const char *> *notification_ptr = nullptr);
 
-	static VkVertexInputBindingDescription GetVertexBindingDescription();
+	static std::vector<VkVertexInputBindingDescription> GetVertexBindingDescriptions();
 
-	static std::array<VkVertexInputAttributeDescription, 2> GetVertexAttributeDescriptions();
+	static std::vector<VkVertexInputAttributeDescription> GetVertexAttributeDescriptions();
 
 	static VkPushConstantRange GetDefaultPushConstantRange();
 

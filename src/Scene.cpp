@@ -416,16 +416,16 @@ std::shared_ptr<Scene> Scene::Create(const std::shared_ptr<myvk::Queue> &graphic
 	return ret;
 }
 
-VkVertexInputBindingDescription Scene::GetVertexBindingDescription() {
-	VkVertexInputBindingDescription ret = {};
-	ret.binding = 0;
-	ret.stride = sizeof(Vertex);
-	ret.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-	return ret;
+std::vector<VkVertexInputBindingDescription> Scene::GetVertexBindingDescriptions() {
+	VkVertexInputBindingDescription binding = {};
+	binding.binding = 0;
+	binding.stride = sizeof(Vertex);
+	binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	return {binding};
 }
 
-std::array<VkVertexInputAttributeDescription, 2> Scene::GetVertexAttributeDescriptions() {
-	std::array<VkVertexInputAttributeDescription, 2> ret = {};
+std::vector<VkVertexInputAttributeDescription> Scene::GetVertexAttributeDescriptions() {
+	std::vector<VkVertexInputAttributeDescription> ret(2);
 	ret[0].binding = 0;
 	ret[0].location = 0;
 	ret[0].format = VK_FORMAT_R32G32B32_SFLOAT;
