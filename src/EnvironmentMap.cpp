@@ -46,8 +46,6 @@ void EnvironmentMap::Reset() {
 }
 
 void EnvironmentMap::Reset(const std::shared_ptr<myvk::CommandPool> &command_pool, const char *filename) {
-	Reset();
-
 	HdrImg img = load_hdr_image(filename);
 	if (!img.m_data)
 		return;
