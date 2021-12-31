@@ -10,6 +10,8 @@ void OctreeTracerMenuItems(const std::shared_ptr<OctreeTracer> &octree_tracer) {
 			octree_tracer->m_view_type = OctreeTracer::ViewTypes::kDiffuse;
 		if (ImGui::MenuItem("Normal", nullptr, octree_tracer->m_view_type == OctreeTracer::ViewTypes::kNormal))
 			octree_tracer->m_view_type = OctreeTracer::ViewTypes::kNormal;
+		if (ImGui::MenuItem("Position", nullptr, octree_tracer->m_view_type == OctreeTracer::ViewTypes::kPosition))
+			octree_tracer->m_view_type = OctreeTracer::ViewTypes::kPosition;
 		if (ImGui::MenuItem("Iterations", nullptr, octree_tracer->m_view_type == OctreeTracer::ViewTypes::kIteration))
 			octree_tracer->m_view_type = OctreeTracer::ViewTypes::kIteration;
 

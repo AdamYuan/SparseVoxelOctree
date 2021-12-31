@@ -10,7 +10,7 @@ layout(push_constant) uniform uuPushConstant {
 	float uConstColor[3], uEnvMapRotation;
 };
 
-bool RayMarchLeaf(vec3 o, vec3 d, out float o_t, out vec3 o_color, out vec3 o_normal, out uint o_iter);
+bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal, out uint o_iter);
 
 vec3 GenRay() {
 	vec2 coord = ivec2(gl_FragCoord.xy) / vec2(uWidth, uHeight);
@@ -40,16 +40,16 @@ void main() {
 		o += d * beam;
 	}
 
-	float t;
-	vec3 color, normal;
+	vec3 pos, color, normal;
 	uint iter;
-	bool hit = RayMarchLeaf(o, d, t, color, normal, iter);
+	bool hit = RayMarchLeaf(o, d, pos, color, normal, iter);
 	if (!hit) {
+		pos = vec3(1.0);
 		normal = vec3(0.0);
 		color = Light(d);
 	}
 	oColor = vec4(
-	    uViewType == 2 ? Heat(iter / 128.0) : (uViewType == 0 ? pow(color, vec3(1.0 / 2.2)) : normal * 0.5 + 0.5), 1.0);
+	    uViewType == 3 ? Heat(iter / 128.0) : (uViewType == 2 ? pos - 1.0 : (uViewType == 0 ? pow(color, vec3(1.0 / 2.2)) : normal * 0.5 + 0.5)), 1.0);
 }
 
 // The following code is copied from
@@ -86,7 +86,7 @@ struct StackItem {
 	uint node;
 	float t_max;
 } stack[STACK_SIZE];
-bool RayMarchLeaf(vec3 o, vec3 d, out float o_t, out vec3 o_color, out vec3 o_normal, out uint o_iter) {
+bool RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out vec3 o_normal, out uint o_iter) {
 	uint iter = 0;
 
 	d.x = abs(d.x) > EPS ? d.x : (d.x >= 0 ? EPS : -EPS);
@@ -231,9 +231,24 @@ bool RayMarchLeaf(vec3 o, vec3 d, out float o_t, out vec3 o_color, out vec3 o_no
 	if ((oct_mask & 4u) == 0u)
 		norm.z = -norm.z;
 
+	// Undo mirroring of the coordinate system.
+	if ((oct_mask & 1u) != 0u)
+		pos.x = 3.0f - scale_exp2 - pos.x;
+	if ((oct_mask & 2u) != 0u)
+		pos.y = 3.0f - scale_exp2 - pos.y;
+	if ((oct_mask & 4u) != 0u)
+		pos.z = 3.0f - scale_exp2 - pos.z;
+
+	// Output results.
+	o_pos = clamp(o + t_min * d, pos, pos + scale_exp2);
+	if (norm.x != 0)
+		o_pos.x = norm.x > 0 ? pos.x + scale_exp2 + EPS * 2 : pos.x - EPS;
+	if (norm.y != 0)
+		o_pos.y = norm.y > 0 ? pos.y + scale_exp2 + EPS * 2 : pos.y - EPS;
+	if (norm.z != 0)
+		o_pos.z = norm.z > 0 ? pos.z + scale_exp2 + EPS * 2 : pos.z - EPS;
 	o_normal = norm;
 	o_color = unpackUnorm4x8(cur).xyz;
-	o_t = t_min;
 	o_iter = iter;
 
 	return scale < STACK_SIZE && t_min <= t_max;
