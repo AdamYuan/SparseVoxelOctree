@@ -1,8 +1,18 @@
 cmake_minimum_required(VERSION 3.15)
 project(shader)
 
-set(SHADER_SRC
+set(SHADER_HEADER_PATH
+		octree.glsl
+		camera.glsl
+		util.glsl
+		environment_map.glsl
+		diffuse.glsl
+		mis.glsl
+		sobol.glsl
+		)
+list(TRANSFORM SHADER_HEADER_PATH PREPEND ${CMAKE_CURRENT_LIST_DIR}/)
 
+set(SHADER_SRC
 		quad.vert
 		sobol.comp
 
@@ -30,7 +40,7 @@ IF (GLSLC)
 		add_custom_command(OUTPUT ${CMAKE_CURRENT_LIST_DIR}/include/spirv/${INPUT_FILE}.u32
 				COMMAND glslc ${INPUT_FILE} -o include/spirv/${INPUT_FILE}.u32 -O -Os -mfmt=num
 				WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-				DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${INPUT_FILE}
+				DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${INPUT_FILE} ${SHADER_HEADER_PATH}
 				)
 	endfunction()
 
