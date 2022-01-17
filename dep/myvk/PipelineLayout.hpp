@@ -31,7 +31,7 @@ public:
 		return m_descriptor_layout_ptrs;
 	}
 
-	~PipelineLayout();
+	~PipelineLayout() override;
 };
 } // namespace myvk
 

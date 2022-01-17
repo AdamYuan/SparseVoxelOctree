@@ -26,7 +26,7 @@ public:
 
 	VkResult Reset() const;
 
-	~Fence();
+	~Fence() override;
 };
 
 class FenceGroup {

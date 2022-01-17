@@ -25,7 +25,7 @@ public:
 
 	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_queue_ptr->GetDevicePtr(); };
 
-	~CommandPool();
+	~CommandPool() override;
 };
 } // namespace myvk
 

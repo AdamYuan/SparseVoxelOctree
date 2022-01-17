@@ -20,7 +20,7 @@ public:
 
 	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_device_ptr; }
 
-	~Semaphore();
+	~Semaphore() override;
 };
 
 class SemaphoreGroup {

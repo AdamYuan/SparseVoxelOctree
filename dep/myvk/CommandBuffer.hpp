@@ -133,7 +133,7 @@ public:
 
 	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_command_pool_ptr->GetDevicePtr(); };
 
-	~CommandBuffer();
+	~CommandBuffer() override;
 };
 
 /*class CommandBufferGroup {

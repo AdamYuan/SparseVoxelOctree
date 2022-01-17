@@ -49,7 +49,7 @@ public:
 		return m_descriptor_set_layout_ptr;
 	}
 
-	~DescriptorSet();
+	~DescriptorSet() override;
 };
 } // namespace myvk
 

@@ -41,7 +41,7 @@ public:
 
 	uint32_t GetLayers() const { return m_layers; }
 
-	~Framebuffer();
+	~Framebuffer() override;
 };
 } // namespace myvk
 

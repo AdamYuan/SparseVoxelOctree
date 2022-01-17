@@ -36,7 +36,7 @@ public:
 
 	VkImageView GetHandle() const { return m_image_view; }
 
-	~ImageView();
+	~ImageView() override;
 };
 } // namespace myvk
 

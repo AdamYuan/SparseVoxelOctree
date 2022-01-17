@@ -20,7 +20,7 @@ public:
 	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_pipeline_layout_ptr->GetDevicePtr(); }
 	const std::shared_ptr<PipelineLayout> &GetPipelineLayoutPtr() const { return m_pipeline_layout_ptr; }
 
-	~PipelineBase();
+	~PipelineBase() override;
 };
 } // namespace myvk
 

@@ -25,7 +25,7 @@ public:
 	GetPipelineShaderStageCreateInfo(VkShaderStageFlagBits stage,
 	                                 VkSpecializationInfo *p_specialization_info = nullptr) const;
 
-	~ShaderModule();
+	~ShaderModule() override;
 };
 } // namespace myvk
 

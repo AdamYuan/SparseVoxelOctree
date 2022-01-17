@@ -50,7 +50,7 @@ public:
 
 	VkExtent2D GetExtent() const { return m_swapchain_create_info.imageExtent; }
 
-	~Swapchain();
+	~Swapchain() override;
 };
 } // namespace myvk
 
