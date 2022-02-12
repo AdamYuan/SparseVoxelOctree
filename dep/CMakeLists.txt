@@ -15,12 +15,9 @@ include_directories(.)
 
 add_subdirectory(glfw)
 add_subdirectory(spdlog)
-if (CMAKE_SYSTEM_NAME STREQUAL Windows)
-	set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
-endif ()
-add_subdirectory(volk)
 
 add_library(dep STATIC
+		volk.c
 		vk_mem_alloc.cpp
 		stb_image.cpp
 		tiny_obj_loader.cpp
@@ -109,5 +106,5 @@ add_library(dep STATIC
 		)
 
 target_include_directories(dep PUBLIC . meshoptimizer/src)
-target_link_libraries(dep PUBLIC volk glfw spdlog)
+target_link_libraries(dep PUBLIC glfw spdlog)
 target_compile_definitions(dep PUBLIC VK_NO_PROTOTYPES)
