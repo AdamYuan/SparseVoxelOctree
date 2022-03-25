@@ -24,7 +24,7 @@ jobs:
             cxx: "cl",
             arch: "x64",
             archiver: "7z a",
-            generators: "Visual Studio 16 2019"
+            generators: "Visual Studio 17 2022"
           }
         - {
             name: "Windows MSVC 32",
@@ -35,7 +35,7 @@ jobs:
             cxx: "cl",
             arch: "Win32",
             archiver: "7z a",
-            generators: "Visual Studio 16 2019"
+            generators: "Visual Studio 17 2022"
           }
 
     steps:
