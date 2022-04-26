@@ -34,7 +34,6 @@ void main() {
 		level_pos -= uvec3(level_cmp) * level_dim;
 	} while (cur != 0u && level_dim > 1u);
 
-	uOctree[idx] |= 0x80000000u;
 	if (level_dim == 1u) {
 		// uOctree[idx] = 0xC0000000u | (ufragment.y & 0xffffffu); //termination
 		// tag and color data
@@ -50,5 +49,6 @@ void main() {
 			cur_rgba.xyz /= cur_rgba.w;
 			new_val = Uvec4ToLeaf(cur_rgba);
 		}
-	}
+	} else
+		uOctree[idx] = 0x80000000u;
 }
