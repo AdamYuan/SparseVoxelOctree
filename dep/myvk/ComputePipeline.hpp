@@ -11,7 +11,8 @@ public:
 	                                               const VkComputePipelineCreateInfo &create_info);
 
 	static std::shared_ptr<ComputePipeline> Create(const std::shared_ptr<PipelineLayout> &pipeline_layout,
-	                                               const std::shared_ptr<ShaderModule> &shader_module);
+	                                               const std::shared_ptr<ShaderModule> &shader_module,
+	                                               VkSpecializationInfo *p_specialization_info = nullptr);
 
 	VkPipelineBindPoint GetBindPoint() const override { return VK_PIPELINE_BIND_POINT_COMPUTE; }
 };

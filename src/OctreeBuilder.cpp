@@ -100,16 +100,19 @@ void OctreeBuilder::create_descriptors(const std::shared_ptr<myvk::Device> &devi
 }
 
 void OctreeBuilder::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
-	m_pipeline_layout = myvk::PipelineLayout::Create(device, {m_descriptor_set_layout},
-	                                                 {{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t) * 2}});
+	m_pipeline_layout = myvk::PipelineLayout::Create(device, {m_descriptor_set_layout}, {});
 
 	{
+		uint32_t spec_data[] = {m_voxelizer_ptr->GetVoxelResolution(), m_voxelizer_ptr->GetVoxelFragmentCount()};
+		VkSpecializationMapEntry spec_entries[] = {{0, 0, sizeof(uint32_t)}, {1, sizeof(uint32_t), sizeof(uint32_t)}};
+		VkSpecializationInfo spec_info = {2, spec_entries, 2 * sizeof(uint32_t), spec_data};
 		constexpr uint32_t kOctreeTagNodeCompSpv[] = {
 #include "spirv/octree_tag_node.comp.u32"
 		};
 		std::shared_ptr<myvk::ShaderModule> octree_tag_node_shader_module =
 		    myvk::ShaderModule::Create(device, kOctreeTagNodeCompSpv, sizeof(kOctreeTagNodeCompSpv));
-		m_tag_node_pipeline = myvk::ComputePipeline::Create(m_pipeline_layout, octree_tag_node_shader_module);
+		m_tag_node_pipeline =
+		    myvk::ComputePipeline::Create(m_pipeline_layout, octree_tag_node_shader_module, &spec_info);
 	}
 
 	{
@@ -162,11 +165,8 @@ void OctreeBuilder::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command
 	}
 
 	uint32_t fragment_group_x = group_x_64(m_voxelizer_ptr->GetVoxelFragmentCount());
-	uint32_t push_constants[] = {m_voxelizer_ptr->GetVoxelFragmentCount(), m_voxelizer_ptr->GetVoxelResolution()};
 
 	command_buffer->CmdBindDescriptorSets({m_descriptor_set}, m_pipeline_layout, VK_PIPELINE_BIND_POINT_COMPUTE, {});
-	command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 2 * sizeof(uint32_t),
-	                                 push_constants);
 
 	for (uint32_t i = 1; i <= m_voxelizer_ptr->GetLevel(); ++i) {
 		command_buffer->CmdBindPipeline(m_init_node_pipeline);

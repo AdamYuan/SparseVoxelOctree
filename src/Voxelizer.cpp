@@ -77,20 +77,21 @@ void Voxelizer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 
 	m_pipeline_layout =
 	    myvk::PipelineLayout::Create(device, {m_descriptor_set_layout, m_scene_ptr->GetDescriptorSetLayout()},
-	                                 {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t) * 4}});
+	                                 {{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t) * 3}});
 
 	std::shared_ptr<myvk::ShaderModule> vert_shader_module, geom_shader_module, frag_shader_module;
 	vert_shader_module = myvk::ShaderModule::Create(device, kVoxelizerVertSpv, sizeof(kVoxelizerVertSpv));
 	geom_shader_module = myvk::ShaderModule::Create(device, kVoxelizerGeomSpv, sizeof(kVoxelizerGeomSpv));
 	frag_shader_module = myvk::ShaderModule::Create(device, kVoxelizerFragSpv, sizeof(kVoxelizerFragSpv));
 
-	uint32_t specialization_texture_num = std::max(m_scene_ptr->GetTextureCount(), 1u);
-	VkSpecializationMapEntry frag_spec_entry = {0, 0, sizeof(uint32_t)};
-	VkSpecializationInfo frag_spec_info = {1, &frag_spec_entry, sizeof(uint32_t), &specialization_texture_num};
+	uint32_t spec_data[] = {m_voxel_resolution, std::max(m_scene_ptr->GetTextureCount(), 1u)};
+	VkSpecializationMapEntry spec_entries[] = {{0, 0, sizeof(uint32_t)}, {1, sizeof(uint32_t), sizeof(uint32_t)}};
+	VkSpecializationInfo frag_spec_info = {2, spec_entries, 2 * sizeof(uint32_t), spec_data};
+	VkSpecializationInfo geom_spec_info = {1, spec_entries, sizeof(uint32_t), spec_data};
 
 	std::vector<VkPipelineShaderStageCreateInfo> shader_stages = {
 	    vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
-	    geom_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT),
+	    geom_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT, &geom_spec_info),
 	    frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, &frag_spec_info)};
 
 	myvk::GraphicsPipelineState pipeline_state = {};
@@ -115,10 +116,10 @@ void Voxelizer::count_and_create_fragment_list(const std::shared_ptr<myvk::Comma
 		{
 			command_buffer->CmdBindPipeline(m_pipeline);
 			command_buffer->CmdBindDescriptorSets({m_descriptor_set, m_scene_ptr->GetDescriptorSet()}, m_pipeline, {});
-			uint32_t push_constants[] = {m_voxel_resolution, 1};
-			command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 2 * sizeof(uint32_t),
+			uint32_t push_constants[] = {1};
+			command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t),
 			                                 push_constants);
-			m_scene_ptr->CmdDraw(command_buffer, m_pipeline_layout, sizeof(uint32_t) * 2);
+			m_scene_ptr->CmdDraw(command_buffer, m_pipeline_layout, sizeof(uint32_t));
 		}
 		command_buffer->CmdEndRenderPass();
 		command_buffer->End();
@@ -145,10 +146,10 @@ void Voxelizer::CmdVoxelize(const std::shared_ptr<myvk::CommandBuffer> &command_
 		command_buffer->CmdBindPipeline(m_pipeline);
 		command_buffer->CmdBindDescriptorSets({m_descriptor_set, m_scene_ptr->GetDescriptorSet()}, m_pipeline, {});
 
-		uint32_t push_constants[] = {m_voxel_resolution, 0};
-		command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 2 * sizeof(uint32_t),
+		uint32_t push_constants[] = {0};
+		command_buffer->CmdPushConstants(m_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t),
 		                                 push_constants);
-		m_scene_ptr->CmdDraw(command_buffer, m_pipeline_layout, sizeof(uint32_t) * 2);
+		m_scene_ptr->CmdDraw(command_buffer, m_pipeline_layout, sizeof(uint32_t));
 	}
 	command_buffer->CmdEndRenderPass();
 }

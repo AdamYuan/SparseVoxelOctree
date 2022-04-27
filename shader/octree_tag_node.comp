@@ -1,10 +1,11 @@
 #version 450
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
+layout(constant_id = 0) const uint kVoxelResolution = 1;
+layout(constant_id = 1) const uint kFragmentCount = 1;
+
 layout(std430, binding = 1) buffer uuOctree { uint uOctree[]; };
 layout(std430, binding = 2) readonly buffer uuFragmentList { uvec2 uFragmentList[]; };
-
-layout(push_constant) uniform uuPushConstant { uint uFragmentNum, uVoxelResolution; };
 
 uvec4 LeafToUvec4(uint val) {
 	return uvec4((val & 0xffu), ((val >> 8u) & 0xffu), ((val >> 16u) & 0xffu), ((val >> 24u) & 0x3fu));
@@ -15,11 +16,11 @@ uint Uvec4ToLeaf(uvec4 vec) {
 }
 
 void main() {
-	if (gl_GlobalInvocationID.x >= uFragmentNum)
+	if (gl_GlobalInvocationID.x >= kFragmentCount)
 		return;
 	uvec2 ufragment = uFragmentList[gl_GlobalInvocationID.x];
 
-	uint level_dim = uVoxelResolution;
+	uint level_dim = kVoxelResolution;
 	uvec3 level_pos =
 	    uvec3(ufragment.x & 0xfffu, (ufragment.x >> 12u) & 0xfffu, (ufragment.x >> 24u) | ((ufragment.y >> 28u) << 8u));
 	bvec3 level_cmp;

@@ -1,5 +1,7 @@
 #version 450
 
+layout(constant_id = 0) const uint kVoxelResolution = 1;
+
 layout(triangles) in;
 layout(triangle_strip, max_vertices = 3) out;
 
@@ -23,15 +25,15 @@ void main() {
 	                : ((axis_weight.y > axis_weight.z) ? 1 : 2);
 
 	gTexcoord = vTexcoord[0];
-	gVoxelPos = (pos0 + 1.0f) * 0.5f;
+	gVoxelPos = (pos0 + 1.0) * 0.5 * kVoxelResolution;
 	gl_Position = vec4(Project(pos0, axis), 1.0f, 1.0f);
 	EmitVertex();
 	gTexcoord = vTexcoord[1];
-	gVoxelPos = (pos1 + 1.0f) * 0.5f;
+	gVoxelPos = (pos1 + 1.0) * 0.5 * kVoxelResolution;
 	gl_Position = vec4(Project(pos1, axis), 1.0f, 1.0f);
 	EmitVertex();
 	gTexcoord = vTexcoord[2];
-	gVoxelPos = (pos2 + 1.0f) * 0.5f;
+	gVoxelPos = (pos2 + 1.0) * 0.5 * kVoxelResolution;
 	gl_Position = vec4(Project(pos2, axis), 1.0f, 1.0f);
 	EmitVertex();
 	EndPrimitive();
