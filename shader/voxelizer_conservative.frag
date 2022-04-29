@@ -11,6 +11,7 @@ layout(push_constant) uniform uuPushConstant { uint uCountOnly, uTextureId, uAlb
 
 layout(location = 0) in vec2 gTexcoord;
 layout(location = 1) flat in uint gAxis;
+layout(location = 2) flat in vec4 gAABB;
 
 uvec3 GetVoxePos(in uint axis) {
 	vec3 v = gl_FragCoord.xyz;
@@ -27,6 +28,8 @@ vec4 SampleOrDiscard() {
 }
 
 void main() {
+	if (clamp(gl_FragCoord.xy, gAABB.xy, gAABB.zw) != gl_FragCoord.xy)
+		discard;
 	uint ucolor = (uTextureId == 0xffffffffu) ? uAlbedo : packUnorm4x8(SampleOrDiscard());
 	uint cur = atomicAdd(uCounter, 1u);
 	// set fragment list

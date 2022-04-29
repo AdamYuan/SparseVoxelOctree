@@ -20,6 +20,9 @@ set(SHADER_SRC
 		voxelizer.frag
 		voxelizer.geom
 
+		voxelizer_conservative.frag
+		voxelizer_conservative.geom
+
 		octree_tag_node.comp
 		octree_init_node.comp
 		octree_alloc_node.comp
@@ -54,10 +57,5 @@ foreach (X IN LISTS SHADER_SRC)
 	list(APPEND SHADER_U32 include/spirv/${X}.u32)
 endforeach ()
 
-add_custom_target(
-		shader_gen ALL DEPENDS
-		${SHADER_U32}
-)
-add_library(shader INTERFACE)
+add_library(shader INTERFACE ${SHADER_U32})
 target_include_directories(shader INTERFACE include)
-target_link_libraries(shader INTERFACE ${SHADERS_LIBRARIES})

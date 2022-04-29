@@ -12,6 +12,8 @@
 
 class Voxelizer {
 private:
+	const bool m_ext_conservative_rasterization_support;
+
 	std::shared_ptr<Scene> m_scene_ptr;
 
 	std::shared_ptr<myvk::RenderPass> m_render_pass;
@@ -36,6 +38,8 @@ private:
 	void count_and_create_fragment_list(const std::shared_ptr<myvk::CommandPool> &command_pool);
 
 public:
+	Voxelizer(bool ext_conservative_rasterization_support)
+	    : m_ext_conservative_rasterization_support{ext_conservative_rasterization_support} {}
 	static std::shared_ptr<Voxelizer> Create(const std::shared_ptr<Scene> &scene,
 	                                         const std::shared_ptr<myvk::CommandPool> &command_pool,
 	                                         uint32_t octree_level);

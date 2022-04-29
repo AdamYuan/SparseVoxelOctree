@@ -39,7 +39,9 @@ VkResult Device::create_device(const std::vector<VkDeviceQueueCreateInfo> &queue
 	create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	create_info.pQueueCreateInfos = queue_create_infos.data();
 	create_info.queueCreateInfoCount = queue_create_infos.size();
-	create_info.pEnabledFeatures = &m_physical_device_ptr->GetFeatures();
+	auto features = m_physical_device_ptr->GetFeatures();
+	features.robustBufferAccess = VK_FALSE;
+	create_info.pEnabledFeatures = &features;
 	create_info.enabledExtensionCount = extensions.size();
 	create_info.ppEnabledExtensionNames = extensions.data();
 	create_info.enabledLayerCount = 0;

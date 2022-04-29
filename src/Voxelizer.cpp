@@ -5,7 +5,9 @@
 std::shared_ptr<Voxelizer> Voxelizer::Create(const std::shared_ptr<Scene> &scene,
                                              const std::shared_ptr<myvk::CommandPool> &command_pool,
                                              uint32_t octree_level) {
-	std::shared_ptr<Voxelizer> ret = std::make_shared<Voxelizer>();
+	std::shared_ptr<Voxelizer> ret =
+	    std::make_shared<Voxelizer>(command_pool->GetDevicePtr()->GetPhysicalDevicePtr()->GetExtensionSupport(
+	        VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME));
 
 	ret->m_level = octree_level;
 	ret->m_voxel_resolution = 1u << octree_level;
@@ -71,8 +73,14 @@ void Voxelizer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 	constexpr uint32_t kVoxelizerGeomSpv[] = {
 #include "spirv/voxelizer.geom.u32"
 	};
+	constexpr uint32_t kVoxelizerConservativeGeomSpv[] = {
+#include "spirv/voxelizer_conservative.geom.u32"
+	};
 	constexpr uint32_t kVoxelizerFragSpv[] = {
 #include "spirv/voxelizer.frag.u32"
+	};
+	constexpr uint32_t kVoxelizerConservativeFragSpv[] = {
+#include "spirv/voxelizer_conservative.frag.u32"
 	};
 
 	m_pipeline_layout =
@@ -81,8 +89,14 @@ void Voxelizer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 
 	std::shared_ptr<myvk::ShaderModule> vert_shader_module, geom_shader_module, frag_shader_module;
 	vert_shader_module = myvk::ShaderModule::Create(device, kVoxelizerVertSpv, sizeof(kVoxelizerVertSpv));
-	geom_shader_module = myvk::ShaderModule::Create(device, kVoxelizerGeomSpv, sizeof(kVoxelizerGeomSpv));
-	frag_shader_module = myvk::ShaderModule::Create(device, kVoxelizerFragSpv, sizeof(kVoxelizerFragSpv));
+	geom_shader_module =
+	    m_ext_conservative_rasterization_support
+	        ? myvk::ShaderModule::Create(device, kVoxelizerGeomSpv, sizeof(kVoxelizerGeomSpv))
+	        : myvk::ShaderModule::Create(device, kVoxelizerConservativeGeomSpv, sizeof(kVoxelizerConservativeGeomSpv));
+	frag_shader_module =
+	    m_ext_conservative_rasterization_support
+	        ? myvk::ShaderModule::Create(device, kVoxelizerFragSpv, sizeof(kVoxelizerFragSpv))
+	        : myvk::ShaderModule::Create(device, kVoxelizerConservativeFragSpv, sizeof(kVoxelizerConservativeFragSpv));
 
 	uint32_t spec_data[] = {m_voxel_resolution, std::max(m_scene_ptr->GetTextureCount(), 1u)};
 	VkSpecializationMapEntry spec_entries[] = {{0, 0, sizeof(uint32_t)}, {1, sizeof(uint32_t), sizeof(uint32_t)}};
@@ -98,11 +112,18 @@ void Voxelizer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 	pipeline_state.m_vertex_input_state.Enable(Scene::GetVertexBindingDescriptions(),
 	                                           Scene::GetVertexAttributeDescriptions());
 	pipeline_state.m_input_assembly_state.Enable(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-	pipeline_state.m_viewport_state.Enable({{0, 0, (float)m_voxel_resolution, (float)m_voxel_resolution}},
+	pipeline_state.m_viewport_state.Enable({{0, 0, (float)m_voxel_resolution, (float)m_voxel_resolution, 0.0f, 1.0f}},
 	                                       {{{0, 0}, {m_voxel_resolution, m_voxel_resolution}}});
 	pipeline_state.m_rasterization_state.Initialize(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE,
 	                                                VK_CULL_MODE_NONE);
-	pipeline_state.m_multisample_state.Enable(VK_SAMPLE_COUNT_4_BIT);
+	VkPipelineRasterizationConservativeStateCreateInfoEXT conservative_rasterization_state{
+	    VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT};
+	conservative_rasterization_state.conservativeRasterizationMode =
+	    VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
+	conservative_rasterization_state.extraPrimitiveOverestimationSize = 0.0f;
+	pipeline_state.m_rasterization_state.m_create_info.pNext = &conservative_rasterization_state;
+
+	pipeline_state.m_multisample_state.Enable(VK_SAMPLE_COUNT_1_BIT);
 
 	m_pipeline = myvk::GraphicsPipeline::Create(m_pipeline_layout, m_render_pass, shader_stages, pipeline_state, 0);
 }

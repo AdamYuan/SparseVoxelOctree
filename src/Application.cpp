@@ -193,9 +193,21 @@ void Application::initialize_vulkan() {
 
 	// DEVICE CREATION
 	{
+		const auto &physical_device = physical_devices[0];
+		spdlog::info("Physical Device: {}", physical_device->GetProperties().deviceName);
+
+		std::vector<const char *> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
+		if (physical_device->GetExtensionSupport(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)) {
+			extensions.push_back(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
+			spdlog::info("EXT_conservative_rasterization supported");
+		} else {
+			spdlog::warn("EXT_conservative_rasterization not supported");
+		}
+
 		myvk::DeviceCreateInfo device_create_info;
 		device_create_info.Initialize(
-		    physical_devices[0],
+		    physical_device,
 		    [&](const std::shared_ptr<myvk::PhysicalDevice> &physical_device,
 		        std::vector<myvk::QueueSelection> *const out_queue_selections,
 		        std::vector<myvk::PresentQueueSelection> *const out_present_queue_selections) -> bool {
@@ -264,7 +276,7 @@ void Application::initialize_vulkan() {
 			    return (~main_queue.family) && (~loader_queue.family) && (~path_tracer_queue.family) &&
 			           (~present_queue.family);
 		    },
-		    {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
+		    extensions);
 		if (!device_create_info.QueueSupport()) {
 			spdlog::error("Failed to find queues!");
 			exit(EXIT_FAILURE);
@@ -281,18 +293,18 @@ void Application::initialize_vulkan() {
 			spdlog::error("Failed to create logical device!");
 			exit(EXIT_FAILURE);
 		}
-	}
 
-	spdlog::info("Physical Device: {}", m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
-	spdlog::info("Present Queue: ({}){}, Main Queue: ({}){}, Loader Queue: ({}){}, PathTracer Queue: ({}){}",
-	             m_present_queue->GetFamilyIndex(), (void *)m_present_queue->GetHandle(),        // present queue
-	             m_main_queue->GetFamilyIndex(), (void *)m_main_queue->GetHandle(),              // main queue
-	             m_loader_queue->GetFamilyIndex(), (void *)m_loader_queue->GetHandle(),          // loader queue
-	             m_path_tracer_queue->GetFamilyIndex(), (void *)m_path_tracer_queue->GetHandle() // path tracer queue
-	);
+		spdlog::info("Present Queue: ({}){}, Main Queue: ({}){}, Loader Queue: ({}){}, PathTracer Queue: ({}){}",
+		             m_present_queue->GetFamilyIndex(), (void *)m_present_queue->GetHandle(), // present queue
+		             m_main_queue->GetFamilyIndex(), (void *)m_main_queue->GetHandle(),       // main queue
+		             m_loader_queue->GetFamilyIndex(), (void *)m_loader_queue->GetHandle(),   // loader queue
+		             m_path_tracer_queue->GetFamilyIndex(),
+		             (void *)m_path_tracer_queue->GetHandle() // path tracer queue
+		);
 
-	if (m_path_tracer_queue->GetFamilyIndex() == m_main_queue->GetFamilyIndex()) {
-		spdlog::warn("Async path tracing queue not available, the main thread might be blocked when path tracing");
+		if (m_path_tracer_queue->GetFamilyIndex() == m_main_queue->GetFamilyIndex()) {
+			spdlog::warn("Async path tracing queue not available, the main thread might be blocked when path tracing");
+		}
 	}
 
 	m_main_command_pool = myvk::CommandPool::Create(m_main_queue);

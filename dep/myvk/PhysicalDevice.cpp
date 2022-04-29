@@ -14,6 +14,15 @@ void PhysicalDevice::initialize(const std::shared_ptr<Instance> &instance, VkPhy
 		m_queue_family_properties.resize(count);
 		vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &count, m_queue_family_properties.data());
 	}
+
+	{
+		uint32_t count;
+		vkEnumerateDeviceExtensionProperties(m_physical_device, nullptr, &count, nullptr);
+		std::vector<VkExtensionProperties> extension_properties(count);
+		vkEnumerateDeviceExtensionProperties(m_physical_device, nullptr, &count, extension_properties.data());
+		for (const auto &ext : extension_properties)
+			m_supported_extensions[std::string{ext.extensionName}] = ext.specVersion;
+	}
 }
 
 std::vector<std::shared_ptr<PhysicalDevice>> PhysicalDevice::Fetch(const std::shared_ptr<Instance> &instance) {

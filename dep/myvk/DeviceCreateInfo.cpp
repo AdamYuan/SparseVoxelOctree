@@ -17,18 +17,12 @@ void DeviceCreateInfo::Initialize(const std::shared_ptr<PhysicalDevice> &physica
 
 	// CHECK EXTENSIONS
 	m_extensions = extensions;
-	{
-		uint32_t extension_count;
-		vkEnumerateDeviceExtensionProperties(m_physical_device_ptr->GetHandle(), nullptr, &extension_count, nullptr);
-		std::vector<VkExtensionProperties> extension_properties(extension_count);
-		vkEnumerateDeviceExtensionProperties(m_physical_device_ptr->GetHandle(), nullptr, &extension_count,
-		                                     extension_properties.data());
-
-		std::set<std::string> extension_set(m_extensions.begin(), m_extensions.end());
-		for (const VkExtensionProperties &i : extension_properties) {
-			extension_set.erase(i.extensionName);
+	m_extension_support = true;
+	for (const auto &ext : extensions) {
+		if (!m_physical_device_ptr->GetExtensionSupport(ext)) {
+			m_extension_support = false;
+			break;
 		}
-		m_extension_support = extension_set.empty();
 	}
 
 	// PROCESS QUEUES
