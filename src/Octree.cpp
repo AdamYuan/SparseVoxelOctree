@@ -1,5 +1,7 @@
 #include "Octree.hpp"
 
+#include <spdlog/spdlog.h>
+
 std::shared_ptr<Octree> Octree::Create(const std::shared_ptr<myvk::Device> &device) {
 	std::shared_ptr<Octree> ret = std::make_shared<Octree>();
 	{
@@ -23,7 +25,13 @@ void Octree::Update(const std::shared_ptr<myvk::CommandPool> &command_pool,
 	m_buffer = builder->GetOctree();
 	m_level = builder->GetLevel();
 	m_range = octree_range;
-	m_descriptor_set->UpdateStorageBuffer(m_buffer, 0, 0, 0, octree_range);
+
+	uint32_t actual_range = octree_range;
+	if (m_buffer->GetSize() < actual_range) {
+		spdlog::error("Octree size exceed");
+		actual_range = m_buffer->GetSize();
+	}
+	m_descriptor_set->UpdateStorageBuffer(m_buffer, 0, 0, 0, actual_range);
 }
 void Octree::CmdTransferOwnership(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t src_queue_family,
                                   uint32_t dst_queue_family, VkPipelineStageFlags src_stage,
