@@ -117,12 +117,12 @@ void Voxelizer::create_pipeline(const std::shared_ptr<myvk::Device> &device) {
 	pipeline_state.m_rasterization_state.Initialize(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE,
 	                                                VK_CULL_MODE_NONE);
 
+	VkPipelineRasterizationConservativeStateCreateInfoEXT conservative_rasterization_state{
+	    VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT};
+	conservative_rasterization_state.conservativeRasterizationMode =
+	    VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
+	conservative_rasterization_state.extraPrimitiveOverestimationSize = 0.0f;
 	if (m_ext_conservative_rasterization_support) {
-		VkPipelineRasterizationConservativeStateCreateInfoEXT conservative_rasterization_state{
-		    VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT};
-		conservative_rasterization_state.conservativeRasterizationMode =
-		    VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
-		conservative_rasterization_state.extraPrimitiveOverestimationSize = 0.0f;
 		pipeline_state.m_rasterization_state.m_create_info.pNext = &conservative_rasterization_state;
 	}
 
