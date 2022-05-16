@@ -9,6 +9,8 @@ layout(location = 0) in vec2 vTexcoord[];
 
 layout(location = 0) out vec2 gTexcoord;
 layout(location = 1) flat out uint gAxis;
+layout(location = 2) flat out uvec4 gAABB;
+layout(location = 3) flat out uvec2 gDepthRange;
 
 vec3 Project(in vec3 v, in uint axis) {
 	vec3 ret = axis == 0 ? v.yzx : (axis == 1 ? v.zxy : v.xyz);
@@ -34,6 +36,11 @@ void main() {
 	vec3 ndc2 = Project(pos2, axis);
 
 	gAxis = axis;
+	gAABB = uvec4(uvec2((min(ndc0.xy, min(ndc1.xy, ndc2.xy)) + 1.0) * 0.5 * kVoxelResolution),
+	              uvec2((max(ndc0.xy, max(ndc1.xy, ndc2.xy)) + 1.0) * 0.5 * kVoxelResolution));
+	gDepthRange = uvec2(uint(min(ndc0.z, min(ndc1.z, ndc2.z)) * kVoxelResolution),
+	                    uint(max(ndc0.z, max(ndc1.z, ndc2.z)) * kVoxelResolution));
+
 	gTexcoord = vTexcoord[0];
 	gl_Position = vec4(Project(pos0, axis), 1.0);
 	EmitVertex();

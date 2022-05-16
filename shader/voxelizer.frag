@@ -11,15 +11,20 @@ layout(push_constant) uniform uuPushConstant { uint uCountOnly, uTextureId, uAlb
 
 layout(location = 0) in vec2 gTexcoord;
 layout(location = 1) flat in uint gAxis;
+layout(location = 2) flat in uvec4 gAABB;
+layout(location = 3) flat in uvec2 gDepthRange;
 
-uvec3 GetVoxePos(in uint axis) {
+uvec3 GetVoxePos() {
 	vec3 v = gl_FragCoord.xyz;
 	v.z *= float(kVoxelResolution);
-	v = axis == 0 ? v.zxy : (axis == 1 ? v.yzx : v.xyz);
-	return clamp(uvec3(v), uvec3(0u), uvec3(kVoxelResolution - 1u));
+	uvec3 u = clamp(uvec3(v), uvec3(0u), uvec3(kVoxelResolution - 1u));
+	if (clamp(u.xy, gAABB.xy, gAABB.zw) != u.xy)
+		discard;
+	u.z = clamp(u.z, gDepthRange.x, gDepthRange.y);
+	return gAxis == 0 ? u.zxy : (gAxis == 1 ? u.yzx : u.xyz);
 }
 
-vec4 SampleOrDiscard() {
+vec4 Sample() {
 	vec4 x = texture(uTextures[uTextureId], gTexcoord);
 	if (x.a < 0.5f)
 		discard;
@@ -27,11 +32,11 @@ vec4 SampleOrDiscard() {
 }
 
 void main() {
-	uint ucolor = (uTextureId == 0xffffffffu) ? uAlbedo : packUnorm4x8(SampleOrDiscard());
+	uvec3 uvoxel_pos = GetVoxePos();
+	uint ucolor = (uTextureId == 0xffffffffu) ? uAlbedo : packUnorm4x8(Sample());
 	uint cur = atomicAdd(uCounter, 1u);
 	// set fragment list
 	if (uCountOnly == 0) {
-		uvec3 uvoxel_pos = GetVoxePos(gAxis);
 		uFragmentList[cur].x = uvoxel_pos.x | (uvoxel_pos.y << 12u) |
 		                       ((uvoxel_pos.z & 0xffu) << 24u); // only have the last 8 bits of uvoxel_pos.z
 		uFragmentList[cur].y = ((uvoxel_pos.z >> 8u) << 28u) | (ucolor & 0x00ffffffu);
