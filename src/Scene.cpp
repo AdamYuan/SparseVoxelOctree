@@ -264,9 +264,6 @@ void Scene::load_textures(const std::shared_ptr<myvk::Queue> &graphics_queue,
 				    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 				// Create ImageView and Sampler
 				texture.m_image_view = myvk::ImageView::Create(texture.m_image, VK_IMAGE_VIEW_TYPE_2D);
-				texture.m_sampler =
-				    myvk::Sampler::Create(device, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT,
-				                          VK_SAMPLER_MIPMAP_MODE_LINEAR, texture.m_image->GetMipLevels());
 
 				// Copy buffer to image and generate mipmap
 				std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(device);
@@ -354,7 +351,7 @@ void Scene::create_descriptors(const std::shared_ptr<myvk::Device> &device) {
 		if (!m_textures.empty()) {
 			std::vector<VkSampler> immutable_samplers(m_textures.size());
 			for (uint32_t i = 0; i < m_textures.size(); ++i)
-				immutable_samplers[i] = m_textures[i].m_sampler->GetHandle();
+				immutable_samplers[i] = m_sampler->GetHandle();
 			layout_binding.pImmutableSamplers = immutable_samplers.data();
 			m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {layout_binding});
 		} else {
@@ -371,7 +368,7 @@ void Scene::create_descriptors(const std::shared_ptr<myvk::Device> &device) {
 		for (uint32_t i = 0; i < m_textures.size(); ++i) {
 			image_infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			image_infos[i].imageView = m_textures[i].m_image_view->GetHandle();
-			image_infos[i].sampler = m_textures[i].m_sampler->GetHandle();
+			// image_infos[i].sampler = m_sampler->GetHandle(); // No need for immutable samplers
 		}
 
 		VkWriteDescriptorSet write = {};
@@ -409,6 +406,9 @@ std::shared_ptr<Scene> Scene::Create(const std::shared_ptr<myvk::Queue> &graphic
 	ret->load_buffers_and_draw_cmd(graphics_queue, meshes);
 	if (notification_ptr)
 		notification_ptr->store("Loading Textures");
+	ret->m_sampler =
+	    myvk::Sampler::Create(graphics_queue->GetDevicePtr(), VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT,
+	                          VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_LOD_CLAMP_NONE);
 	ret->load_textures(graphics_queue, texture_filenames);
 	ret->process_texture_errors();
 	ret->create_descriptors(graphics_queue->GetDevicePtr());

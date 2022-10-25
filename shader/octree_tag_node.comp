@@ -15,28 +15,33 @@ uint Uvec4ToLeaf(uvec4 vec) {
 	       0xC0000000u;
 }
 
+uint TraverseOctree(in const uvec3 voxel_pos, out bool is_leaf) {
+	uint level_dim = kVoxelResolution;
+	uvec3 level_pos = voxel_pos;
+
+	uint idx = 0u, cur = 0u;
+	do {
+		bvec3 cmp = greaterThanEqual(level_pos, uvec3(level_dim >>= 1));
+		idx = cur | uint(cmp.x) | (uint(cmp.y) << 1u) | (uint(cmp.z) << 2u);
+		cur = uOctree[idx] & 0x3fffffffu; // read node pointer
+		level_pos -= uvec3(cmp) * level_dim;
+	} while (cur != 0 && level_dim > 1u);
+	is_leaf = level_dim == 1u;
+	return idx;
+}
+
 void main() {
 	if (gl_GlobalInvocationID.x >= kFragmentCount)
 		return;
 	uvec2 ufragment = uFragmentList[gl_GlobalInvocationID.x];
 
-	uint level_dim = kVoxelResolution;
-	uvec3 level_pos =
+	uvec3 voxel_pos =
 	    uvec3(ufragment.x & 0xfffu, (ufragment.x >> 12u) & 0xfffu, (ufragment.x >> 24u) | ((ufragment.y >> 28u) << 8u));
-	bvec3 level_cmp;
+	bool is_leaf;
+	uint idx = TraverseOctree(voxel_pos, is_leaf);
 
-	uint idx = 0u, cur = 0u;
-	do {
-		level_dim >>= 1;
-
-		level_cmp = greaterThanEqual(level_pos, uvec3(level_dim));
-		idx = cur + (uint(level_cmp.x) | (uint(level_cmp.y) << 1u) | (uint(level_cmp.z) << 2u));
-		cur = uOctree[idx] & 0x3fffffffu;
-		level_pos -= uvec3(level_cmp) * level_dim;
-	} while (cur != 0u && level_dim > 1u);
-
-	if (level_dim == 1u) {
-		// uOctree[idx] = 0xC0000000u | (ufragment.y & 0xffffffu); //termination
+	if (is_leaf) {
+		// uOctree[idx] = 0xC0000000u | (ufragment.y & 0xffffffu); // termination
 		// tag and color data
 
 		// atomic moving average

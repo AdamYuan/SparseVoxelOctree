@@ -19,8 +19,8 @@ private:
 	struct Texture {
 		std::shared_ptr<myvk::Image> m_image;
 		std::shared_ptr<myvk::ImageView> m_image_view;
-		std::shared_ptr<myvk::Sampler> m_sampler;
 	};
+	std::shared_ptr<myvk::Sampler> m_sampler;
 	std::vector<Texture> m_textures;
 
 	std::shared_ptr<myvk::Buffer> m_vertex_buffer, m_index_buffer;
