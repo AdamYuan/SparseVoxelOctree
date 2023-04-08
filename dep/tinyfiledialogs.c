@@ -3,9 +3,9 @@ The code is 100% compatible C C++
 (just comment out << extern "C" >> in the header file) */
 
 /*_________
- /         \ tinyfiledialogs.c v3.8.8 [Apr 22, 2021] zlib licence
+ /         \ tinyfiledialogs.c v3.11 [Apr 7, 2023] zlib licence
  |tiny file| Unique code file created [November 9, 2014]
- | dialogs | Copyright (c) 2014 - 2021 Guillaume Vareille http://ysengrin.com
+ | dialogs | Copyright (c) 2014 - 2023 Guillaume Vareille http://ysengrin.com
  \____  ___/ http://tinyfiledialogs.sourceforge.net
       \|     git clone http://git.code.sf.net/p/tinyfiledialogs/code tinyfd
               ____________________________________________
@@ -99,7 +99,7 @@ Thanks for contributions, bug corrections & thorough testing to:
 #endif
 #define LOW_MULTIPLE_FILES 32
 
-char tinyfd_version[8] = "3.8.8";
+char tinyfd_version[8] = "3.11";
 
 /******************************************************************************************************/
 /**************************************** UTF-8 on Windows ********************************************/
@@ -171,7 +171,7 @@ char tinyfd_needs[] = "\
 \n   applescript or kdialog or yad or Xdialog\
 \nor zenity (or matedialog or shellementary or qarma)\
 \nor python (2 or 3) + tkinter + python-dbus (optional)\
-\nor dialog (opens console if needed)\
+\nor dialog (opens console if needed) ** Disabled by default **/\
 \nor xterm + bash (opens console for basic input)\
 \nor existing console for basic input";
 #endif
@@ -674,7 +674,7 @@ char * tinyfd_mbcsTo8(char const * aMbcsString)
 void tinyfd_beep(void)
 {
     if (windowsVersion() > 5) Beep(440, 300);
-    else MessageBeep(-1);
+    else MessageBeep(MB_OK);
 }
 
 
@@ -1011,9 +1011,12 @@ static char * ensureFilesExist(char * aDestination,
 static int __stdcall EnumThreadWndProc(HWND hwnd, LPARAM lParam)
 {
         wchar_t lTitleName[MAX_PATH];
+        wchar_t const* lDialogTitle = (wchar_t const *) lParam;
+
         GetWindowTextW(hwnd, lTitleName, MAX_PATH);
         /* wprintf(L"lTitleName %ls \n", lTitleName);  */
-        if (wcscmp(L"tinyfiledialogsTopWindow", lTitleName) == 0)
+
+        if (wcscmp(lDialogTitle, lTitleName) == 0)
         {
                 SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
                 return 0;
@@ -1044,8 +1047,7 @@ static void hiddenConsoleW(wchar_t const * aString, wchar_t const * aDialogTitle
         WaitForInputIdle(ProcessInfo.hProcess, INFINITE);
         if (aInFront)
         {
-                while (EnumWindows(EnumThreadWndProc, (LPARAM)NULL)) {}
-                SetWindowTextW(GetForegroundWindow(), aDialogTitle);
+                while (EnumWindows(EnumThreadWndProc, (LPARAM)aDialogTitle)) {}
         }
         WaitForSingleObject(ProcessInfo.hProcess, INFINITE);
         CloseHandle(ProcessInfo.hThread);
@@ -1101,6 +1103,22 @@ int tinyfd_messageBoxW(
                         aCode += MB_DEFBUTTON2;
                 }
         }
+        else if (aDialogType && !wcscmp(L"yesnocancel", aDialogType))
+        {
+            aCode += MB_YESNOCANCEL;
+            if (aDefaultButton == 1)
+            {
+                aCode += MB_DEFBUTTON1;
+            }
+            else if (aDefaultButton == 2)
+            {
+                aCode += MB_DEFBUTTON2;
+            }
+            else
+            {
+                aCode += MB_DEFBUTTON3;
+            }
+        }
         else
         {
                 aCode += MB_OK;
@@ -1109,17 +1127,18 @@ int tinyfd_messageBoxW(
         aCode += MB_TOPMOST;
 
         lBoxReturnValue = MessageBoxW(GetForegroundWindow(), aMessage, aTitle, aCode);
-        if (((aDialogType
-                && wcscmp(L"okcancel", aDialogType)
-                && wcscmp(L"yesno", aDialogType)))
-                || (lBoxReturnValue == IDOK)
-                || (lBoxReturnValue == IDYES))
+
+        if ( (lBoxReturnValue == IDNO) && (aDialogType && !wcscmp(L"yesnocancel", aDialogType)) )
         {
-                return 1;
+            return 2;
+        }
+        else if ( (lBoxReturnValue == IDOK) || (lBoxReturnValue == IDYES) )
+        {
+            return 1;
         }
         else
         {
-                return 0;
+            return 0;
         }
 }
 
@@ -1136,7 +1155,7 @@ int tinyfd_notifyPopupW(
         size_t lDialogStringLen;
 
         if (aTitle && !wcscmp(aTitle, L"tinyfd_query")) { strcpy(tinyfd_response, "windows_wchar"); return 1; }
-        
+
         if (quoteDetectedW(aTitle)) return tinyfd_notifyPopupW(L"INVALID TITLE WITH QUOTES", aMessage, aIconType);
 		if (quoteDetectedW(aMessage)) return tinyfd_notifyPopupW(aTitle, L"INVALID MESSAGE WITH QUOTES", aIconType);
 
@@ -1254,7 +1273,10 @@ wchar_t * tinyfd_inputBoxW(
 					replaceWchar(lBuff, L'\n', L' ');
 					wcscat(lDialogString, lBuff);
                 }
-                wcscat(lDialogString, L"\",\"tinyfiledialogsTopWindow\",\"");
+                wcscat(lDialogString, L"\",\"");
+                if (aTitle) wcscat(lDialogString, aTitle);
+                wcscat(lDialogString, L"\",\"");
+
                 if (aDefaultInput && wcslen(aDefaultInput))
                 {
 					wcscpy(lBuff, aDefaultInput);
@@ -1270,8 +1292,7 @@ wchar_t * tinyfd_inputBoxW(
 <html>\n\
 <head>\n\
 <title>");
-
-                wcscat(lDialogString, L"tinyfiledialogsTopWindow");
+                if (aTitle) wcscat(lDialogString, aTitle);
                 wcscat(lDialogString, L"</title>\n\
 <HTA:APPLICATION\n\
 ID = 'tinyfdHTA'\n\
@@ -2977,6 +2998,7 @@ char * tinyfd_saveFileDialog(
 
         lBuff[0]='\0';
 
+        if ( ! aFilterPatterns ) aNumOfFilterPatterns = 0 ;
 		if (tfd_quoteDetected(aTitle)) return tinyfd_saveFileDialog("INVALID TITLE WITH QUOTES", aDefaultPathAndFile, aNumOfFilterPatterns, aFilterPatterns, aSingleFilterDescription);
 		if (tfd_quoteDetected(aDefaultPathAndFile)) return tinyfd_saveFileDialog(aTitle, "INVALID DEFAULT_PATH WITH QUOTES", aNumOfFilterPatterns, aFilterPatterns, aSingleFilterDescription);
 		if (tfd_quoteDetected(aSingleFilterDescription)) return tinyfd_saveFileDialog(aTitle, aDefaultPathAndFile, aNumOfFilterPatterns, aFilterPatterns, "INVALID FILTER_DESCRIPTION WITH QUOTES");
@@ -3039,12 +3061,13 @@ char * tinyfd_openFileDialog(
 	char const * aSingleFilterDescription, /* NULL or "image files" */
     int aAllowMultipleSelects ) /* 0 or 1 */
 {
-	char lString[MAX_PATH_OR_CMD];
-	char lBuff[MAX_PATH_OR_CMD];
+    static char lBuff[MAX_PATH_OR_CMD];
+    char lString[MAX_PATH_OR_CMD];
 	char * p;
 	char * lPointerInputBox;
 	int i;
 
+    if ( ! aFilterPatterns ) aNumOfFilterPatterns = 0 ;
 	if (tfd_quoteDetected(aTitle)) return tinyfd_openFileDialog("INVALID TITLE WITH QUOTES", aDefaultPathAndFile, aNumOfFilterPatterns, aFilterPatterns, aSingleFilterDescription, aAllowMultipleSelects);
 	if (tfd_quoteDetected(aDefaultPathAndFile)) return tinyfd_openFileDialog(aTitle, "INVALID DEFAULT_PATH WITH QUOTES", aNumOfFilterPatterns, aFilterPatterns, aSingleFilterDescription, aAllowMultipleSelects);
 	if (tfd_quoteDetected(aSingleFilterDescription)) return tinyfd_openFileDialog(aTitle, aDefaultPathAndFile, aNumOfFilterPatterns, aFilterPatterns, "INVALID FILTER_DESCRIPTION WITH QUOTES", aAllowMultipleSelects);
@@ -3140,13 +3163,14 @@ char * tinyfd_selectFolderDialog(
 }
 
 
+/* aDefaultRGB is used only if aDefaultHexRGB is absent */
+/* aDefaultRGB and aoResultRGB can be the same array */
+/* returns NULL on cancel */
 /* returns the hexcolor as a string "#FF0000" */
 /* aoResultRGB also contains the result */
-/* aDefaultRGB is used only if aDefaultHexRGB is NULL */
-/* aDefaultRGB and aoResultRGB can be the same array */
 char * tinyfd_colorChooser(
         char const * aTitle, /* NULL or "" */
-        char const * aDefaultHexRGB, /* NULL or "#FF0000"*/
+        char const * aDefaultHexRGB, /* NULL or "" or "#FF0000"*/
         unsigned char const aDefaultRGB[3], /* { 0 , 255 , 255 } */
         unsigned char aoResultRGB[3]) /* { 0 , 0 , 0 } */
 {
@@ -3182,7 +3206,7 @@ char * tinyfd_colorChooser(
 		if (aTitle&&!strcmp(aTitle, "tinyfd_query")){ strcpy(tinyfd_response, "basicinput"); return (char *)0; }
 	}
 
-	if (aDefaultHexRGB)
+	if (aDefaultHexRGB && (strlen(aDefaultHexRGB)==7) )
 	{
 		strncpy(lDefaultHexRGB, aDefaultHexRGB,7);
 		lDefaultHexRGB[7]='\0';
@@ -3953,6 +3977,7 @@ static int osx9orBetter(void)
         {
                 lOsx9orBetter = 0 ;
                 lIn = popen( "osascript -e 'set osver to system version of (system info)'" , "r" ) ;
+                V = 0 ;
                 if ( ( fgets( lBuff , sizeof( lBuff ) , lIn ) != NULL )
                         && ( 2 == sscanf(lBuff, "%d.%d", &V, &v) ) )
                 {
@@ -4137,7 +4162,7 @@ void tinyfd_beep(void)
         else if ( speakertestPresent() )
         {
                 /*strcpy( lDialogString , "timeout -k .3 .3 speaker-test --frequency 440 --test sine > /dev/tty" ) ;*/
-                strcpy( lDialogString , "( speaker-test -t sine -f 440 > /dev/tty )& pid=$!;sleep .4; kill -9 $pid" ) ; /*.3 was too short for mac g3*/
+                strcpy( lDialogString , "( speaker-test -t sine -f 440 > /dev/tty )& pid=$!;sleep .5; kill -9 $pid" ) ; /*.3 was too short for mac g3*/
         }
         else if (beepexePresent())
         {
@@ -4407,19 +4432,17 @@ int tinyfd_messageBox(
                 {
                     strcat( lDialogString , "info" ) ;
                 }
-                if ( aTitle && strlen(aTitle) )
-                {
-                        strcat(lDialogString, " --title=\"") ;
-                        strcat(lDialogString, aTitle) ;
-                        strcat(lDialogString, "\"") ;
-                }
-                if ( aMessage && strlen(aMessage) )
-                {
-                  if (strcmp("yesnocancel", aDialogType)) strcat(lDialogString, " --no-wrap");
-                  strcat(lDialogString, " --text=\"") ;
-                  strcat(lDialogString, aMessage) ;
-                  strcat(lDialogString, "\"") ;
-                }
+
+                strcat(lDialogString, " --title=\"");
+                if ( aTitle && strlen(aTitle) ) strcat(lDialogString, aTitle) ;
+                strcat(lDialogString, "\"");
+
+                if (strcmp("yesnocancel", aDialogType)) strcat(lDialogString, " --no-wrap");
+
+                strcat(lDialogString, " --text=\"") ;
+                if (aMessage && strlen(aMessage)) strcat(lDialogString, aMessage) ;
+                strcat(lDialogString, "\"") ;
+
                 if ( (tfd_zenity3Present() >= 3) || (!tfd_zenityPresent() && (tfd_shellementaryPresent() || tfd_qarmaPresent()) ) )
                 {
                         strcat( lDialogString , " --icon-name=dialog-" ) ;
@@ -4493,7 +4516,7 @@ int tinyfd_messageBox(
             strcat(lDialogString, "\"");
          }
 
-         strcat(lDialogString, " --icon-name=dialog-");
+         strcat(lDialogString, " --image=dialog-");
          if (aIconType && (!strcmp("question", aIconType)
             || !strcmp("error", aIconType)
             || !strcmp("warning", aIconType)))
@@ -5492,19 +5515,15 @@ char * tinyfd_inputBox(
                 }
                 strcat( lDialogString ," --entry" ) ;
 
-                if ( aTitle && strlen(aTitle) )
-                {
-                        strcat(lDialogString, " --title=\"") ;
-                        strcat(lDialogString, aTitle) ;
-                        strcat(lDialogString, "\"") ;
-                }
-                if ( aMessage && strlen(aMessage) )
-                {
-                        strcat(lDialogString, " --text=\"") ;
-                        strcat(lDialogString, aMessage) ;
-                        strcat(lDialogString, "\"") ;
-                }
-                if ( aDefaultInput && strlen(aDefaultInput) )
+                strcat(lDialogString, " --title=\"") ;
+                if (aTitle && strlen(aTitle)) strcat(lDialogString, aTitle) ;
+                strcat(lDialogString, "\"") ;
+
+                strcat(lDialogString, " --text=\"") ;
+                if (aMessage && strlen(aMessage)) strcat(lDialogString, aMessage) ;
+                strcat(lDialogString, "\"") ;
+
+                if ( aDefaultInput )
                 {
                         strcat(lDialogString, " --entry-text=\"") ;
                         strcat(lDialogString, aDefaultInput) ;
@@ -5945,8 +5964,8 @@ char * tinyfd_saveFileDialog(
     char const * aTitle , /* NULL or "" */
     char const * aDefaultPathAndFile , /* NULL or "" */
     int aNumOfFilterPatterns , /* 0 */
-    char const * const * aFilterPatterns , /* NULL or {"*.jpg","*.png"} */
-    char const * aSingleFilterDescription ) /* NULL or "image files" */
+    char const * const * aFilterPatterns , /* NULL or {"*.txt","*.doc"} */
+    char const * aSingleFilterDescription ) /* NULL or "text files" */
 {
         static char lBuff[MAX_PATH_OR_CMD] ;
         char lDialogString[MAX_PATH_OR_CMD] ;
@@ -5959,6 +5978,7 @@ char * tinyfd_saveFileDialog(
         FILE * lIn ;
         lBuff[0]='\0';
 
+        if ( ! aFilterPatterns ) aNumOfFilterPatterns = 0 ;
 		if (tfd_quoteDetected(aTitle)) return tinyfd_saveFileDialog("INVALID TITLE WITH QUOTES", aDefaultPathAndFile, aNumOfFilterPatterns, aFilterPatterns, aSingleFilterDescription);
 		if (tfd_quoteDetected(aDefaultPathAndFile)) return tinyfd_saveFileDialog(aTitle, "INVALID DEFAULT_PATH WITH QUOTES", aNumOfFilterPatterns, aFilterPatterns, aSingleFilterDescription);
 		if (tfd_quoteDetected(aSingleFilterDescription)) return tinyfd_saveFileDialog(aTitle, aDefaultPathAndFile, aNumOfFilterPatterns, aFilterPatterns, "INVALID FILTER_DESCRIPTION WITH QUOTES");
@@ -6079,12 +6099,10 @@ char * tinyfd_saveFileDialog(
                 }
                 strcat(lDialogString, " --file-selection --save --confirm-overwrite" ) ;
 
-                if ( aTitle && strlen(aTitle) )
-                {
-                        strcat(lDialogString, " --title=\"") ;
-                        strcat(lDialogString, aTitle) ;
-                        strcat(lDialogString, "\"") ;
-                }
+                strcat(lDialogString, " --title=\"") ;
+                if (aTitle && strlen(aTitle)) strcat(lDialogString, aTitle) ;
+                strcat(lDialogString, "\"") ;
+
                 if ( aDefaultPathAndFile && strlen(aDefaultPathAndFile) )
                 {
                         strcat(lDialogString, " --filename=\"") ;
@@ -6111,7 +6129,7 @@ char * tinyfd_saveFileDialog(
         else if (tfd_yadPresent())
         {
            if (aTitle && !strcmp(aTitle, "tinyfd_query")) { strcpy(tinyfd_response, "yad"); return (char*)1; }
-           strcpy(lDialogString, "yad --file-selection --save --confirm-overwrite");
+           strcpy(lDialogString, "yad --file --save --confirm-overwrite");
            if (aTitle && strlen(aTitle))
            {
               strcat(lDialogString, " --title=\"");
@@ -6410,6 +6428,7 @@ char * tinyfd_openFileDialog(
       size_t lFullBuffLen ;
       static char * lBuff = NULL;
 
+        if ( ! aFilterPatterns ) aNumOfFilterPatterns = 0 ;
 		if (tfd_quoteDetected(aTitle)) return tinyfd_openFileDialog("INVALID TITLE WITH QUOTES", aDefaultPathAndFile, aNumOfFilterPatterns, aFilterPatterns, aSingleFilterDescription, aAllowMultipleSelects);
 		if (tfd_quoteDetected(aDefaultPathAndFile)) return tinyfd_openFileDialog(aTitle, "INVALID DEFAULT_PATH WITH QUOTES", aNumOfFilterPatterns, aFilterPatterns, aSingleFilterDescription, aAllowMultipleSelects);
 		if (tfd_quoteDetected(aSingleFilterDescription)) return tinyfd_openFileDialog(aTitle, aDefaultPathAndFile, aNumOfFilterPatterns, aFilterPatterns, "INVALID FILTER_DESCRIPTION WITH QUOTES", aAllowMultipleSelects);
@@ -6598,12 +6617,11 @@ char * tinyfd_openFileDialog(
                 {
                         strcat( lDialogString , " --multiple" ) ;
                 }
-                if ( aTitle && strlen(aTitle) )
-                {
-                        strcat(lDialogString, " --title=\"") ;
-                        strcat(lDialogString, aTitle) ;
-                        strcat(lDialogString, "\"") ;
-                }
+
+                strcat(lDialogString, " --title=\"") ;
+                if (aTitle && strlen(aTitle)) strcat(lDialogString, aTitle) ;
+                strcat(lDialogString, "\"") ;
+
                 if ( aDefaultPathAndFile && strlen(aDefaultPathAndFile) )
                 {
                         strcat(lDialogString, " --filename=\"") ;
@@ -6630,7 +6648,7 @@ char * tinyfd_openFileDialog(
         else if (tfd_yadPresent())
         {
            if (aTitle && !strcmp(aTitle, "tinyfd_query")) { strcpy(tinyfd_response, "yad"); return (char*)1; }
-           strcpy(lDialogString, "yad --file-selection");
+           strcpy(lDialogString, "yad --file");
            if (aAllowMultipleSelects)
            {
               strcat(lDialogString, " --multiple");
@@ -6941,7 +6959,7 @@ frontmost of process \\\"Python\\\" to true' ''');");
 
 		lBuff = (char *)( realloc( lBuff, (strlen(lBuff)+1) * sizeof(char)));
 
-        /*printf( "lBuff3: %s\n" , lBuff ) ; */
+        /*printf( "lBuff3 [%lu]: %s\n" , strlen(lBuff) , lBuff ) ; */
 		return lBuff ;
 }
 
@@ -7049,12 +7067,10 @@ char * tinyfd_selectFolderDialog(
                 }
                 strcat( lDialogString , " --file-selection --directory" ) ;
 
-                if ( aTitle && strlen(aTitle) )
-                {
-                        strcat(lDialogString, " --title=\"") ;
-                        strcat(lDialogString, aTitle) ;
-                        strcat(lDialogString, "\"") ;
-                }
+                strcat(lDialogString, " --title=\"") ;
+                if (aTitle && strlen(aTitle)) strcat(lDialogString, aTitle) ;
+                strcat(lDialogString, "\"") ;
+
                 if ( aDefaultPath && strlen(aDefaultPath) )
                 {
                         strcat(lDialogString, " --filename=\"") ;
@@ -7066,7 +7082,7 @@ char * tinyfd_selectFolderDialog(
         else if (tfd_yadPresent())
         {
            if (aTitle && !strcmp(aTitle, "tinyfd_query")) { strcpy(tinyfd_response, "yad"); return (char*)1; }
-           strcpy(lDialogString, "yad --file-selection --directory");
+           strcpy(lDialogString, "yad --file --directory");
            if (aTitle && strlen(aTitle))
            {
               strcat(lDialogString, " --title=\"");
@@ -7247,10 +7263,11 @@ frontmost of process \\\"Python\\\" to true' ''');");
 }
 
 
+/* aDefaultRGB is used only if aDefaultHexRGB is absent */
+/* aDefaultRGB and aoResultRGB can be the same array */
+/* returns NULL on cancel */
 /* returns the hexcolor as a string "#FF0000" */
 /* aoResultRGB also contains the result */
-/* aDefaultRGB is used only if aDefaultHexRGB is NULL */
-/* aDefaultRGB and aoResultRGB can be the same array */
 char * tinyfd_colorChooser(
         char const * aTitle , /* NULL or "" */
         char const * aDefaultHexRGB , /* NULL or "#FF0000"*/
@@ -7278,17 +7295,17 @@ char * tinyfd_colorChooser(
 		if (tfd_quoteDetected(aTitle)) return tinyfd_colorChooser("INVALID TITLE WITH QUOTES", aDefaultHexRGB, aDefaultRGB, aoResultRGB);
 		if (tfd_quoteDetected(aDefaultHexRGB)) return tinyfd_colorChooser(aTitle, "INVALID DEFAULT_HEX_RGB WITH QUOTES", aDefaultRGB, aoResultRGB);
 
-		if (aDefaultHexRGB)
+		if (aDefaultHexRGB && (strlen(aDefaultHexRGB)==7) )
 		{
 			Hex2RGB(aDefaultHexRGB, lDefaultRGB);
-         strcpy(lDefaultHexRGB, aDefaultHexRGB);
+            strcpy(lDefaultHexRGB, aDefaultHexRGB);
 		}
 		else
 		{
 			lDefaultRGB[0] = aDefaultRGB[0];
 			lDefaultRGB[1] = aDefaultRGB[1];
 			lDefaultRGB[2] = aDefaultRGB[2];
-         RGB2Hex(aDefaultRGB, lDefaultHexRGB);
+            RGB2Hex(aDefaultRGB, lDefaultHexRGB);
 		}
 
         if ( osascriptPresent( ) )
@@ -7381,12 +7398,10 @@ to set mycolor to choose color default color {");
                 strcat( lDialogString , " --color-selection --show-palette" ) ;
                 sprintf( lDialogString + strlen(lDialogString), " --color=%s" , lDefaultHexRGB ) ;
 
-                if ( aTitle && strlen(aTitle) )
-                {
-                        strcat(lDialogString, " --title=\"") ;
-                        strcat(lDialogString, aTitle) ;
-                        strcat(lDialogString, "\"") ;
-                }
+                strcat(lDialogString, " --title=\"") ;
+                if (aTitle && strlen(aTitle)) strcat(lDialogString, aTitle) ;
+                strcat(lDialogString, "\"") ;
+
                 if (tinyfd_silent) strcat( lDialogString , " 2>/dev/null ");
         }
         else if (tfd_yadPresent())

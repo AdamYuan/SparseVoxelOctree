@@ -2,9 +2,9 @@
 then comment out << extern "C" >> bellow in this header file) */
 
 /*_________
- /         \ tinyfiledialogs.h v3.8.8 [Apr 22, 2021] zlib licence
+ /         \ tinyfiledialogs.h v3.11 [Apr 7, 2023] zlib licence
  |tiny file| Unique header file created [November 9, 2014]
- | dialogs | Copyright (c) 2014 - 2021 Guillaume Vareille http://ysengrin.com
+ | dialogs | Copyright (c) 2014 - 2023 Guillaume Vareille http://ysengrin.com
  \____  ___/ http://tinyfiledialogs.sourceforge.net
       \|     git clone http://git.code.sf.net/p/tinyfiledialogs/code tinyfd
  ____________________________________________
@@ -14,11 +14,12 @@ then comment out << extern "C" >> bellow in this header file) */
  ________________________________________________________________________________
 |  ____________________________________________________________________________  |
 | |                                                                            | |
+| |  - in tinyfiledialogs, char is UTF-8 by default (since v3.6)               | |
+| |                                                                            | |
 | | on windows:                                                                | |
 | |  - for UTF-16, use the wchar_t functions at the bottom of the header file  | |
 | |  - _wfopen() requires wchar_t                                              | |
 | |                                                                            | |
-| |  - in tinyfiledialogs, char is UTF-8 by default (since v3.6)               | |
 | |  - but fopen() expects MBCS (not UTF-8)                                    | |
 | |  - if you want char to be MBCS: set tinyfd_winUtf8 to 0                    | |
 | |                                                                            | |
@@ -91,14 +92,15 @@ extern char tinyfd_needs[]; /* info about requirements */
 extern int tinyfd_verbose; /* 0 (default) or 1 : on unix, prints the command line calls */
 extern int tinyfd_silent; /* 1 (default) or 0 : on unix, hide errors and warnings from called dialogs */
 
-/* Curses dialogs are difficult to use, on windows they are only ascii and uses the unix backslah */
+/** Curses dialogs are difficult to use and counter-intuitive.
+On windows they are only ascii but still uses the unix backslah ! **/
 extern int tinyfd_allowCursesDialogs; /* 0 (default) or 1 */
 
 extern int tinyfd_forceConsole;  /* 0 (default) or 1 */
 /* for unix & windows: 0 (graphic mode) or 1 (console mode).
 0: try to use a graphic solution, if it fails then it uses console mode.
-1: forces all dialogs into console mode even when an X server is present,
-   it can use the package dialog or dialog.exe.
+1: forces all dialogs into console mode even when an X server is present.
+   if enabled, it can use the package Dialog or dialog.exe.
    on windows it only make sense for console applications */
 
 extern int tinyfd_assumeGraphicDisplay; /* 0 (default) or 1  */
@@ -137,7 +139,7 @@ int tinyfd_messageBox(
 char * tinyfd_inputBox(
 	char const * aTitle , /* NULL or "" */
 	char const * aMessage , /* NULL or "" (\n and \t have no effect) */
-	char const * aDefaultInput ) ;  /* NULL passwordBox, "" inputbox */
+	char const * aDefaultInput ) ;  /* NULL = passwordBox, "" = inputbox */
 		/* returns NULL on cancel */
 
 char * tinyfd_saveFileDialog(
@@ -165,14 +167,14 @@ char * tinyfd_selectFolderDialog(
 
 char * tinyfd_colorChooser(
 	char const * aTitle, /* NULL or "" */
-	char const * aDefaultHexRGB, /* NULL or "#FF0000" */
+	char const * aDefaultHexRGB, /* NULL or "" or "#FF0000" */
 	unsigned char const aDefaultRGB[3] , /* unsigned char lDefaultRGB[3] = { 0 , 128 , 255 }; */
 	unsigned char aoResultRGB[3] ) ; /* unsigned char lResultRGB[3]; */
-		/* returns the hexcolor as a string "#FF0000" */
-		/* aoResultRGB also contains the result */
-		/* aDefaultRGB is used only if aDefaultHexRGB is NULL */
+		/* aDefaultRGB is used only if aDefaultHexRGB is absent */
 		/* aDefaultRGB and aoResultRGB can be the same array */
 		/* returns NULL on cancel */
+		/* returns the hexcolor as a string "#FF0000" */
+		/* aoResultRGB also contains the result */
 
 
 /************ WINDOWS ONLY SECTION ************************/
