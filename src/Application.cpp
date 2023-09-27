@@ -1,5 +1,7 @@
 #include "Application.hpp"
 
+#include <optional>
+
 #include "Config.hpp"
 #include <spdlog/spdlog.h>
 
@@ -258,10 +260,10 @@ void Application::initialize_vulkan() {
 			}
 
 			return {
-			    myvk::QueueSelection{&m_main_queue, main_queue_family.value(), 0},
-			    myvk::QueueSelection{m_surface, &m_present_queue, present_queue_family.value(), 0},
-			    myvk::QueueSelection{&m_loader_queue, loader_queue_family.value(), 1},
-			    myvk::QueueSelection{&m_path_tracer_queue, path_tracer_queue_family.value(), 1},
+			    myvk::QueueSelection{&m_main_queue, main_queue_family.value(), 0u},
+			    myvk::QueueSelection{m_surface, &m_present_queue, present_queue_family.value(), 0u},
+			    myvk::QueueSelection{&m_loader_queue, loader_queue_family.value(), 1u},
+			    myvk::QueueSelection{&m_path_tracer_queue, path_tracer_queue_family.value(), 1u},
 			};
 		};
 
