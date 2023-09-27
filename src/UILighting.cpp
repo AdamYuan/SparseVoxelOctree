@@ -3,7 +3,7 @@
 #include "Config.hpp"
 #include "ImGuiUtil.hpp"
 
-#include <imgui/imgui.h>
+#include <imgui.h>
 
 namespace UI {
 void LightingMenuItems(const std::shared_ptr<myvk::CommandPool> &command_pool,

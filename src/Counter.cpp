@@ -1,11 +1,13 @@
 #include "Counter.hpp"
 
 void Counter::Initialize(const std::shared_ptr<myvk::Device> &device) {
-	m_buffer = myvk::Buffer::Create(device, sizeof(uint32_t), VMA_MEMORY_USAGE_GPU_ONLY,
+	m_buffer = myvk::Buffer::Create(device, sizeof(uint32_t), 0,
 	                                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
 	                                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-	m_staging_buffer = myvk::Buffer::Create(device, sizeof(uint32_t), VMA_MEMORY_USAGE_CPU_ONLY,
-	                                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+	m_staging_buffer =
+	    myvk::Buffer::Create(device, sizeof(uint32_t),
+	                         VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+	                         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 	m_fence = myvk::Fence::Create(device);
 }
 

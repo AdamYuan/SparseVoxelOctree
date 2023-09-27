@@ -198,15 +198,15 @@ void Scene::load_buffers_and_draw_cmd(const std::shared_ptr<myvk::Queue> &graphi
 	const std::shared_ptr<myvk::Device> &device = graphics_queue->GetDevicePtr();
 	uint32_t vertex_buffer_size = vertices.size() * sizeof(Vertex),
 	         index_buffer_size = indices.size() * sizeof(uint32_t);
-	m_vertex_buffer = myvk::Buffer::Create(device, vertex_buffer_size, VMA_MEMORY_USAGE_GPU_ONLY,
+	m_vertex_buffer = myvk::Buffer::Create(device, vertex_buffer_size, 0,
 	                                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-	m_index_buffer = myvk::Buffer::Create(device, index_buffer_size, VMA_MEMORY_USAGE_GPU_ONLY,
+	m_index_buffer = myvk::Buffer::Create(device, index_buffer_size, 0,
 	                                      VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
-	std::shared_ptr<myvk::Buffer> vertex_staging_buffer = myvk::Buffer::CreateStaging(device, vertex_buffer_size);
-	vertex_staging_buffer->UpdateData(vertices.data(), vertices.data() + vertices.size());
-	std::shared_ptr<myvk::Buffer> index_staging_buffer = myvk::Buffer::CreateStaging(device, index_buffer_size);
-	index_staging_buffer->UpdateData(indices.data(), indices.data() + indices.size());
+	std::shared_ptr<myvk::Buffer> vertex_staging_buffer =
+	    myvk::Buffer::CreateStaging(device, vertices.begin(), vertices.end());
+	std::shared_ptr<myvk::Buffer> index_staging_buffer =
+	    myvk::Buffer::CreateStaging(device, indices.begin(), indices.end());
 
 	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(device);
 	std::shared_ptr<myvk::CommandPool> command_pool = myvk::CommandPool::Create(graphics_queue);
@@ -252,8 +252,8 @@ void Scene::load_textures(const std::shared_ptr<myvk::Queue> &graphics_queue,
 				uint32_t data_size = width * height * 4;
 				VkExtent2D extent = {(uint32_t)width, (uint32_t)height};
 				// Create staging buffer
-				std::shared_ptr<myvk::Buffer> staging_buffer = myvk::Buffer::CreateStaging(device, data_size);
-				staging_buffer->UpdateData(data, data + data_size);
+				std::shared_ptr<myvk::Buffer> staging_buffer =
+				    myvk::Buffer::CreateStaging(device, data, data + data_size);
 				// Free texture data
 				stbi_image_free(data);
 

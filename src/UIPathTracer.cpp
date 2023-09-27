@@ -3,8 +3,8 @@
 #include "Config.hpp"
 #include "ImGuiUtil.hpp"
 #include <font-awesome/IconsFontAwesome5.h>
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 #include <spdlog/spdlog.h>
 #include <tinyexr.h>
 

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(SparseVoxelOctree)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
 
 if (NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE Release)
@@ -40,8 +40,6 @@ add_executable(SparseVoxelOctree
 		src/Application.hpp
 		src/Camera.cpp
 		src/Camera.hpp
-		src/ImGuiRenderer.cpp
-		src/ImGuiRenderer.hpp
 		src/Scene.cpp
 		src/Scene.hpp
 		src/Counter.cpp

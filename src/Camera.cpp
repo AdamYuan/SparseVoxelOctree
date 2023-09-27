@@ -1,8 +1,8 @@
 #include "Camera.hpp"
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 
 std::shared_ptr<Camera> Camera::Create(const std::shared_ptr<myvk::Device> &device, uint32_t frame_count) {
 	std::shared_ptr<Camera> ret = std::make_shared<Camera>();
@@ -24,7 +24,9 @@ std::shared_ptr<Camera> Camera::Create(const std::shared_ptr<myvk::Device> &devi
 	ret->m_uniform_buffers.resize(frame_count);
 
 	for (uint32_t i = 0; i < frame_count; ++i) {
-		ret->m_uniform_buffers[i] = myvk::Buffer::Create(device, sizeof(UniformData), VMA_MEMORY_USAGE_CPU_TO_GPU,
+		ret->m_uniform_buffers[i] = myvk::Buffer::Create(device, sizeof(UniformData),
+		                                                 VMA_ALLOCATION_CREATE_MAPPED_BIT |
+		                                                     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 		                                                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 		ret->m_descriptor_sets[i]->UpdateUniformBuffer(ret->m_uniform_buffers[i], 0);
 	}
@@ -74,7 +76,7 @@ void Camera::Control(GLFWwindow *window, float delta) {
 
 Camera::UniformData Camera::fetch_uniform_data() const {
 	UniformData data = {};
-	glm::mat4 trans = glm::identity<glm::mat4>();
+	auto trans = glm::identity<glm::mat4>();
 	trans = glm::rotate(trans, m_yaw, glm::vec3(0.0f, 1.0f, 0.0f));
 	trans = glm::rotate(trans, m_pitch, glm::vec3(-1.0f, 0.0f, 0.0f));
 	float tg = glm::tan(m_fov * 0.5f);

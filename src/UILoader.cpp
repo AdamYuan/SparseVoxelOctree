@@ -3,7 +3,7 @@
 #include "Config.hpp"
 #include "ImGuiUtil.hpp"
 #include <font-awesome/IconsFontAwesome5.h>
-#include <imgui/imgui.h>
+#include <imgui.h>
 
 namespace UI {
 void LoaderLoadButton(const std::shared_ptr<LoaderThread> &loader_thread, const char **open_modal) {

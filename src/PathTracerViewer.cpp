@@ -153,9 +153,10 @@ std::shared_ptr<PathTracerViewer> PathTracerViewer::Create(const std::shared_ptr
 	ret->create_main_graphics_pipeline(render_pass, subpass);
 
 	for (uint32_t i = 0; i < kFrameCount; ++i)
-		ret->m_texcoords_buffers[i] =
-		    myvk::Buffer::Create(render_pass->GetDevicePtr(), sizeof(float) * 6, VMA_MEMORY_USAGE_CPU_TO_GPU,
-		                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		ret->m_texcoords_buffers[i] = myvk::Buffer::Create(render_pass->GetDevicePtr(), sizeof(float) * 6,
+		                                                   VMA_ALLOCATION_CREATE_MAPPED_BIT |
+		                                                       VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+		                                                   VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 
 	return ret;
 }

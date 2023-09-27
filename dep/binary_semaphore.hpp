@@ -11,7 +11,7 @@ public:
 
 	inline void wait() {
 		std::unique_lock<std::mutex> lk(m_mtx);
-		m_cv.wait(lk, [=] { return m_state; });
+		m_cv.wait(lk, [this] { return m_state; });
 		m_state = false;
 	}
 	inline bool try_wait() {

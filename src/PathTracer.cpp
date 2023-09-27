@@ -122,12 +122,7 @@ void PathTracer::clear_target_images(const std::shared_ptr<myvk::CommandPool> &c
 void PathTracer::set_noise_image(const std::shared_ptr<myvk::CommandPool> &command_pool) {
 	// create a staging buffer with maximum possible size
 	std::shared_ptr<myvk::Buffer> staging_buffer =
-	    myvk::Buffer::CreateStaging(command_pool->GetDevicePtr(), sizeof(kNoise));
-	{
-		uint8_t *data = (uint8_t *)staging_buffer->Map();
-		std::copy(std::begin(kNoise), std::end(kNoise), data);
-		staging_buffer->Unmap();
-	}
+	    myvk::Buffer::CreateStaging(command_pool->GetDevicePtr(), std::begin(kNoise), std::end(kNoise));
 
 	VkBufferImageCopy region = {};
 	region.bufferOffset = 0;
@@ -247,9 +242,8 @@ void PathTracer::extract_target_image_to_buffer(const std::shared_ptr<myvk::Comm
 
 std::vector<float> PathTracer::ExtractColorImage(const std::shared_ptr<myvk::CommandPool> &command_pool) const {
 	const uint32_t kSize = m_width * m_height;
-	std::shared_ptr<myvk::Buffer> staging_buffer =
-	    myvk::Buffer::Create(command_pool->GetDevicePtr(), kSize * 4 * sizeof(float), VMA_MEMORY_USAGE_CPU_ONLY,
-	                         VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+	std::shared_ptr<myvk::Buffer> staging_buffer = myvk::Buffer::Create(
+	    command_pool->GetDevicePtr(), kSize * 4 * sizeof(float), 0, VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 	extract_target_image_to_buffer(command_pool, m_color_image, staging_buffer);
 
 	auto *data = (float *)staging_buffer->Map();
@@ -266,9 +260,8 @@ std::vector<float> PathTracer::ExtractColorImage(const std::shared_ptr<myvk::Com
 
 std::vector<float> PathTracer::ExtractAlbedoImage(const std::shared_ptr<myvk::CommandPool> &command_pool) const {
 	const uint32_t kSize = m_width * m_height;
-	std::shared_ptr<myvk::Buffer> staging_buffer =
-	    myvk::Buffer::Create(command_pool->GetDevicePtr(), kSize * sizeof(uint32_t), VMA_MEMORY_USAGE_CPU_ONLY,
-	                         VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+	std::shared_ptr<myvk::Buffer> staging_buffer = myvk::Buffer::Create(
+	    command_pool->GetDevicePtr(), kSize * sizeof(uint32_t), 0, VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 	extract_target_image_to_buffer(command_pool, m_albedo_image, staging_buffer);
 
 	auto *data = (uint32_t *)staging_buffer->Map();
@@ -286,9 +279,8 @@ std::vector<float> PathTracer::ExtractAlbedoImage(const std::shared_ptr<myvk::Co
 
 std::vector<float> PathTracer::ExtractNormalImage(const std::shared_ptr<myvk::CommandPool> &command_pool) const {
 	const uint32_t kSize = m_width * m_height;
-	std::shared_ptr<myvk::Buffer> staging_buffer =
-	    myvk::Buffer::Create(command_pool->GetDevicePtr(), kSize * sizeof(uint32_t), VMA_MEMORY_USAGE_CPU_ONLY,
-	                         VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+	std::shared_ptr<myvk::Buffer> staging_buffer = myvk::Buffer::Create(
+	    command_pool->GetDevicePtr(), kSize * sizeof(uint32_t), 0, VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 	extract_target_image_to_buffer(command_pool, m_normal_image, staging_buffer);
 
 	auto *data = (uint32_t *)staging_buffer->Map();

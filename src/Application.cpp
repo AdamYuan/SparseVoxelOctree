@@ -3,9 +3,13 @@
 #include "Config.hpp"
 #include <spdlog/spdlog.h>
 
-#include <imgui/imgui.h>
-#include <imgui/imgui_impl_glfw.h>
-#include <imgui/imgui_internal.h>
+#include <myvk/GLFWHelper.hpp>
+#include <myvk/ImGuiHelper.hpp>
+#include <myvk/QueueSelector.hpp>
+
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_internal.h>
 
 #include "ImGuiUtil.hpp"
 #include "UICamera.hpp"
@@ -34,26 +38,15 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverity
 #endif
 
 void Application::create_window() {
-	glfwInit();
-
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-
-	m_window = glfwCreateWindow(kDefaultWidth, kDefaultHeight, kAppName, nullptr, nullptr);
+	m_window = myvk::GLFWCreateWindow(kAppName, kDefaultWidth, kDefaultHeight, true);
 	glfwSetWindowUserPointer(m_window, this);
 	glfwSetKeyCallback(m_window, glfw_key_callback);
 	glfwSetFramebufferSizeCallback(m_window, glfw_framebuffer_resize_callback);
-
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGui::LoadFontAwesome();
-	ImGui::StyleCinder();
-	ImGui_ImplGlfw_InitForVulkan(m_window, true);
 }
 
 void Application::create_render_pass() {
 	VkAttachmentDescription color_attachment = {};
-	color_attachment.format = m_frame_manager.GetSwapchain()->GetImageFormat();
+	color_attachment.format = m_frame_manager->GetSwapchain()->GetImageFormat();
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -116,32 +109,32 @@ void Application::create_render_pass() {
 }
 
 void Application::create_framebuffers() {
-	m_framebuffers.resize(m_frame_manager.GetSwapchain()->GetImageCount());
-	for (uint32_t i = 0; i < m_frame_manager.GetSwapchain()->GetImageCount(); ++i) {
-		m_framebuffers[i] = myvk::Framebuffer::Create(m_render_pass, m_frame_manager.GetSwapchainImageViews()[i]);
+	m_framebuffers.resize(m_frame_manager->GetSwapchain()->GetImageCount());
+	for (uint32_t i = 0; i < m_frame_manager->GetSwapchain()->GetImageCount(); ++i) {
+		m_framebuffers[i] = myvk::Framebuffer::Create(m_render_pass, m_frame_manager->GetSwapchainImageViews()[i]);
 	}
 }
 
 void Application::resize() {
-	for (uint32_t i = 0; i < m_frame_manager.GetSwapchain()->GetImageCount(); ++i) {
-		m_framebuffers[i] = myvk::Framebuffer::Create(m_render_pass, m_frame_manager.GetSwapchainImageViews()[i]);
+	for (uint32_t i = 0; i < m_frame_manager->GetSwapchain()->GetImageCount(); ++i) {
+		m_framebuffers[i] = myvk::Framebuffer::Create(m_render_pass, m_frame_manager->GetSwapchainImageViews()[i]);
 	}
-	VkExtent2D extent = m_frame_manager.GetSwapchain()->GetExtent();
+	VkExtent2D extent = m_frame_manager->GetSwapchain()->GetExtent();
 	m_camera->m_aspect_ratio = extent.width / float(extent.height);
 	m_path_tracer_viewer->Resize(extent.width, extent.height);
 	m_octree_tracer->Resize(extent.width, extent.height);
 }
 
 void Application::draw_frame() {
-	if (!m_frame_manager.AcquireNextImage())
+	if (!m_frame_manager->NewFrame())
 		return;
 
-	uint32_t image_index = m_frame_manager.GetCurrentImageIndex();
-	uint32_t current_frame = m_frame_manager.GetCurrentFrame();
+	uint32_t image_index = m_frame_manager->GetCurrentImageIndex();
+	uint32_t current_frame = m_frame_manager->GetCurrentFrame();
 	if (m_ui_state == UIStates::kOctreeTracer)
 		m_camera->UpdateFrameUniformBuffer(current_frame);
 
-	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_command_buffers[current_frame];
+	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_manager->GetCurrentCommandBuffer();
 
 	command_buffer->GetCommandPoolPtr()->Reset();
 	command_buffer->Begin();
@@ -156,11 +149,11 @@ void Application::draw_frame() {
 		m_octree_tracer->CmdDrawPipeline(command_buffer, current_frame);
 	}
 	command_buffer->CmdNextSubpass();
-	m_imgui_renderer.CmdDrawPipeline(command_buffer, current_frame);
+	m_imgui_renderer->CmdDrawPipeline(command_buffer, current_frame);
 	command_buffer->CmdEndRenderPass();
 	command_buffer->End();
 
-	m_frame_manager.SubmitAndPresent(command_buffer);
+	m_frame_manager->Render();
 }
 
 void Application::initialize_vulkan() {
@@ -194,7 +187,7 @@ void Application::initialize_vulkan() {
 	// DEVICE CREATION
 	{
 		const auto &physical_device = physical_devices[0];
-		spdlog::info("Physical Device: {}", physical_device->GetProperties().deviceName);
+		spdlog::info("Physical Device: {}", physical_device->GetProperties().vk10.deviceName);
 
 		std::vector<const char *> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
@@ -205,90 +198,76 @@ void Application::initialize_vulkan() {
 			spdlog::warn("EXT_conservative_rasterization not supported");
 		}
 
-		myvk::DeviceCreateInfo device_create_info;
-		device_create_info.Initialize(
-		    physical_device,
-		    [&](const std::shared_ptr<myvk::PhysicalDevice> &physical_device,
-		        std::vector<myvk::QueueSelection> *const out_queue_selections,
-		        std::vector<myvk::PresentQueueSelection> *const out_present_queue_selections) -> bool {
-			    const auto &families = physical_device->GetQueueFamilyProperties();
-			    if (families.empty())
-				    return false;
+		const auto queue_selector =
+		    [this](const myvk::Ptr<const myvk::PhysicalDevice> &physical_device) -> std::vector<myvk::QueueSelection> {
+			const auto &families = physical_device->GetQueueFamilyProperties();
+			if (families.empty())
+				return std::vector<myvk::QueueSelection>{};
 
-			    myvk::PresentQueueSelection present_queue = {&m_present_queue, m_surface, UINT32_MAX};
-			    myvk::QueueSelection main_queue = {&m_main_queue, UINT32_MAX},
-			                         loader_queue = {&m_loader_queue, UINT32_MAX},
-			                         path_tracer_queue = {&m_path_tracer_queue, UINT32_MAX};
+			std::optional<uint32_t> main_queue_family, present_queue_family, loader_queue_family,
+			    path_tracer_queue_family;
 
-			    // main queue and present queue
-			    for (uint32_t i = 0; i < families.size(); ++i) {
-				    VkQueueFlags flags = families[i].queueFlags;
-				    if ((flags & VK_QUEUE_GRAPHICS_BIT) && (flags & VK_QUEUE_TRANSFER_BIT)) {
-					    main_queue.family = i;
-					    main_queue.index_specifier = 0;
+			// main queue and present queue
+			for (uint32_t i = 0; i < families.size(); ++i) {
+				VkQueueFlags flags = families[i].queueFlags;
+				if ((flags & VK_QUEUE_GRAPHICS_BIT) && (flags & VK_QUEUE_TRANSFER_BIT)) {
+					main_queue_family = i;
+					// main_queue.index_specifier = 0;
 
-					    if (physical_device->GetSurfaceSupport(i, present_queue.surface)) {
-						    present_queue.family = i;
-						    present_queue.index_specifier = 0;
-						    break;
-					    }
-				    }
-			    }
+					if (physical_device->GetQueueSurfaceSupport(i, m_surface)) {
+						present_queue_family = i;
+						// present_queue.index_specifier = 0;
+						break;
+					}
+				}
+			}
 
-			    // present queue fallback
-			    if (present_queue.family == UINT32_MAX)
-				    for (uint32_t i = 0; i < families.size(); ++i) {
-					    if (physical_device->GetSurfaceSupport(i, present_queue.surface)) {
-						    present_queue.family = i;
-						    present_queue.index_specifier = 0;
-						    break;
-					    }
-				    }
+			// present queue fallback
+			if (!present_queue_family.has_value())
+				for (uint32_t i = 0; i < families.size(); ++i) {
+					if (physical_device->GetQueueSurfaceSupport(i, m_surface)) {
+						present_queue_family = i;
+						// present_queue.index_specifier = 0;
+						break;
+					}
+				}
 
-			    // loader queue
-			    for (uint32_t i = 0; i < families.size(); ++i) {
-				    VkQueueFlags flags = families[i].queueFlags;
-				    if ((flags & VK_QUEUE_GRAPHICS_BIT) && (flags & VK_QUEUE_COMPUTE_BIT) &&
-				        (flags & VK_QUEUE_TRANSFER_BIT)) {
-					    loader_queue.family = i;
-					    loader_queue.index_specifier = 1;
+			// loader queue
+			for (uint32_t i = 0; i < families.size(); ++i) {
+				VkQueueFlags flags = families[i].queueFlags;
+				if ((flags & VK_QUEUE_GRAPHICS_BIT) && (flags & VK_QUEUE_COMPUTE_BIT) &&
+				    (flags & VK_QUEUE_TRANSFER_BIT)) {
+					loader_queue_family = i;
+					// loader_queue.index_specifier = 1;
 
-					    if (i != main_queue.family)
-						    break; // prefer independent queue
-				    }
-			    }
+					if (i != main_queue_family.value_or(-1))
+						break; // prefer independent queue
+				}
+			}
 
-			    // path tracer queue
-			    for (uint32_t i = 0; i < families.size(); ++i) {
-				    VkQueueFlags flags = families[i].queueFlags;
-				    if ((flags & VK_QUEUE_COMPUTE_BIT) && (flags & VK_QUEUE_TRANSFER_BIT)) {
-					    path_tracer_queue.family = i;
-					    path_tracer_queue.index_specifier = 1;
+			// path tracer queue
+			for (uint32_t i = 0; i < families.size(); ++i) {
+				VkQueueFlags flags = families[i].queueFlags;
+				if ((flags & VK_QUEUE_COMPUTE_BIT) && (flags & VK_QUEUE_TRANSFER_BIT)) {
+					path_tracer_queue_family = i;
+					// path_tracer_queue.index_specifier = 1;
 
-					    if (i != main_queue.family)
-						    break; // prefer independent queue
-				    }
-			    }
+					if (i != main_queue_family.value_or(-1))
+						break; // prefer independent queue
+				}
+			}
 
-			    (*out_queue_selections) = {main_queue, loader_queue, path_tracer_queue};
-			    (*out_present_queue_selections) = {present_queue};
+			return {
+			    myvk::QueueSelection{&m_main_queue, main_queue_family.value(), 0},
+			    myvk::QueueSelection{m_surface, &m_present_queue, present_queue_family.value(), 0},
+			    myvk::QueueSelection{&m_loader_queue, loader_queue_family.value(), 1},
+			    myvk::QueueSelection{&m_path_tracer_queue, path_tracer_queue_family.value(), 1},
+			};
+		};
 
-			    return (~main_queue.family) && (~loader_queue.family) && (~path_tracer_queue.family) &&
-			           (~present_queue.family);
-		    },
-		    extensions);
-		if (!device_create_info.QueueSupport()) {
-			spdlog::error("Failed to find queues!");
-			exit(EXIT_FAILURE);
-		}
-		if (!device_create_info.ExtensionSupport()) {
-			spdlog::error("Failed to find extension support!");
-			exit(EXIT_FAILURE);
-		}
-		VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features = {};
-		descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-		descriptor_indexing_features.descriptorBindingPartiallyBound = VK_TRUE;
-		m_device = myvk::Device::Create(device_create_info, &descriptor_indexing_features);
+		auto features = physical_device->GetDefaultFeatures();
+		features.vk12.descriptorBindingPartiallyBound = VK_TRUE;
+		m_device = myvk::Device::Create(physical_device, queue_selector, features, extensions);
 		if (!m_device) {
 			spdlog::error("Failed to create logical device!");
 			exit(EXIT_FAILURE);
@@ -309,13 +288,6 @@ void Application::initialize_vulkan() {
 
 	m_main_command_pool = myvk::CommandPool::Create(m_main_queue);
 	m_path_tracer_command_pool = myvk::CommandPool::Create(m_path_tracer_queue);
-
-	m_frame_command_pools.resize(kFrameCount);
-	m_frame_command_buffers.resize(kFrameCount);
-	for (uint32_t i = 0; i < kFrameCount; ++i) {
-		m_frame_command_pools[i] = myvk::CommandPool::Create(m_main_queue);
-		m_frame_command_buffers[i] = myvk::CommandBuffer::Create(m_frame_command_pools[i]);
-	}
 }
 
 Application::Application() {
@@ -326,15 +298,20 @@ Application::Application() {
 	create_window();
 	initialize_vulkan();
 
-	m_frame_manager.Initialize(m_main_queue, m_present_queue, false, kFrameCount);
-	m_frame_manager.SetResizeFunc([&]() { resize(); });
+	myvk::ImGuiInit(m_window, myvk::CommandPool::Create(m_main_queue), []() {
+		ImGui::LoadFontAwesome();
+		ImGui::StyleCinder();
+	});
+
+	m_frame_manager = myvk::FrameManager::Create(m_main_queue, m_present_queue, false, kFrameCount);
+	m_frame_manager->SetResizeFunc([this](const VkExtent2D &) { resize(); });
 
 	glfwSetWindowTitle(
 	    m_window,
-	    (std::string{kAppName} + " | " + m_device->GetPhysicalDevicePtr()->GetProperties().deviceName).c_str());
+	    (std::string{kAppName} + " | " + m_device->GetPhysicalDevicePtr()->GetProperties().vk10.deviceName).c_str());
 	create_render_pass();
 	create_framebuffers();
-	m_imgui_renderer.Initialize(m_main_command_pool, m_render_pass, 1, kFrameCount);
+	m_imgui_renderer = myvk::ImGuiRenderer::Create(m_render_pass, 1, kFrameCount);
 
 	m_environment_map = EnvironmentMap::Create(m_device);
 	m_lighting = Lighting::Create(m_environment_map);
@@ -467,5 +444,5 @@ void Application::glfw_key_callback(GLFWwindow *window, int key, int scancode, i
 
 void Application::glfw_framebuffer_resize_callback(GLFWwindow *window, int width, int height) {
 	auto *app = (Application *)glfwGetWindowUserPointer(window);
-	app->m_frame_manager.Resize();
+	app->m_frame_manager->Resize();
 }

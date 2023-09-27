@@ -23,16 +23,12 @@ void Sobol::Initialize(const std::shared_ptr<myvk::Device> &device) {
 	}
 	m_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
 
-	m_sobol_buffer = myvk::Buffer::Create(device, kBufferSize, VMA_MEMORY_USAGE_GPU_ONLY,
+	m_sobol_buffer = myvk::Buffer::Create(device, kBufferSize, 0,
 	                                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 	m_descriptor_set->UpdateStorageBuffer(m_sobol_buffer, 0);
 
-	m_staging_buffer = myvk::Buffer::CreateStaging(device, kBufferSize);
-	{
-		uint32_t *data = (uint32_t *)m_staging_buffer->Map();
-		std::fill(data, data + kMaxDimension + 1, 0u);
-		m_staging_buffer->Unmap();
-	}
+	m_staging_buffer = myvk::Buffer::CreateStaging<uint32_t>(
+	    device, kMaxDimension + 1, [](uint32_t *data) { std::fill(data, data + kMaxDimension + 1, 0); });
 
 	m_pipeline_layout = myvk::PipelineLayout::Create(device, {m_descriptor_set_layout},
 	                                                 {{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t)}});

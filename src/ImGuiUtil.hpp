@@ -1,7 +1,7 @@
 #ifndef IMGUI_UTIL_HPP
 #define IMGUI_UTIL_HPP
 
-#include <imgui/imgui.h>
+#include <imgui.h>
 
 namespace ImGui {
 void LoadFontAwesome();

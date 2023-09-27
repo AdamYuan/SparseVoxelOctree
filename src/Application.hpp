@@ -11,7 +11,7 @@
 #include <spdlog/sinks/ringbuffer_sink.h>
 
 #include "Camera.hpp"
-#include "ImGuiRenderer.hpp"
+#include "Lighting.hpp"
 #include "LoaderThread.hpp"
 #include "Octree.hpp"
 #include "OctreeTracer.hpp"
@@ -19,7 +19,6 @@
 #include "PathTracerThread.hpp"
 #include "PathTracerViewer.hpp"
 #include "Scene.hpp"
-#include "Lighting.hpp"
 
 #include "myvk/Buffer.hpp"
 #include "myvk/CommandBuffer.hpp"
@@ -30,6 +29,7 @@
 #include "myvk/FrameManager.hpp"
 #include "myvk/Framebuffer.hpp"
 #include "myvk/GraphicsPipeline.hpp"
+#include "myvk/ImGuiRenderer.hpp"
 #include "myvk/Image.hpp"
 #include "myvk/ImageView.hpp"
 #include "myvk/Instance.hpp"
@@ -55,15 +55,13 @@ private:
 	std::shared_ptr<myvk::CommandPool> m_main_command_pool, m_path_tracer_command_pool;
 
 	// frame objects
-	myvk::FrameManager m_frame_manager;
+	myvk::Ptr<myvk::FrameManager> m_frame_manager;
 	std::vector<std::shared_ptr<myvk::Framebuffer>> m_framebuffers;
-	std::vector<std::shared_ptr<myvk::CommandPool>> m_frame_command_pools;
-	std::vector<std::shared_ptr<myvk::CommandBuffer>> m_frame_command_buffers;
 
 	// render pass
 	std::shared_ptr<myvk::RenderPass> m_render_pass;
 
-	ImGuiRenderer m_imgui_renderer;
+	myvk::Ptr<myvk::ImGuiRenderer> m_imgui_renderer;
 
 	// global resources
 	std::shared_ptr<Camera> m_camera;

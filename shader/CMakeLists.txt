@@ -9,7 +9,7 @@ set(SHADER_HEADER_PATH
 		diffuse.glsl
 		mis.glsl
 		sobol.glsl
-		)
+)
 list(TRANSFORM SHADER_HEADER_PATH PREPEND ${CMAKE_CURRENT_LIST_DIR}/)
 
 set(SHADER_SRC
@@ -35,16 +35,16 @@ set(SHADER_SRC
 		path_tracer_viewer_gen.frag
 		path_tracer_viewer_main.vert
 		path_tracer_viewer_main.frag
-		)
+)
 
 find_program(GLSLC "glslc")
 IF (GLSLC)
 	function(add_spirv_shader INPUT_FILE)
 		add_custom_command(OUTPUT ${CMAKE_CURRENT_LIST_DIR}/include/spirv/${INPUT_FILE}.u32
-				COMMAND glslc ${INPUT_FILE} -o include/spirv/${INPUT_FILE}.u32 -O -Os -mfmt=num
+				COMMAND glslc ${INPUT_FILE} -o include/spirv/${INPUT_FILE}.u32 -O -Os -mfmt=num --target-env=vulkan1.1
 				WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
 				DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${INPUT_FILE} ${SHADER_HEADER_PATH}
-				)
+		)
 	endfunction()
 
 	foreach (X IN LISTS SHADER_SRC)

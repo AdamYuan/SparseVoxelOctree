@@ -156,8 +156,8 @@ void Voxelizer::count_and_create_fragment_list(const std::shared_ptr<myvk::Comma
 	m_atomic_counter.Reset(command_pool, 0);
 
 	m_voxel_fragment_list =
-	    myvk::Buffer::Create(command_pool->GetDevicePtr(), m_voxel_fragment_count * sizeof(uint32_t) * 2,
-	                         VMA_MEMORY_USAGE_GPU_ONLY, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	    myvk::Buffer::Create(command_pool->GetDevicePtr(), m_voxel_fragment_count * sizeof(uint32_t) * 2, 0,
+	                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 	m_descriptor_set->UpdateStorageBuffer(m_voxel_fragment_list, 1);
 
 	spdlog::info("Voxel fragment list created with {} voxels ({} MB)", m_voxel_fragment_count,

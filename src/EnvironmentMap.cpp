@@ -204,16 +204,11 @@ void EnvironmentMap::create_images(const std::shared_ptr<myvk::CommandPool> &com
 	m_alias_table_image_view = myvk::ImageView::Create(m_alias_table_image, VK_IMAGE_VIEW_TYPE_2D);
 
 	// create and fill staging objects
-	std::shared_ptr<myvk::Buffer> hdr_image_staging = myvk::Buffer::CreateStaging(device, img_bytes);
-	hdr_image_staging->UpdateData(img.m_data, img.m_data + img_size * 4);
+	std::shared_ptr<myvk::Buffer> hdr_image_staging =
+	    myvk::Buffer::CreateStaging(device, img.m_data, img.m_data + img_size * 4);
 
-	std::shared_ptr<myvk::Buffer> alias_table_image_staging =
-	    myvk::Buffer::CreateStaging(device, img_size * sizeof(AliasPair));
-	{
-		auto *data = (AliasPair *)alias_table_image_staging->Map();
-		generate_alias_table(weights_ptr, data);
-		alias_table_image_staging->Unmap();
-	}
+	std::shared_ptr<myvk::Buffer> alias_table_image_staging = myvk::Buffer::CreateStaging<AliasPair>(
+	    device, img_size, [weights_ptr](AliasPair *data) { generate_alias_table(weights_ptr, data); });
 
 	// copy data
 	VkBufferImageCopy region = {};

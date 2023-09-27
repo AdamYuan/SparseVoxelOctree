@@ -22,27 +22,21 @@ std::shared_ptr<OctreeBuilder> OctreeBuilder::Create(const std::shared_ptr<Voxel
 }
 
 void OctreeBuilder::create_buffers(const std::shared_ptr<myvk::Device> &device) {
-	m_build_info_buffer = myvk::Buffer::Create(device, 2 * sizeof(uint32_t), VMA_MEMORY_USAGE_GPU_ONLY,
+	m_build_info_buffer = myvk::Buffer::Create(device, 2 * sizeof(uint32_t), 0,
 	                                           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-	m_build_info_staging_buffer = myvk::Buffer::CreateStaging(device, m_build_info_buffer->GetSize());
-	{
-		auto *data = (uint32_t *)m_build_info_staging_buffer->Map();
+	m_build_info_staging_buffer = myvk::Buffer::CreateStaging<uint32_t>(device, 2, [](uint32_t *data) {
 		data[0] = 0; // uAllocBegin
 		data[1] = 8; // uAllocNum
-		m_build_info_staging_buffer->Unmap();
-	}
+	});
 
-	m_indirect_buffer = myvk::Buffer::Create(device, 3 * sizeof(uint32_t), VMA_MEMORY_USAGE_GPU_ONLY,
+	m_indirect_buffer = myvk::Buffer::Create(device, 3 * sizeof(uint32_t), 0,
 	                                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
 	                                             VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-	m_indirect_staging_buffer = myvk::Buffer::CreateStaging(device, m_indirect_buffer->GetSize());
-	{
-		auto *data = (uint32_t *)m_indirect_staging_buffer->Map();
+	m_indirect_staging_buffer = myvk::Buffer::CreateStaging<uint32_t>(device, 3, [](uint32_t *data) {
 		data[0] = 1; // uGroupX
 		data[1] = 1; // uGroupY
 		data[2] = 1; // uGroupZ
-		m_indirect_staging_buffer->Unmap();
-	}
+	});
 
 	// Estimate octree buffer size
 	uint32_t octree_node_ratio = m_voxelizer_ptr->GetLevel() / 3;
@@ -50,8 +44,8 @@ void OctreeBuilder::create_buffers(const std::shared_ptr<myvk::Device> &device) 
 	    std::max(kOctreeNodeNumMin, m_voxelizer_ptr->GetVoxelFragmentCount() * octree_node_ratio);
 	octree_entry_num = std::min(octree_entry_num, kOctreeNodeNumMax);
 
-	m_octree_buffer = myvk::Buffer::Create(device, octree_entry_num * sizeof(uint32_t), VMA_MEMORY_USAGE_GPU_ONLY,
-	                                       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	m_octree_buffer =
+	    myvk::Buffer::Create(device, octree_entry_num * sizeof(uint32_t), 0, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 	spdlog::info("Octree buffer created with {} nodes ({} MB)", octree_entry_num,
 	             m_octree_buffer->GetSize() / 1000000.0);
 }

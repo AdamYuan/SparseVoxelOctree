@@ -2,7 +2,7 @@
 
 #include "Config.hpp"
 #include <font-awesome/IconsFontAwesome5.h>
-#include <imgui/imgui.h>
+#include <imgui.h>
 
 namespace UI {
 void LogSetRequiredPattern(const std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> &log_sink) {
