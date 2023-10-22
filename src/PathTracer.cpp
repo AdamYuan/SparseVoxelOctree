@@ -242,29 +242,32 @@ void PathTracer::extract_target_image_to_buffer(const std::shared_ptr<myvk::Comm
 
 std::vector<float> PathTracer::ExtractColorImage(const std::shared_ptr<myvk::CommandPool> &command_pool) const {
 	const uint32_t kSize = m_width * m_height;
-	std::shared_ptr<myvk::Buffer> staging_buffer = myvk::Buffer::Create(
-	    command_pool->GetDevicePtr(), kSize * 4 * sizeof(float), 0, VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+	std::shared_ptr<myvk::Buffer> staging_buffer =
+	    myvk::Buffer::Create(command_pool->GetDevicePtr(), kSize * 4 * sizeof(float),
+	                         VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+	                         VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 	extract_target_image_to_buffer(command_pool, m_color_image, staging_buffer);
 
-	auto *data = (float *)staging_buffer->Map();
+	auto *data = (float *)staging_buffer->GetMappedData();
 	std::vector<float> pixels(kSize * 3);
 	for (int i = 0; i < kSize; ++i) {
 		pixels[i * 3 + 0] = data[i * 4 + 0];
 		pixels[i * 3 + 1] = data[i * 4 + 1];
 		pixels[i * 3 + 2] = data[i * 4 + 2];
 	}
-	staging_buffer->Unmap();
 
 	return pixels;
 }
 
 std::vector<float> PathTracer::ExtractAlbedoImage(const std::shared_ptr<myvk::CommandPool> &command_pool) const {
 	const uint32_t kSize = m_width * m_height;
-	std::shared_ptr<myvk::Buffer> staging_buffer = myvk::Buffer::Create(
-	    command_pool->GetDevicePtr(), kSize * sizeof(uint32_t), 0, VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+	std::shared_ptr<myvk::Buffer> staging_buffer =
+	    myvk::Buffer::Create(command_pool->GetDevicePtr(), kSize * sizeof(uint32_t),
+	                         VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+	                         VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 	extract_target_image_to_buffer(command_pool, m_albedo_image, staging_buffer);
 
-	auto *data = (uint32_t *)staging_buffer->Map();
+	auto *data = (uint32_t *)staging_buffer->GetMappedData();
 	std::vector<float> pixels(kSize * 3);
 	for (int i = 0; i < kSize; ++i) {
 		glm::vec3 v = glm::unpackUnorm4x8(data[i]);
@@ -272,18 +275,19 @@ std::vector<float> PathTracer::ExtractAlbedoImage(const std::shared_ptr<myvk::Co
 		pixels[i * 3 + 1] = v.y;
 		pixels[i * 3 + 2] = v.z;
 	}
-	staging_buffer->Unmap();
 
 	return pixels;
 }
 
 std::vector<float> PathTracer::ExtractNormalImage(const std::shared_ptr<myvk::CommandPool> &command_pool) const {
 	const uint32_t kSize = m_width * m_height;
-	std::shared_ptr<myvk::Buffer> staging_buffer = myvk::Buffer::Create(
-	    command_pool->GetDevicePtr(), kSize * sizeof(uint32_t), 0, VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+	std::shared_ptr<myvk::Buffer> staging_buffer =
+	    myvk::Buffer::Create(command_pool->GetDevicePtr(), kSize * sizeof(uint32_t),
+	                         VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+	                         VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 	extract_target_image_to_buffer(command_pool, m_normal_image, staging_buffer);
 
-	auto *data = (uint32_t *)staging_buffer->Map();
+	auto *data = (uint32_t *)staging_buffer->GetMappedData();
 	std::vector<float> pixels(kSize * 3);
 	for (int i = 0; i < kSize; ++i) {
 		glm::vec3 v = glm::unpackSnorm4x8(data[i]);
@@ -291,7 +295,6 @@ std::vector<float> PathTracer::ExtractNormalImage(const std::shared_ptr<myvk::Co
 		pixels[i * 3 + 1] = v.y;
 		pixels[i * 3 + 2] = v.z;
 	}
-	staging_buffer->Unmap();
 
 	return pixels;
 }
