@@ -45,7 +45,7 @@ bool Octree_RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out floa
 struct StackItem {
 	uint node;
 	float t_max;
-} stack[STACK_SIZE];
+} stack[STACK_SIZE + 1];
 
 bool Octree_RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t, out float size) {
 	d.x = abs(d.x) > EPS ? d.x : (d.x >= 0 ? EPS : -EPS);
