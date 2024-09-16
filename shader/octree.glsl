@@ -42,10 +42,7 @@ bool Octree_RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out floa
  */
 #define STACK_SIZE 23
 #define EPS 3.552713678800501e-15
-struct StackItem {
-	uint node;
-	float t_max;
-} stack[STACK_SIZE + 1];
+uint stack[STACK_SIZE];
 
 bool Octree_RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out float t, out float size) {
 	d.x = abs(d.x) > EPS ? d.x : (d.x >= 0 ? EPS : -EPS);
@@ -85,7 +82,7 @@ bool Octree_RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out floa
 	uint scale = STACK_SIZE - 1;
 	float scale_exp2 = 0.5f; // exp2( scale - STACK_SIZE )
 
-	while (scale < STACK_SIZE) {
+	for (;;) {
 		if (cur == 0u)
 			cur = uOctree[parent + (idx ^ oct_mask)];
 		// Determine maximum t-value of the cube by evaluating
@@ -99,37 +96,32 @@ bool Octree_RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out floa
 				break;
 
 			// INTERSECT
-			float tv_max = min(t_max, tc_max);
 			float half_scale_exp2 = scale_exp2 * 0.5f;
 			vec3 t_center = half_scale_exp2 * t_coef + t_corner;
 
-			if (t_min <= tv_max) {
-				if ((cur & 0x40000000u) != 0) // leaf node
-					break;
-				// PUSH
-				if (tc_max < h) {
-					stack[scale].node = parent;
-					stack[scale].t_max = t_max;
-				}
-				h = tc_max;
+			if ((cur & 0x40000000u) != 0) // leaf node
+				break;
 
-				parent = cur & 0x3fffffffu;
+			// PUSH
+			if (tc_max < h)
+				stack[scale] = parent;
+			h = tc_max;
 
-				idx = 0u;
-				--scale;
-				scale_exp2 = half_scale_exp2;
-				if (t_center.x > t_min)
-					idx ^= 1u, pos.x += scale_exp2;
-				if (t_center.y > t_min)
-					idx ^= 2u, pos.y += scale_exp2;
-				if (t_center.z > t_min)
-					idx ^= 4u, pos.z += scale_exp2;
+			parent = cur & 0x3fffffffu;
 
-				cur = 0;
-				t_max = tv_max;
+			idx = 0u;
+			--scale;
+			scale_exp2 = half_scale_exp2;
+			if (t_center.x > t_min)
+				idx ^= 1u, pos.x += scale_exp2;
+			if (t_center.y > t_min)
+				idx ^= 2u, pos.y += scale_exp2;
+			if (t_center.z > t_min)
+				idx ^= 4u, pos.z += scale_exp2;
 
-				continue;
-			}
+			cur = 0;
+
+			continue;
 		}
 
 		// ADVANCE
@@ -157,11 +149,12 @@ bool Octree_RayMarchCoarse(vec3 o, vec3 d, float orig_sz, float dir_sz, out floa
 			if ((step_mask & 4u) != 0)
 				differing_bits |= floatBitsToUint(pos.z) ^ floatBitsToUint(pos.z + scale_exp2);
 			scale = findMSB(differing_bits);
+			if (scale >= STACK_SIZE)
+				break;
 			scale_exp2 = uintBitsToFloat((scale - STACK_SIZE + 127u) << 23u); // exp2f(scale - s_max)
 
 			// Restore parent voxel from the stack.
-			parent = stack[scale].node;
-			t_max = stack[scale].t_max;
+			parent = stack[scale];
 
 			// Round cube position and extract child slot index.
 			uint shx = floatBitsToUint(pos.x) >> scale;
@@ -235,38 +228,32 @@ bool Octree_RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out v
 
 		if ((cur & 0x80000000u) != 0 && t_min <= t_max) {
 			// INTERSECT
-			float tv_max = min(t_max, tc_max);
 			float half_scale_exp2 = scale_exp2 * 0.5f;
 			vec3 t_center = half_scale_exp2 * t_coef + t_corner;
 
-			if (t_min <= tv_max) {
-				if ((cur & 0x40000000u) != 0) // leaf node
-					break;
+			if ((cur & 0x40000000u) != 0) // leaf node
+				break;
 
-				// PUSH
-				if (tc_max < h) {
-					stack[scale].node = parent;
-					stack[scale].t_max = t_max;
-				}
-				h = tc_max;
+			// PUSH
+			if (tc_max < h)
+				stack[scale] = parent;
+			h = tc_max;
 
-				parent = cur & 0x3fffffffu;
+			parent = cur & 0x3fffffffu;
 
-				idx = 0u;
-				--scale;
-				scale_exp2 = half_scale_exp2;
-				if (t_center.x > t_min)
-					idx ^= 1u, pos.x += scale_exp2;
-				if (t_center.y > t_min)
-					idx ^= 2u, pos.y += scale_exp2;
-				if (t_center.z > t_min)
-					idx ^= 4u, pos.z += scale_exp2;
+			idx = 0u;
+			--scale;
+			scale_exp2 = half_scale_exp2;
+			if (t_center.x > t_min)
+				idx ^= 1u, pos.x += scale_exp2;
+			if (t_center.y > t_min)
+				idx ^= 2u, pos.y += scale_exp2;
+			if (t_center.z > t_min)
+				idx ^= 4u, pos.z += scale_exp2;
 
-				cur = 0;
-				t_max = tv_max;
+			cur = 0;
 
-				continue;
-			}
+			continue;
 		}
 
 		// ADVANCE
@@ -294,11 +281,12 @@ bool Octree_RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out v
 			if ((step_mask & 4u) != 0)
 				differing_bits |= floatBitsToUint(pos.z) ^ floatBitsToUint(pos.z + scale_exp2);
 			scale = findMSB(differing_bits);
+			if (scale >= STACK_SIZE)
+				break;
 			scale_exp2 = uintBitsToFloat((scale - STACK_SIZE + 127u) << 23u); // exp2f(scale - s_max)
 
 			// Restore parent voxel from the stack.
-			parent = stack[scale].node;
-			t_max = stack[scale].t_max;
+			parent = stack[scale];
 
 			// Round cube position and extract child slot index.
 			uint shx = floatBitsToUint(pos.x) >> scale;
@@ -400,38 +388,32 @@ bool Octree_RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out v
 
 		if ((cur & 0x80000000u) != 0 && t_min <= t_max) {
 			// INTERSECT
-			float tv_max = min(t_max, tc_max);
 			float half_scale_exp2 = scale_exp2 * 0.5f;
 			vec3 t_center = half_scale_exp2 * t_coef + t_corner;
 
-			if (t_min <= tv_max) {
-				if ((cur & 0x40000000u) != 0) // leaf node
-					break;
+			if ((cur & 0x40000000u) != 0) // leaf node
+				break;
 
-				// PUSH
-				if (tc_max < h) {
-					stack[scale].node = parent;
-					stack[scale].t_max = t_max;
-				}
-				h = tc_max;
+			// PUSH
+			if (tc_max < h)
+				stack[scale] = parent;
+			h = tc_max;
 
-				parent = cur & 0x3fffffffu;
+			parent = cur & 0x3fffffffu;
 
-				idx = 0u;
-				--scale;
-				scale_exp2 = half_scale_exp2;
-				if (t_center.x > t_min)
-					idx ^= 1u, pos.x += scale_exp2;
-				if (t_center.y > t_min)
-					idx ^= 2u, pos.y += scale_exp2;
-				if (t_center.z > t_min)
-					idx ^= 4u, pos.z += scale_exp2;
+			idx = 0u;
+			--scale;
+			scale_exp2 = half_scale_exp2;
+			if (t_center.x > t_min)
+				idx ^= 1u, pos.x += scale_exp2;
+			if (t_center.y > t_min)
+				idx ^= 2u, pos.y += scale_exp2;
+			if (t_center.z > t_min)
+				idx ^= 4u, pos.z += scale_exp2;
 
-				cur = 0;
-				t_max = tv_max;
+			cur = 0;
 
-				continue;
-			}
+			continue;
 		}
 
 		// ADVANCE
@@ -459,11 +441,12 @@ bool Octree_RayMarchLeaf(vec3 o, vec3 d, out vec3 o_pos, out vec3 o_color, out v
 			if ((step_mask & 4u) != 0)
 				differing_bits |= floatBitsToUint(pos.z) ^ floatBitsToUint(pos.z + scale_exp2);
 			scale = findMSB(differing_bits);
+			if (scale >= STACK_SIZE)
+				break;
 			scale_exp2 = uintBitsToFloat((scale - STACK_SIZE + 127u) << 23u); // exp2f(scale - s_max)
 
 			// Restore parent voxel from the stack.
-			parent = stack[scale].node;
-			t_max = stack[scale].t_max;
+			parent = stack[scale];
 
 			// Round cube position and extract child slot index.
 			uint shx = floatBitsToUint(pos.x) >> scale;
@@ -567,38 +550,32 @@ bool Octree_RayMarchOcclude(vec3 o, vec3 d) {
 
 		if ((cur & 0x80000000u) != 0 && t_min <= t_max) {
 			// INTERSECT
-			float tv_max = min(t_max, tc_max);
 			float half_scale_exp2 = scale_exp2 * 0.5f;
 			vec3 t_center = half_scale_exp2 * t_coef + t_corner;
 
-			if (t_min <= tv_max) {
-				if ((cur & 0x40000000u) != 0) // leaf node
-					break;
+			if ((cur & 0x40000000u) != 0) // leaf node
+				break;
 
-				// PUSH
-				if (tc_max < h) {
-					stack[scale].node = parent;
-					stack[scale].t_max = t_max;
-				}
-				h = tc_max;
+			// PUSH
+			if (tc_max < h)
+				stack[scale] = parent;
+			h = tc_max;
 
-				parent = cur & 0x3fffffffu;
+			parent = cur & 0x3fffffffu;
 
-				idx = 0u;
-				--scale;
-				scale_exp2 = half_scale_exp2;
-				if (t_center.x > t_min)
-					idx ^= 1u, pos.x += scale_exp2;
-				if (t_center.y > t_min)
-					idx ^= 2u, pos.y += scale_exp2;
-				if (t_center.z > t_min)
-					idx ^= 4u, pos.z += scale_exp2;
+			idx = 0u;
+			--scale;
+			scale_exp2 = half_scale_exp2;
+			if (t_center.x > t_min)
+				idx ^= 1u, pos.x += scale_exp2;
+			if (t_center.y > t_min)
+				idx ^= 2u, pos.y += scale_exp2;
+			if (t_center.z > t_min)
+				idx ^= 4u, pos.z += scale_exp2;
 
-				cur = 0;
-				t_max = tv_max;
+			cur = 0;
 
-				continue;
-			}
+			continue;
 		}
 
 		// ADVANCE
@@ -626,11 +603,12 @@ bool Octree_RayMarchOcclude(vec3 o, vec3 d) {
 			if ((step_mask & 4u) != 0)
 				differing_bits |= floatBitsToUint(pos.z) ^ floatBitsToUint(pos.z + scale_exp2);
 			scale = findMSB(differing_bits);
+			if (scale >= STACK_SIZE)
+				break;
 			scale_exp2 = uintBitsToFloat((scale - STACK_SIZE + 127u) << 23u); // exp2f(scale - s_max)
 
 			// Restore parent voxel from the stack.
-			parent = stack[scale].node;
-			t_max = stack[scale].t_max;
+			parent = stack[scale];
 
 			// Round cube position and extract child slot index.
 			uint shx = floatBitsToUint(pos.x) >> scale;
