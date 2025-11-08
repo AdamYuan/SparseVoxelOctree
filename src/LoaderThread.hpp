@@ -18,7 +18,7 @@ private:
 	std::promise<std::shared_ptr<OctreeBuilder>> m_promise;
 	std::future<std::shared_ptr<OctreeBuilder>> m_future;
 
-	std::atomic<const char *> m_notification;
+	std::atomic<const char *> m_notification = "";
 
 	void thread_func(const char *filename, uint32_t octree_level);
 
